@@ -130,6 +130,29 @@ Behind an `IDatasetExporter` interface so formats can be added without touching 
 - Capture must not measurably affect PIE frame time — the data describes the game's motion, so
   perturbing the game corrupts the data.
 
+## Test projects
+
+The plugin is developed in `Kimodo-Workshop` and reached from other projects by a Windows
+**directory junction**, matching the convention already used for `KimodoExporter`:
+
+```powershell
+New-Item -ItemType Junction `
+  -Path   "D:\Unreal Projects\<Project>\Plugins\AnimotiveKimodoDatasetCapture" `
+  -Target "D:\Unreal Projects\Kimodo-Workshop\Plugins\AnimotiveKimodoDatasetCapture"
+```
+
+One source tree, one set of binaries, no copies to drift. Nothing creates these links
+automatically; a new test project needs one made by hand.
+
+**`GameAnimationSample`** (added 2026-09-09) is linked this way and is the better manual
+verification fixture: engine 5.7, a full locomotion character, and geometry to walk up. It is
+also **Blueprint-only, with no C++ modules at all**, which makes it a genuine test of the
+product's zero-integration-tax requirement rather than a convenience.
+
+Verified 2026-09-09: all 57 automation tests run and pass inside `GameAnimationSample` with
+no rebuild and no project changes. A client project therefore needs no C++, no target file and
+no code of its own for this plugin to load and work.
+
 ## Testing
 
 Framework: **UE Automation Tests** in `KimodoDatasetCaptureTests`.
