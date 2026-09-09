@@ -24,7 +24,7 @@ they still require the manual verification steps to be written into the task not
 - [x] Task: Write tests for `FDatasetInputSample` — axis storage, button bitmask set/clear, press/release derivation between consecutive samples, boundary values (Red) (00855dd)
 - [x] Task: Implement `FDatasetInputSample` as an allocation-free `USTRUCT` with named button accessors (Green) (808fc46)
 - [x] Task: Write tests for the sidecar `USTRUCT` set — all four blocks present, `SchemaVersion` first and readable standalone, frame-keyed input stream (Red) (6cf8e8c)
-- [ ] Task: Implement the sidecar `USTRUCT`s: identity + timing, raw input stream, skeleton identity, label block (Green)
+- [x] Task: Implement the sidecar `USTRUCT`s: identity + timing, raw input stream, skeleton identity, label block (Green) (5d49a53)
 - [ ] Task: Write tests for sidecar JSON round-trip — write → read → compare equal, including empty tag list, invalid clip with reason, and full-range trim defaults (Red)
 - [ ] Task: Implement `FDatasetSidecarSerializer` over `FJsonObjectConverter`, writing and reading schema v1 (Green)
 - [ ] Task: Write tests for the skeleton fingerprint — stable across runs for identical ordered bone name/parent pairs, different for a changed hierarchy or reordering (Red)
