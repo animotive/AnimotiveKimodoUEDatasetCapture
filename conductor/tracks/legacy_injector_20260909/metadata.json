@@ -1,0 +1,10 @@
+{
+  "track_id": "legacy_injector_20260909",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-09-09T13:04:57Z",
+  "updated_at": "2026-09-09T13:04:57Z",
+  "description": "STUB: Companion injector application for capturing skeletal data from legacy compiled builds. Separate repository.",
+  "stub": true,
+  "depends_on": "capture_slice_20260909"
+}

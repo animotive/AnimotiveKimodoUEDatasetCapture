@@ -1,0 +1,10 @@
+{
+  "track_id": "session_triage_20260909",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-09-09T13:04:57Z",
+  "updated_at": "2026-09-09T13:04:57Z",
+  "description": "STUB: Session clip list, discard and retake, label status, mark ready for export.",
+  "stub": true,
+  "depends_on": "capture_slice_20260909"
+}

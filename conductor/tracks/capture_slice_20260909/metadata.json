@@ -1,0 +1,8 @@
+{
+  "track_id": "capture_slice_20260909",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-09-09T13:04:57Z",
+  "updated_at": "2026-09-09T13:04:57Z",
+  "description": "Build the end-to-end capture slice: a Slate capture panel, a Take Recorder input source writing frame-aligned raw gamepad channels into the take's MovieScene, and a versioned sidecar JSON carrying identity, timing, skeleton fingerprint and labels."
+}

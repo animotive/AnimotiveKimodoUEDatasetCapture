@@ -1,0 +1,11 @@
+# Unreal build artefacts
+Binaries/
+Intermediate/
+Build/
+Saved/
+DerivedDataCache/
+*.pdb
+*.sln
+*.suo
+.vs/
+.idea/
