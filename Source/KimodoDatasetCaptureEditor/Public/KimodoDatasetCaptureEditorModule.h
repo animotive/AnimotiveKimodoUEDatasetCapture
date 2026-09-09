@@ -19,4 +19,8 @@ public:
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 	//~ End IModuleInterface
+
+private:
+	/** Registration handle for the Sequencer track editor that draws the input track. */
+	FDelegateHandle DatasetInputTrackEditorHandle;
 };
