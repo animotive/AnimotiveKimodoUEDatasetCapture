@@ -1,11 +1,17 @@
 # Copyright Animotive. All Rights Reserved.
 #
-# Fails if the capture module depends on anything editor-only.
+# Fails if the capture module depends on an EDITOR-type module.
 #
-# The capture module is UncookedOnly so that capture code is live during Play In Editor
-# but cannot reach a cooked client build. An editor-only dependency in its Build.cs, or an
-# editor-only include in its source, silently breaks that guarantee. This check makes the
-# breakage loud instead.
+# The capture module is UncookedOnly so that capture code is live during Play In Editor but
+# cannot reach a cooked client build. A dependency on an Editor-type module, or an editor-only
+# include in its source, silently breaks that guarantee. This check makes the breakage loud.
+#
+# What is NOT a violation, and why this list is specific rather than keyword-based:
+# TakesCore, TakeRecorder and TakeTrackRecorders are all UncookedOnly modules, exactly like
+# this one, so depending on them is legitimate - UTakeRecorderSource itself lives in TakesCore.
+# An earlier version of this check forbade anything matching "TakeRecorder" and produced a
+# false positive on TakeRecorderSource.h. The rule is about module TYPE, not about names that
+# look editorial.
 #
 # Usage:  pwsh -File tools/check-module-deps.ps1
 
@@ -19,6 +25,8 @@ if (-not (Test-Path $CaptureModuleDir)) {
 }
 
 # Editor-only modules and headers the capture module must never name.
+# Editor-type modules only. Verified against each plugin's .uplugin module type rather
+# than guessed from the name.
 $ForbiddenNames = @(
     'UnrealEd',
     'EditorFramework',
@@ -27,8 +35,7 @@ $ForbiddenNames = @(
     'LevelSequenceEditor',
     'MovieSceneTools',
     'Sequencer',
-    'TakeRecorder',
-    'TakeTrackRecorders',
+    'TakeSequencer',
     'ToolMenus',
     'ToolWidgets',
     'Slate',
@@ -59,7 +66,9 @@ foreach ($File in $SourceFiles) {
     for ($i = 0; $i -lt $Lines.Count; $i++) {
         $Line = $Lines[$i]
         if ($Line -notmatch '^\s*#include') { continue }
-        foreach ($Name in @('Editor.h', 'UnrealEd', 'Slate', 'Sequencer', 'TakeRecorder', 'ToolMenus')) {
+        # Specific editor headers. Deliberately excludes 'TakeRecorder', which matches the
+        # UncookedOnly TakesCore header this module legitimately includes.
+        foreach ($Name in @('Editor.h', 'UnrealEd', 'Slate/', 'SlateCore', 'ISequencer', 'MovieSceneTools', 'ToolMenus')) {
             if ($Line -match [regex]::Escape($Name)) {
                 $Rel = $File.FullName.Substring($PluginRoot.Length + 1)
                 $Violations += "${Rel}:$($i + 1): includes editor-only header matching '$Name'"
