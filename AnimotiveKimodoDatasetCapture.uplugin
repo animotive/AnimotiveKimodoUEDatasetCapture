@@ -1,0 +1,54 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "Animotive Kimodo Dataset Capture",
+	"Description": "Capture short clips of gameplay as motion datasets. Extends Take Recorder with a frame-aligned input track, then labels and exports the result for Kimodo model training.",
+	"Category": "Animation",
+	"CreatedBy": "Animotive",
+	"CreatedByURL": "https://kimodo.animotive.com/",
+	"DocsURL": "https://kimodo.animotive.com/docs",
+	"MarketplaceURL": "",
+	"SupportURL": "https://kimodo.animotive.com/",
+	"EngineVersion": "5.7",
+	"CanContainContent": false,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"IsInstalled": false,
+	"Modules": [
+		{
+			"Name": "KimodoDatasetCapture",
+			"Type": "UncookedOnly",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "KimodoDatasetCaptureEditor",
+			"Type": "Editor",
+			"LoadingPhase": "PostEngineInit",
+			"PlatformAllowList": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "KimodoDatasetCaptureTests",
+			"Type": "Editor",
+			"LoadingPhase": "PostDefault",
+			"PlatformAllowList": [
+				"Win64"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "Takes",
+			"Enabled": true
+		},
+		{
+			"Name": "EnhancedInput",
+			"Enabled": true
+		}
+	]
+}
