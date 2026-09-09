@@ -41,7 +41,7 @@ they still require the manual verification steps to be written into the task not
 - [x] Task: Implement the sample-to-channel writer, taking the frame number from the sequence clock rather than counting ticks (Green) (bbf0c9b)
 - [x] Task: Write tests for channel-to-sidecar extraction — reading the section back yields the same frame-keyed stream that was written (Red) (67045c8)
 - [x] Task: Implement sidecar generation derived from the section, so JSON has no independent source of truth (Green) (2d3822b)
-- [ ] Task: Register a minimal track editor so the input track is visible in Sequencer **(exempt)**
+- [x] Task: Register a minimal track editor so the input track is visible in Sequencer **(exempt)** (0860e12)
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: MovieScene Input Track (Alignment Core)' (Protocol in workflow.md)
 
 ## Phase 4: Take Recorder Source
