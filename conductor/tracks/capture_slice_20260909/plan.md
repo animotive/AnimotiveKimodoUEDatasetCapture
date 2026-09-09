@@ -33,7 +33,7 @@ they still require the manual verification steps to be written into the task not
 - [x] Task: Implement trim frame helpers in frame space, no float seconds (Green) (df0ded0)
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Capture Data Model and Sidecar Schema v1' (Protocol in workflow.md) (ed7b932)
 
-## Phase 3: MovieScene Input Track (Alignment Core)
+## Phase 3: MovieScene Input Track (Alignment Core) [checkpoint: 58f94a4]
 
 - [x] Task: Write tests that construct a `UMovieSceneDatasetInputSection`, write known keys at known `FFrameNumber`s, and read them back at the same frames on a given tick resolution (Red) (804632e)
 - [x] Task: Implement `UMovieSceneDatasetInputTrack` and `UMovieSceneDatasetInputSection` with one channel per axis and one per button, in frame space (Green) (14064f7)
@@ -42,7 +42,7 @@ they still require the manual verification steps to be written into the task not
 - [x] Task: Write tests for channel-to-sidecar extraction — reading the section back yields the same frame-keyed stream that was written (Red) (67045c8)
 - [x] Task: Implement sidecar generation derived from the section, so JSON has no independent source of truth (Green) (2d3822b)
 - [x] Task: Register a minimal track editor so the input track is visible in Sequencer **(exempt)** (0860e12)
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: MovieScene Input Track (Alignment Core)' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: MovieScene Input Track (Alignment Core)' (Protocol in workflow.md) (58f94a4)
 
 ## Phase 4: Take Recorder Source
 
