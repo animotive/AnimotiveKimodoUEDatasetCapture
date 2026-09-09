@@ -95,6 +95,12 @@ and degrades to the raw layer when the opt-in layers are not present.
   frame rate, skeleton identity, schema version).
 - Sidecar serialisation via `FJsonObjectConverter` over versioned `USTRUCT`s. Schema version
   is written from the first commit and is readable without parsing the rest of the file.
+- **Schema v1 wire format** (locked 2026-09-09; full notes in `DatasetSidecar.h`): lower camel
+  case field names; booleans keep the Unreal `b` prefix on the wire (`bIsValid`); enum fields
+  serialise as enumerator **names**, so enumerators may be added but never renamed or
+  reordered; floats are written at full double precision and round-trip exactly. The test
+  suite writes a live sample to `Saved/KimodoDatasetCapture/SidecarSchemaSample.json`, so the
+  documented format cannot drift from the code.
 
 ### Export
 

@@ -17,6 +17,25 @@
  *
  * Version history:
  *   1 - initial: identity and timing, raw input stream, skeleton identity, labels.
+ *
+ * WIRE FORMAT NOTES. These are consequences of how FJsonObjectConverter serialises the
+ * structs below, and they are part of the contract with the training pipeline, so they are
+ * recorded here rather than left to be rediscovered from a file:
+ *
+ *   - Field names are lower camel case: "schemaVersion", "takeName", "frameNumber".
+ *     Renaming a C++ member renames the JSON field and breaks the contract.
+ *   - Booleans keep their Unreal "b" prefix, so validity is written as "bIsValid". Ugly on
+ *     the wire, and left alone deliberately: a custom serialiser to prettify one field name
+ *     would be a permanent maintenance cost, and the pipeline reads a documented name either
+ *     way. Do not "fix" it without a schema version bump.
+ *   - Enum-valued fields are written as their NAMES, e.g. "layers": ["RawInput"]. Renaming an
+ *     enumerator therefore changes the file format even though no field changed. Add
+ *     enumerators; never rename or reorder them.
+ *   - Floats are written with full double precision ("0.98000001907348633" for 0.98f), which
+ *     is verbose but exactly round-trippable. A round-trip test asserts that.
+ *
+ * A representative sample of the current schema is produced by the test suite at
+ * Saved/KimodoDatasetCapture/SidecarSchemaSample.json, so it cannot drift from the code.
  */
 inline constexpr int32 KDatasetSidecarSchemaVersion = 1;
 
