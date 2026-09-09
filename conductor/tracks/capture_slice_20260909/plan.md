@@ -27,7 +27,7 @@ they still require the manual verification steps to be written into the task not
 - [x] Task: Implement the sidecar `USTRUCT`s: identity + timing, raw input stream, skeleton identity, label block (Green) (5d49a53)
 - [x] Task: Write tests for sidecar JSON round-trip — write → read → compare equal, including empty tag list, invalid clip with reason, and full-range trim defaults (Red) (4f0bfbf)
 - [x] Task: Implement `FDatasetSidecarSerializer` over `FJsonObjectConverter`, writing and reading schema v1 (Green) (a9171ad)
-- [ ] Task: Write tests for the skeleton fingerprint — stable across runs for identical ordered bone name/parent pairs, different for a changed hierarchy or reordering (Red)
+- [x] Task: Write tests for the skeleton fingerprint — stable across runs for identical ordered bone name/parent pairs, different for a changed hierarchy or reordering (Red) (4b0f134)
 - [ ] Task: Implement the skeleton fingerprint hash over the reference skeleton (Green)
 - [ ] Task: Write tests for trim frame math — defaults spanning the full recorded range, in/out clamped to recorded bounds, points landing exactly on frame edges (Red)
 - [ ] Task: Implement trim frame helpers in frame space, no float seconds (Green)
