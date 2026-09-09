@@ -106,9 +106,13 @@ bool FDatasetSidecarSerializer::TryReadSchemaVersion(const FString& Json, int32&
 
 bool FDatasetSidecarSerializer::IsSupportedSchemaVersion(int32 SchemaVersion)
 {
-	// Only version 1 exists. When version 2 arrives, this becomes a range and FromJson gains
-	// an upgrade path; it must never become "anything less than or equal to current",
-	// because that would silently accept a version with no reader.
+	// Exactly the current version, and deliberately not "less than or equal to". A range
+	// check would silently accept a version this build has no reader for.
+	//
+	// v1 is rejected rather than upgraded because nothing had been captured at v1: there is no
+	// data to migrate, so an upgrade path would be untested code guarding an empty set. When a
+	// version ships with real data behind it, this becomes a range plus a migration in
+	// FromJson.
 	return SchemaVersion == KDatasetSidecarSchemaVersion;
 }
 

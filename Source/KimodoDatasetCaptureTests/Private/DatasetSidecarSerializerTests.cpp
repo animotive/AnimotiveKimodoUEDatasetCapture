@@ -34,7 +34,7 @@ namespace
 		Sidecar.Labels.TrimInFrame = 100;
 		Sidecar.Labels.TrimOutFrame = 102;
 
-		Sidecar.AddLayer(EDatasetCaptureLayer::RawInput);
+		Sidecar.AddLayer(EDatasetCaptureLayer::RawGamepadInput);
 		Sidecar.AddLayer(EDatasetCaptureLayer::CharacterState);
 
 		FDatasetInputSample First;

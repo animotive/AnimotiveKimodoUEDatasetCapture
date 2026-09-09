@@ -35,6 +35,13 @@ void UMovieSceneDatasetInputSection::WriteSample(const FDatasetInputSample& Samp
 	// for the fourteen bits currently defined; a wider button set would need a second channel
 	// rather than a reinterpretation of this one.
 	Buttons.GetData().AddKey(Frame, static_cast<int32>(Sample.Buttons));
+
+	// The keyboard mask and mouse delta are their own channels. Folding them into the gamepad
+	// channels would make a keyboard press indistinguishable from a pad press in the recorded
+	// data, which is precisely what the separate-device decision rules out.
+	KeyboardButtons.GetData().AddKey(Frame, static_cast<int32>(Sample.KeyboardButtons));
+	MouseDeltaX.AddConstantKey(Frame, Sample.MouseDeltaX);
+	MouseDeltaY.AddConstantKey(Frame, Sample.MouseDeltaY);
 }
 
 void UMovieSceneDatasetInputSection::WriteSamples(TArrayView<const FDatasetInputSample> Samples)
@@ -90,6 +97,13 @@ bool UMovieSceneDatasetInputSection::TryReadSample(FFrameNumber FrameNumber, FDa
 	int32 ButtonValue = 0;
 	Buttons.Evaluate(FrameTime, ButtonValue);
 	Sample.Buttons = static_cast<uint32>(ButtonValue);
+
+	int32 KeyboardValue = 0;
+	KeyboardButtons.Evaluate(FrameTime, KeyboardValue);
+	Sample.KeyboardButtons = static_cast<uint32>(KeyboardValue);
+
+	MouseDeltaX.Evaluate(FrameTime, Sample.MouseDeltaX);
+	MouseDeltaY.Evaluate(FrameTime, Sample.MouseDeltaY);
 
 	OutSample = Sample;
 	return true;
@@ -162,9 +176,21 @@ void UMovieSceneDatasetInputSection::RecreateChannelProxy()
 	RightTriggerMetaData.SortOrder = 5;
 	Channels.Add(RightTrigger, RightTriggerMetaData, TMovieSceneExternalValue<float>());
 
-	FMovieSceneChannelMetaData ButtonsMetaData(TEXT("Buttons"), LOCTEXT("Buttons", "Buttons (bitmask)"));
+	FMovieSceneChannelMetaData ButtonsMetaData(TEXT("Buttons"), LOCTEXT("Buttons", "Gamepad Buttons (bitmask)"));
 	ButtonsMetaData.SortOrder = 6;
 	Channels.Add(Buttons, ButtonsMetaData, TMovieSceneExternalValue<int32>());
+
+	FMovieSceneChannelMetaData MouseDeltaXMetaData(TEXT("MouseDeltaX"), LOCTEXT("MouseDeltaX", "Mouse Delta X"));
+	MouseDeltaXMetaData.SortOrder = 7;
+	Channels.Add(MouseDeltaX, MouseDeltaXMetaData, TMovieSceneExternalValue<float>());
+
+	FMovieSceneChannelMetaData MouseDeltaYMetaData(TEXT("MouseDeltaY"), LOCTEXT("MouseDeltaY", "Mouse Delta Y"));
+	MouseDeltaYMetaData.SortOrder = 8;
+	Channels.Add(MouseDeltaY, MouseDeltaYMetaData, TMovieSceneExternalValue<float>());
+
+	FMovieSceneChannelMetaData KeyboardMetaData(TEXT("KeyboardButtons"), LOCTEXT("KeyboardButtons", "Keyboard/Mouse Buttons (bitmask)"));
+	KeyboardMetaData.SortOrder = 9;
+	Channels.Add(KeyboardButtons, KeyboardMetaData, TMovieSceneExternalValue<int32>());
 
 #else
 
@@ -175,6 +201,9 @@ void UMovieSceneDatasetInputSection::RecreateChannelProxy()
 	Channels.Add(LeftTrigger);
 	Channels.Add(RightTrigger);
 	Channels.Add(Buttons);
+	Channels.Add(MouseDeltaX);
+	Channels.Add(MouseDeltaY);
+	Channels.Add(KeyboardButtons);
 
 #endif
 

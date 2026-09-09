@@ -39,10 +39,37 @@ void FDatasetInputSample::SetHeld(EDatasetGamepadButton Button, bool bHeld)
 	}
 }
 
+bool FDatasetInputSample::IsKeyHeld(EDatasetKeyboardButton Key) const
+{
+	const uint32 Mask = static_cast<uint32>(Key);
+	return Mask != 0 && (KeyboardButtons & Mask) == Mask;
+}
+
+void FDatasetInputSample::SetKeyHeld(EDatasetKeyboardButton Key, bool bHeld)
+{
+	const uint32 Mask = static_cast<uint32>(Key);
+	if (bHeld)
+	{
+		KeyboardButtons |= Mask;
+	}
+	else
+	{
+		KeyboardButtons &= ~Mask;
+	}
+}
+
 bool FDatasetInputSample::IsNeutral() const
 {
 	// FrameNumber is deliberately excluded: it is bookkeeping, not input.
+	//
+	// Mouse delta uses the same axis threshold as the sticks. It is not a perfect fit - a
+	// mouse reports pixels rather than a normalised deflection - but a sub-pixel delta is
+	// noise by any measure, and treating it as movement would mark every frame of a
+	// keyboard-and-mouse session as active.
 	return Buttons == 0
+		&& KeyboardButtons == 0
+		&& IsAxisNeutral(MouseDeltaX)
+		&& IsAxisNeutral(MouseDeltaY)
 		&& IsAxisNeutral(LeftStickX)
 		&& IsAxisNeutral(LeftStickY)
 		&& IsAxisNeutral(RightStickX)
@@ -74,6 +101,18 @@ bool FDatasetInputSample::WasReleased(const FDatasetInputSample& Previous, const
 	return Mask != 0 && (static_cast<uint32>(GetReleasedSince(Previous, Current)) & Mask) == Mask;
 }
 
+bool FDatasetInputSample::WasKeyPressed(const FDatasetInputSample& Previous, const FDatasetInputSample& Current, EDatasetKeyboardButton Key)
+{
+	const uint32 Mask = static_cast<uint32>(Key);
+	return Mask != 0 && ((Current.KeyboardButtons & ~Previous.KeyboardButtons) & Mask) == Mask;
+}
+
+bool FDatasetInputSample::WasKeyReleased(const FDatasetInputSample& Previous, const FDatasetInputSample& Current, EDatasetKeyboardButton Key)
+{
+	const uint32 Mask = static_cast<uint32>(Key);
+	return Mask != 0 && ((Previous.KeyboardButtons & ~Current.KeyboardButtons) & Mask) == Mask;
+}
+
 bool FDatasetInputSample::operator==(const FDatasetInputSample& Other) const
 {
 	// Exact float comparison is intended. This operator backs the JSON round-trip tests,
@@ -85,5 +124,8 @@ bool FDatasetInputSample::operator==(const FDatasetInputSample& Other) const
 		&& RightStickY == Other.RightStickY
 		&& LeftTrigger == Other.LeftTrigger
 		&& RightTrigger == Other.RightTrigger
-		&& Buttons == Other.Buttons;
+		&& Buttons == Other.Buttons
+		&& KeyboardButtons == Other.KeyboardButtons
+		&& MouseDeltaX == Other.MouseDeltaX
+		&& MouseDeltaY == Other.MouseDeltaY;
 }

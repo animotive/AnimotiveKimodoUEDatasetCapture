@@ -26,18 +26,31 @@ public:
 	/** Reads whether a button is held. */
 	using FButtonReader = TFunctionRef<bool(const FKey&)>;
 
-	/** One engine key mapped to one dataset button bit. */
+	/** One engine key mapped to one dataset gamepad bit. */
 	struct FButtonBinding
 	{
 		FKey Key;
 		EDatasetGamepadButton Button;
 	};
 
+	/** One engine key mapped to one dataset keyboard/mouse bit. */
+	struct FKeyboardBinding
+	{
+		FKey Key;
+		EDatasetKeyboardButton Button;
+	};
+
 	/** The complete key-to-bit table, in bit order. */
 	static const TArray<FButtonBinding>& GetButtonBindings();
 
-	/** The six analog keys, in the field order of FDatasetInputSample. */
+	/** The six gamepad analog keys, in the field order of FDatasetInputSample. */
 	static const TArray<FKey>& GetAxisKeys();
+
+	/** The complete keyboard and mouse button table, in bit order. */
+	static const TArray<FKeyboardBinding>& GetKeyboardBindings();
+
+	/** The two mouse axes, in the field order of FDatasetInputSample. */
+	static const TArray<FKey>& GetMouseAxisKeys();
 
 	/**
 	 * Builds a sample for FrameNumber from the supplied readers.

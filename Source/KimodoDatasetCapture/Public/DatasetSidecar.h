@@ -17,6 +17,10 @@
  *
  * Version history:
  *   1 - initial: identity and timing, raw input stream, skeleton identity, labels.
+ *   2 - keyboard and mouse as a SEPARATE raw device: adds keyboardButtons, mouseDeltaX and
+ *       mouseDeltaY to each sample, and renames the RawInput layer to RawGamepadInput
+ *       alongside the new RawKeyboardMouseInput. Nothing had been captured at v1, so no
+ *       migration path exists and v1 files are rejected rather than half-read.
  *
  * WIRE FORMAT NOTES. These are consequences of how FJsonObjectConverter serialises the
  * structs below, and they are part of the contract with the training pipeline, so they are
@@ -28,7 +32,7 @@
  *     the wire, and left alone deliberately: a custom serialiser to prettify one field name
  *     would be a permanent maintenance cost, and the pipeline reads a documented name either
  *     way. Do not "fix" it without a schema version bump.
- *   - Enum-valued fields are written as their NAMES, e.g. "layers": ["RawInput"]. Renaming an
+ *   - Enum-valued fields are written as their NAMES, e.g. "layers": ["RawGamepadInput"]. Renaming an
  *     enumerator therefore changes the file format even though no field changed. Add
  *     enumerators; never rename or reorder them.
  *   - Floats are written with full double precision ("0.98000001907348633" for 0.98f), which
@@ -37,14 +41,26 @@
  * A representative sample of the current schema is produced by the test suite at
  * Saved/KimodoDatasetCapture/SidecarSchemaSample.json, so it cannot drift from the code.
  */
-inline constexpr int32 KDatasetSidecarSchemaVersion = 1;
+inline constexpr int32 KDatasetSidecarSchemaVersion = 2;
 
 /** Which capture layers a take actually contains. The opt-in layers may be absent. */
 UENUM()
 enum class EDatasetCaptureLayer : uint8
 {
-	/** Raw gamepad state. Always present in a valid take. */
-	RawInput,
+	/**
+	 * Raw gamepad state. Always sampled, even when no pad is connected, in which case its
+	 * fields read neutral - which is itself the honest record.
+	 */
+	RawGamepadInput,
+
+	/**
+	 * Raw keyboard and mouse state. Sampled alongside the gamepad, never derived from it.
+	 *
+	 * A key is recorded by its own name (W, Space) rather than by an assumed meaning, because
+	 * a client project may bind it to anything. Mouse movement is recorded in engine units
+	 * rather than scaled into a stick value.
+	 */
+	RawKeyboardMouseInput,
 
 	/** Enhanced Input semantic actions. Absent in projects not using Enhanced Input. */
 	SemanticInput,

@@ -39,6 +39,36 @@ enum class EDatasetGamepadButton : uint32
 ENUM_CLASS_FLAGS(EDatasetGamepadButton);
 
 /**
+ * Keyboard and mouse buttons captured as a separate bitmask.
+ *
+ * Named after the KEYS, not after what they might mean. A client project may bind W to
+ * anything, so a bit called "MoveForward" would assert something this plugin cannot know.
+ * Meaning belongs to the semantic input layer; the raw layer records which key was down.
+ *
+ * Values are explicit and must never be renumbered: they are written into sidecar JSON.
+ */
+enum class EDatasetKeyboardButton : uint32
+{
+	None         = 0,
+
+	KeyW         = 1u << 0,
+	KeyA         = 1u << 1,
+	KeyS         = 1u << 2,
+	KeyD         = 1u << 3,
+
+	Space        = 1u << 4,
+	KeyE         = 1u << 5,
+	LeftShift    = 1u << 6,
+	LeftControl  = 1u << 7,
+
+	MouseLeft    = 1u << 8,
+	MouseRight   = 1u << 9,
+	MouseMiddle  = 1u << 10,
+};
+
+ENUM_CLASS_FLAGS(EDatasetKeyboardButton);
+
+/**
  * One frame of raw gamepad state.
  *
  * Deliberately allocation-free: every member is a fixed-size value, so a capture buffer of
@@ -78,12 +108,35 @@ struct KIMODODATASETCAPTURE_API FDatasetInputSample
 	UPROPERTY()
 	float RightTrigger = 0.0f;
 
-	/** Buttons held on this frame, as an EDatasetGamepadButton bitmask. */
+	/** Gamepad buttons held on this frame, as an EDatasetGamepadButton bitmask. */
 	UPROPERTY()
 	uint32 Buttons = 0;
 
+	/** Keyboard and mouse buttons held, as an EDatasetKeyboardButton bitmask. */
+	UPROPERTY()
+	uint32 KeyboardButtons = 0;
+
+	/**
+	 * Mouse movement this frame, in the engine's own units.
+	 *
+	 * Deliberately NOT scaled into a stick value. A mouse has no rest position and no
+	 * maximum, so a normalised version would be an invention, and the ML team would have no
+	 * way to tell it from a real analog stick reading.
+	 */
+	UPROPERTY()
+	float MouseDeltaX = 0.0f;
+
+	UPROPERTY()
+	float MouseDeltaY = 0.0f;
+
 	/** True when Button is held on this frame. */
 	bool IsHeld(EDatasetGamepadButton Button) const;
+
+	/** True when Key is held on this frame. */
+	bool IsKeyHeld(EDatasetKeyboardButton Key) const;
+
+	/** Marks Key held on this frame. */
+	void SetKeyHeld(EDatasetKeyboardButton Key, bool bHeld);
 
 	/** Marks Button held on this frame. */
 	void SetHeld(EDatasetGamepadButton Button, bool bHeld);
@@ -106,6 +159,17 @@ struct KIMODODATASETCAPTURE_API FDatasetInputSample
 
 	/** True when Button transitions from down to up between Previous and Current. */
 	static bool WasReleased(const FDatasetInputSample& Previous, const FDatasetInputSample& Current, EDatasetGamepadButton Button);
+
+	/**
+	 * Keyboard equivalents of the above.
+	 *
+	 * Separate functions rather than one overloaded set, so a caller cannot accidentally ask
+	 * the gamepad mask about a keyboard key: the two masks share bit values and would answer
+	 * confidently and wrongly.
+	 */
+	static bool WasKeyPressed(const FDatasetInputSample& Previous, const FDatasetInputSample& Current, EDatasetKeyboardButton Key);
+
+	static bool WasKeyReleased(const FDatasetInputSample& Previous, const FDatasetInputSample& Current, EDatasetKeyboardButton Key);
 
 	bool operator==(const FDatasetInputSample& Other) const;
 	bool operator!=(const FDatasetInputSample& Other) const { return !(*this == Other); }

@@ -166,7 +166,7 @@ bool FDatasetSidecarBuilderIdentityTest::RunTest(const FString& Parameters)
 
 	// Raw input is always present when a section has samples; the optional layer is carried
 	// through from the context; a layer that was not recorded must not appear.
-	TestTrue(TEXT("Raw input layer always present"), Sidecar.HasLayer(EDatasetCaptureLayer::RawInput));
+	TestTrue(TEXT("Raw input layer always present"), Sidecar.HasLayer(EDatasetCaptureLayer::RawGamepadInput));
 	TestTrue(TEXT("Optional layer carried through"), Sidecar.HasLayer(EDatasetCaptureLayer::CharacterState));
 	TestFalse(TEXT("Unrecorded layer absent"), Sidecar.HasLayer(EDatasetCaptureLayer::SemanticInput));
 

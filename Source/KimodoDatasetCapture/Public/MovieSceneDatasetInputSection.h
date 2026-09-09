@@ -57,9 +57,20 @@ public:
 	UPROPERTY()
 	FMovieSceneFloatChannel RightTrigger;
 
-	/** Buttons held, as an EDatasetGamepadButton bitmask. Authoritative for sample presence. */
+	/** Gamepad buttons held, as a bitmask. Authoritative for sample presence. */
 	UPROPERTY()
 	FMovieSceneIntegerChannel Buttons;
+
+	/** Keyboard and mouse buttons held, as an EDatasetKeyboardButton bitmask. */
+	UPROPERTY()
+	FMovieSceneIntegerChannel KeyboardButtons;
+
+	/** Mouse movement per frame, in engine units. */
+	UPROPERTY()
+	FMovieSceneFloatChannel MouseDeltaX;
+
+	UPROPERTY()
+	FMovieSceneFloatChannel MouseDeltaY;
 
 	/**
 	 * Writes one sample as a key on every channel at Sample.FrameNumber.

@@ -39,7 +39,7 @@ bool FDatasetSidecarSchemaSampleTest::RunTest(const FString& Parameters)
 	Sidecar.Identity.TickResolutionNumerator = 24000;
 	Sidecar.Identity.TickResolutionDenominator = 1;
 	Sidecar.Identity.CaptureStartedUtc = TEXT("2026-09-09T13:04:57Z");
-	Sidecar.Identity.DurationFrames = 4;
+	Sidecar.Identity.DurationFrames = 6;
 
 	Sidecar.Skeleton.SkeletonPath = TEXT("/Game/Characters/Hero/SK_Hero_Skeleton.SK_Hero_Skeleton");
 	Sidecar.Skeleton.BoneCount = 5;
@@ -53,7 +53,10 @@ bool FDatasetSidecarSchemaSampleTest::RunTest(const FString& Parameters)
 			FDatasetBoneEntry(TEXT("thigh_r"), 1),
 		});
 
-	Sidecar.AddLayer(EDatasetCaptureLayer::RawInput);
+	// All three layers this capture records, so the sample documents every shape a consumer
+	// may encounter rather than only the one the author happened to test with.
+	Sidecar.AddLayer(EDatasetCaptureLayer::RawGamepadInput);
+	Sidecar.AddLayer(EDatasetCaptureLayer::RawKeyboardMouseInput);
 	Sidecar.AddLayer(EDatasetCaptureLayer::CharacterState);
 
 	// Walking forward, then a jump on frame 202, still held on 203.
@@ -84,18 +87,41 @@ bool FDatasetSidecarSchemaSampleTest::RunTest(const FString& Parameters)
 		Sidecar.AddSample(Sample);
 	}
 
+	// Two more frames driven by keyboard and mouse instead of the pad, so the sample shows
+	// what a keyboard-and-mouse session looks like beside a gamepad one. Note that the pad
+	// fields stay at zero here and the keyboard fields stay at zero above: neither device is
+	// inferred from the other, and a reader can tell which was in use.
+	{
+		FDatasetInputSample Sample;
+		Sample.FrameNumber = 204;
+		Sample.SetKeyHeld(EDatasetKeyboardButton::KeyW, true);
+		Sample.SetKeyHeld(EDatasetKeyboardButton::LeftShift, true);
+		Sample.MouseDeltaX = 4.5f;
+		Sample.MouseDeltaY = -1.25f;
+		Sidecar.AddSample(Sample);
+	}
+	{
+		FDatasetInputSample Sample;
+		Sample.FrameNumber = 205;
+		Sample.SetKeyHeld(EDatasetKeyboardButton::KeyW, true);
+		Sample.SetKeyHeld(EDatasetKeyboardButton::LeftShift, true);
+		Sample.SetKeyHeld(EDatasetKeyboardButton::Space, true);
+		Sample.MouseDeltaX = 2.0f;
+		Sidecar.AddSample(Sample);
+	}
+
 	Sidecar.Labels.Caption = TEXT("a person walks up a small staircase and jumps the last step");
 	Sidecar.Labels.Tags.Add(TEXT("locomotion"));
 	Sidecar.Labels.Tags.Add(TEXT("stairs-up"));
 	Sidecar.Labels.Tags.Add(TEXT("jump"));
-	FDatasetTrimRange::FullRange(200, 203).ApplyToLabels(Sidecar.Labels);
+	FDatasetTrimRange::FullRange(200, 205).ApplyToLabels(Sidecar.Labels);
 
 	// The sample must be internally consistent, or it documents something untrue.
-	TestEqual(TEXT("Sample has four frames"), Sidecar.GetSampleCount(), 4);
+	TestEqual(TEXT("Sample has six frames"), Sidecar.GetSampleCount(), 6);
 	TestEqual(TEXT("Duration matches the stream"), Sidecar.Identity.DurationFrames, Sidecar.GetSampleCount());
 	TestTrue(
 		TEXT("Trim covers the whole recorded range"),
-		FDatasetTrimRange::FromLabels(Sidecar.Labels) == FDatasetTrimRange::FullRange(200, 203));
+		FDatasetTrimRange::FromLabels(Sidecar.Labels) == FDatasetTrimRange::FullRange(200, 205));
 
 	const FString FilePath = FPaths::Combine(
 		FPaths::ProjectSavedDir(), TEXT("KimodoDatasetCapture"), TEXT("SidecarSchemaSample.json"));

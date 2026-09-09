@@ -26,7 +26,9 @@ bool FDatasetSidecarDefaultsTest::RunTest(const FString& Parameters)
 	// A sidecar that forgot its version is unusable to any reader, so the default must
 	// already carry the current one rather than relying on the writer to set it.
 	TestEqual(TEXT("Default carries the current schema version"), Sidecar.SchemaVersion, KDatasetSidecarSchemaVersion);
-	TestEqual(TEXT("Current schema version is 1"), KDatasetSidecarSchemaVersion, 1);
+	// The literal version number is pinned in KimodoDatasetCapture.KeyboardMouse, which is the
+	// change that last moved it. Asserting it here too would mean two tests to update for every
+	// bump, and two places for them to disagree.
 
 	// All four blocks exist and start empty.
 	TestEqual(TEXT("Identity take name empty"), Sidecar.Identity.TakeName, FString());
@@ -122,14 +124,14 @@ bool FDatasetSidecarLayersTest::RunTest(const FString& Parameters)
 {
 	FDatasetSidecar Sidecar;
 
-	TestFalse(TEXT("No layers by default"), Sidecar.HasLayer(EDatasetCaptureLayer::RawInput));
+	TestFalse(TEXT("No layers by default"), Sidecar.HasLayer(EDatasetCaptureLayer::RawGamepadInput));
 
-	Sidecar.AddLayer(EDatasetCaptureLayer::RawInput);
-	TestTrue(TEXT("Raw input layer recorded"), Sidecar.HasLayer(EDatasetCaptureLayer::RawInput));
+	Sidecar.AddLayer(EDatasetCaptureLayer::RawGamepadInput);
+	TestTrue(TEXT("Raw input layer recorded"), Sidecar.HasLayer(EDatasetCaptureLayer::RawGamepadInput));
 	TestFalse(TEXT("Optional layer still absent"), Sidecar.HasLayer(EDatasetCaptureLayer::SemanticInput));
 
 	// A project without Enhanced Input yields raw input only, and that is a valid dataset.
-	Sidecar.AddLayer(EDatasetCaptureLayer::RawInput);
+	Sidecar.AddLayer(EDatasetCaptureLayer::RawGamepadInput);
 	TestEqual(TEXT("Adding a layer twice is a no-op"), Sidecar.Layers.Num(), 1);
 
 	Sidecar.AddLayer(EDatasetCaptureLayer::CharacterState);
@@ -159,7 +161,7 @@ bool FDatasetSidecarEqualityTest::RunTest(const FString& Parameters)
 	A.Labels.TrimOutFrame = 599;
 	// Populated through members rather than AddLayer/AddSample: this test is about
 	// equality, and should not fail or pass because of the mutators' behaviour.
-	A.Layers.Add(EDatasetCaptureLayer::RawInput);
+	A.Layers.Add(EDatasetCaptureLayer::RawGamepadInput);
 	A.InputStream.Samples.Add(MakeSampleAtFrame(0, 0.5f));
 
 	FDatasetSidecar B = A;

@@ -44,9 +44,13 @@ bool FDatasetSidecarBuilder::BuildFromSection(
 
 	Sidecar.Skeleton = Context.Skeleton;
 
-	// A section with samples in it is by definition a raw input recording, so that layer is
-	// asserted here rather than trusted from the caller.
-	Sidecar.AddLayer(EDatasetCaptureLayer::RawInput);
+	// Both raw device layers are asserted here rather than trusted from the caller: capture
+	// samples the gamepad AND the keyboard/mouse every frame, so a section with samples in it
+	// contains both, even if one of them read neutral throughout. Recording only the device
+	// that happened to be used would make "no pad was connected" indistinguishable from "the
+	// pad was connected and idle".
+	Sidecar.AddLayer(EDatasetCaptureLayer::RawGamepadInput);
+	Sidecar.AddLayer(EDatasetCaptureLayer::RawKeyboardMouseInput);
 	for (const EDatasetCaptureLayer Layer : Context.OptionalLayers)
 	{
 		Sidecar.AddLayer(Layer);

@@ -75,7 +75,8 @@ Consequences, all of them load-bearing:
 
 | Layer | Source | Availability |
 |-------|--------|--------------|
-| **Raw (required)** | `APlayerController::PlayerInput` (`UPlayerInput`) polled each capture tick — gamepad axes, button down/up transitions | Any project, no configuration |
+| **Raw gamepad (required)** | `APlayerController::PlayerInput` (`UPlayerInput`) polled each capture tick — stick and trigger axes, 14 button bits | Any project, no configuration |
+| **Raw keyboard + mouse (required, added 2026-09-09)** | The same `UPlayerInput`, read for 11 keyboard/mouse button bits (WASD, Space, E, LeftShift, LeftCtrl, three mouse buttons) and `MouseX`/`MouseY` delta | Any project, no configuration |
 | **Semantic (opt-in)** | `UEnhancedPlayerInput` action instance data — Jump, Interact, directional input | Projects using Enhanced Input |
 | **Character state (opt-in)** | `UCharacterMovementComponent` — velocity, movement mode (grounded/falling), crouch | Projects using `ACharacter` |
 
@@ -99,7 +100,15 @@ and degrades to the raw layer when the opt-in layers are not present.
   frame rate, skeleton identity, schema version).
 - Sidecar serialisation via `FJsonObjectConverter` over versioned `USTRUCT`s. Schema version
   is written from the first commit and is readable without parsing the rest of the file.
-- **Schema v1 wire format** (locked 2026-09-09; full notes in `DatasetSidecar.h`): lower camel
+- **Schema v2** (2026-09-09): keyboard and mouse are a **separate raw device**, not normalised
+  onto the gamepad axes. Samples carry `keyboardButtons` (its own bitmask, named by key rather
+  than by assumed meaning, because a client may bind `W` to anything) plus `mouseDeltaX` /
+  `mouseDeltaY` in engine units, unscaled — a mouse has no rest position or maximum, so a
+  normalised value would be an invention indistinguishable from a real stick reading. The
+  `RawInput` layer split into `RawGamepadInput` + `RawKeyboardMouseInput`, both always
+  recorded. v1 files are rejected rather than upgraded: nothing had been captured at v1, so a
+  migration path would be untested code guarding an empty set.
+- **Wire format** (full notes in `DatasetSidecar.h`): lower camel
   case field names; booleans keep the Unreal `b` prefix on the wire (`bIsValid`); enum fields
   serialise as enumerator **names**, so enumerators may be added but never renamed or
   reordered; floats are written at full double precision and round-trip exactly. The test

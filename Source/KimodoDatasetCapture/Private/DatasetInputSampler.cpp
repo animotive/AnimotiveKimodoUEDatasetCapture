@@ -52,6 +52,43 @@ const TArray<FKey>& FDatasetInputSampler::GetAxisKeys()
 	return AxisKeys;
 }
 
+const TArray<FDatasetInputSampler::FKeyboardBinding>& FDatasetInputSampler::GetKeyboardBindings()
+{
+	// Named after the keys, not after any assumed meaning: this plugin cannot know what a
+	// client's project binds W to. The set is the keys a locomotion capture actually needs -
+	// movement, jump, interact, sprint, crouch and the three mouse buttons - rather than the
+	// whole keyboard, because an unused channel is noise in every clip.
+	static const TArray<FKeyboardBinding> Bindings =
+	{
+		{ EKeys::W,                 EDatasetKeyboardButton::KeyW },
+		{ EKeys::A,                 EDatasetKeyboardButton::KeyA },
+		{ EKeys::S,                 EDatasetKeyboardButton::KeyS },
+		{ EKeys::D,                 EDatasetKeyboardButton::KeyD },
+
+		{ EKeys::SpaceBar,          EDatasetKeyboardButton::Space },
+		{ EKeys::E,                 EDatasetKeyboardButton::KeyE },
+		{ EKeys::LeftShift,         EDatasetKeyboardButton::LeftShift },
+		{ EKeys::LeftControl,       EDatasetKeyboardButton::LeftControl },
+
+		{ EKeys::LeftMouseButton,   EDatasetKeyboardButton::MouseLeft },
+		{ EKeys::RightMouseButton,  EDatasetKeyboardButton::MouseRight },
+		{ EKeys::MiddleMouseButton, EDatasetKeyboardButton::MouseMiddle },
+	};
+
+	return Bindings;
+}
+
+const TArray<FKey>& FDatasetInputSampler::GetMouseAxisKeys()
+{
+	static const TArray<FKey> MouseAxisKeys =
+	{
+		EKeys::MouseX,
+		EKeys::MouseY,
+	};
+
+	return MouseAxisKeys;
+}
+
 FDatasetInputSample FDatasetInputSampler::Sample(int32 FrameNumber, FAxisReader ReadAxis, FButtonReader IsPressed)
 {
 	FDatasetInputSample Sample;
@@ -72,11 +109,30 @@ FDatasetInputSample FDatasetInputSampler::Sample(int32 FrameNumber, FAxisReader 
 		Sample.RightTrigger = ReadAxis(AxisKeys[5]);
 	}
 
+	const TArray<FKey>& MouseAxisKeys = GetMouseAxisKeys();
+	if (MouseAxisKeys.Num() == 2)
+	{
+		// Mouse delta in engine units, unscaled. See the field comment in DatasetInputSample.h.
+		Sample.MouseDeltaX = ReadAxis(MouseAxisKeys[0]);
+		Sample.MouseDeltaY = ReadAxis(MouseAxisKeys[1]);
+	}
+
 	for (const FButtonBinding& Binding : GetButtonBindings())
 	{
 		if (IsPressed(Binding.Key))
 		{
 			Sample.SetHeld(Binding.Button, true);
+		}
+	}
+
+	// Both devices are read every frame, and neither is inferred from the other. A session
+	// driven entirely by keyboard leaves the gamepad fields empty, which is the honest record
+	// of what the hardware reported.
+	for (const FKeyboardBinding& Binding : GetKeyboardBindings())
+	{
+		if (IsPressed(Binding.Key))
+		{
+			Sample.SetKeyHeld(Binding.Button, true);
 		}
 	}
 
