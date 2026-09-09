@@ -10,7 +10,7 @@
 	"DocsURL": "https://kimodo.animotive.com/docs",
 	"MarketplaceURL": "",
 	"SupportURL": "https://kimodo.animotive.com/",
-	"EngineVersion": "5.7",
+	"EngineVersion": "5.7.0",
 	"CanContainContent": false,
 	"IsBetaVersion": true,
 	"IsExperimentalVersion": false,
