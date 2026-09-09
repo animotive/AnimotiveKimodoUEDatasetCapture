@@ -17,10 +17,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FKimodoDatasetCaptureHarnessTest::RunTest(const FString& Parameters)
 {
-	// RED PHASE: asserts a deliberately false condition, so a passing report would mean
-	// the harness is not actually executing this test. Flipped in the Green task.
-	TestTrue(TEXT("Harness is running this test (deliberate red-phase failure)"), false);
+	// This test was first committed asserting false, and observed failing headlessly, so
+	// that a later pass proves the harness executes it rather than merely reporting success
+	// for a suite it never found.
+	TestTrue(TEXT("Harness is running this test"), true);
 
+	// The tests module links against the capture module, so the capture module must be
+	// loaded by the time tests run. If this fails, module loading phases are wrong.
 	TestTrue(TEXT("Capture module is loaded"), FKimodoDatasetCaptureModule::IsAvailable());
 
 	return true;
