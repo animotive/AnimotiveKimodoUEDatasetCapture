@@ -10,6 +10,8 @@
 #include "MovieScene.h"
 #include "MovieSceneDatasetInputSection.h"
 #include "MovieSceneDatasetInputTrack.h"
+#include "TakeRecorderActorSource.h"
+#include "TakeRecorderSources.h"
 
 #define LOCTEXT_NAMESPACE "DatasetInputRecorderSource"
 
@@ -79,7 +81,98 @@ TArray<UTakeRecorderSource*> UDatasetInputRecorderSource::PreRecording(
 
 	InputSection = Track->GetOrCreateInputSection();
 
-	return TArray<UTakeRecorderSource*>();
+	// Pull in the animation. Take Recorder produces animation tracks from ACTOR sources, so a
+	// take with only this source in it would contain input channels and no motion. Returning
+	// an actor source here is the API's own extension point for exactly this, and is how the
+	// engine's player source works.
+	return EnsureAnimationSourceForPawn();
+}
+
+TArray<UTakeRecorderSource*> UDatasetInputRecorderSource::EnsureAnimationSourceForPawn()
+{
+	TArray<UTakeRecorderSource*> NewSources;
+
+	APawn* Pawn = nullptr;
+	if (UWorld* World = FindCaptureWorld())
+	{
+		if (const APlayerController* Controller = World->GetFirstPlayerController())
+		{
+			Pawn = Controller->GetPawn();
+		}
+	}
+
+	if (!Pawn)
+	{
+		// Not invalidated here. StartRecording resolves the pawn properly and reports the
+		// specific reason (nothing playing, no pawn, no skeletal mesh); duplicating that
+		// judgement now would risk two different messages for one problem.
+		return NewSources;
+	}
+
+	UTakeRecorderSources* Sources = GetTypedOuter<UTakeRecorderSources>();
+	if (!Sources)
+	{
+		UE_LOG(
+			LogKimodoDatasetCapture,
+			Warning,
+			TEXT("Dataset input source has no sources list, so no animation source was added. The take will contain input but no motion."));
+		return NewSources;
+	}
+
+	// If the operator already added a source for this pawn - by hand, or via the engine's
+	// Player source - adding another would record the same animation twice.
+	for (UTakeRecorderSource* Source : Sources->GetSources())
+	{
+		const UTakeRecorderActorSource* ActorSource = Cast<UTakeRecorderActorSource>(Source);
+		if (ActorSource && ActorSource->Target.Get() == Pawn)
+		{
+			return NewSources;
+		}
+	}
+
+	UTakeRecorderActorSource* ActorSource = NewObject<UTakeRecorderActorSource>(
+		Sources, UTakeRecorderActorSource::StaticClass(), NAME_None, RF_Transactional);
+	ActorSource->Target = Pawn;
+
+	// The actor source builds its property map from a PropertyChangedEvent rather than on
+	// PreRecording, so one has to be sent explicitly after setting Target. Without this the
+	// source records nothing. Copied from UTakeRecorderPlayerSource, which does the same and
+	// explains why.
+	FPropertyChangedEvent PropertyChangedEvent(
+		UTakeRecorderActorSource::StaticClass()->FindPropertyByName(
+			GET_MEMBER_NAME_CHECKED(UTakeRecorderActorSource, Target)),
+		EPropertyChangeType::ValueSet);
+	ActorSource->PostEditChangeProperty(PropertyChangedEvent);
+
+	AddedAnimationSource = ActorSource;
+	NewSources.Add(ActorSource);
+
+	UE_LOG(
+		LogKimodoDatasetCapture,
+		Verbose,
+		TEXT("Added an animation source for '%s' so the take carries motion alongside its input."),
+		*Pawn->GetName());
+
+	return NewSources;
+}
+
+TArray<UTakeRecorderSource*> UDatasetInputRecorderSource::PostRecording(
+	ULevelSequence* InSequence,
+	ULevelSequence* InRootSequence,
+	const bool bCancelled)
+{
+	TArray<UTakeRecorderSource*> SourcesToRemove;
+
+	// Only the source this one added is removed, and only if it still exists. A source the
+	// operator added themselves is theirs to keep.
+	if (AddedAnimationSource.IsValid())
+	{
+		SourcesToRemove.Add(AddedAnimationSource.Get());
+	}
+
+	AddedAnimationSource = nullptr;
+
+	return SourcesToRemove;
 }
 
 void UDatasetInputRecorderSource::StartRecording(

@@ -24,6 +24,13 @@ class ULevelSequence;
  * time base to reconcile, because there is no second time base.
  *
  * This source never starts or stops a recording itself. It reacts.
+ *
+ * It DOES, however, pull in the animation. PreRecording returns a UTakeRecorderActorSource
+ * targeting the resolved player pawn, which is what makes Take Recorder produce the animation
+ * track. Without that, adding this source alone would yield a take containing input channels
+ * and no motion: a clip that looks complete and is useless, which is the failure mode this
+ * plugin exists to prevent. The operator should not have to know that a second source is
+ * required, so this one supplies it.
  */
 UCLASS(Category = "Dataset Capture", meta = (TakeRecorderDisplayName = "Dataset Input"))
 class UDatasetInputRecorderSource : public UTakeRecorderSource
@@ -74,9 +81,31 @@ public:
 	/** The section this take recorded into, or null before PreRecording. */
 	KIMODODATASETCAPTURE_API UMovieSceneDatasetInputSection* GetInputSection() const;
 
+	//~ Begin UTakeRecorderSource
+	KIMODODATASETCAPTURE_API virtual TArray<UTakeRecorderSource*> PostRecording(
+		ULevelSequence* InSequence,
+		ULevelSequence* InRootSequence,
+		const bool bCancelled) override;
+	//~ End UTakeRecorderSource
+
 private:
 	/** Marks the take failed with an operator-readable reason and stops sampling. */
 	void Invalidate(const FText& Reason);
+
+	/**
+	 * Returns an actor source for the player pawn, so the take records animation as well as
+	 * input. Empty when there is no pawn, or when a source already covers it.
+	 */
+	TArray<UTakeRecorderSource*> EnsureAnimationSourceForPawn();
+
+	/**
+	 * The actor source this source added to record the pawn's animation.
+	 *
+	 * Removed again in PostRecording, mirroring how the engine's own player source behaves, so
+	 * a session does not accumulate one actor source per take in the sources list.
+	 */
+	UPROPERTY(Transient)
+	TWeakObjectPtr<UTakeRecorderSource> AddedAnimationSource;
 
 	/** The section created in PreRecording and written in StopRecording. */
 	UPROPERTY(Transient)

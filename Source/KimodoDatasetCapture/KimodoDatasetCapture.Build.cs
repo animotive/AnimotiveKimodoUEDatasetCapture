@@ -36,6 +36,9 @@ public class KimodoDatasetCapture : ModuleRules
 				// TakesCore is UncookedOnly, the same module type as this one, so this does
 				// not weaken the no-shipping-footprint guarantee.
 				"TakesCore",
+				// Public header returns take sources; UncookedOnly like this module, so the
+				// no-shipping-footprint guarantee is unaffected.
+				"TakeRecorderSources",
 			});
 
 		PrivateDependencyModuleNames.AddRange(
