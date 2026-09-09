@@ -2,45 +2,88 @@
 
 #include "DatasetInputSample.h"
 
-// RED PHASE: every body below deliberately returns a neutral value so the tests written
-// against this API fail at runtime rather than failing to compile. Implemented in the
-// Green task that follows.
+namespace
+{
+	/**
+	 * Deflection below which a stick or trigger reads as neutral.
+	 *
+	 * Sticks rest slightly off centre on real hardware, so an exact zero test would report
+	 * almost every resting frame as active. This threshold is for the neutrality query only:
+	 * raw axis values are stored unmodified, because a dataset must carry what the hardware
+	 * reported rather than what the plugin thought of it.
+	 */
+	constexpr float NeutralAxisThreshold = 0.02f;
+
+	FORCEINLINE bool IsAxisNeutral(float Value)
+	{
+		return FMath::Abs(Value) <= NeutralAxisThreshold;
+	}
+}
 
 bool FDatasetInputSample::IsHeld(EDatasetGamepadButton Button) const
 {
-	return false;
+	const uint32 Mask = static_cast<uint32>(Button);
+	return Mask != 0 && (Buttons & Mask) == Mask;
 }
 
 void FDatasetInputSample::SetHeld(EDatasetGamepadButton Button, bool bHeld)
 {
+	const uint32 Mask = static_cast<uint32>(Button);
+	if (bHeld)
+	{
+		Buttons |= Mask;
+	}
+	else
+	{
+		Buttons &= ~Mask;
+	}
 }
 
 bool FDatasetInputSample::IsNeutral() const
 {
-	return false;
+	// FrameNumber is deliberately excluded: it is bookkeeping, not input.
+	return Buttons == 0
+		&& IsAxisNeutral(LeftStickX)
+		&& IsAxisNeutral(LeftStickY)
+		&& IsAxisNeutral(RightStickX)
+		&& IsAxisNeutral(RightStickY)
+		&& IsAxisNeutral(LeftTrigger)
+		&& IsAxisNeutral(RightTrigger);
 }
 
 EDatasetGamepadButton FDatasetInputSample::GetPressedSince(const FDatasetInputSample& Previous, const FDatasetInputSample& Current)
 {
-	return EDatasetGamepadButton::None;
+	// Held now and not held before. A button held across both frames is not a new press.
+	return static_cast<EDatasetGamepadButton>(Current.Buttons & ~Previous.Buttons);
 }
 
 EDatasetGamepadButton FDatasetInputSample::GetReleasedSince(const FDatasetInputSample& Previous, const FDatasetInputSample& Current)
 {
-	return EDatasetGamepadButton::None;
+	return static_cast<EDatasetGamepadButton>(Previous.Buttons & ~Current.Buttons);
 }
 
 bool FDatasetInputSample::WasPressed(const FDatasetInputSample& Previous, const FDatasetInputSample& Current, EDatasetGamepadButton Button)
 {
-	return false;
+	const uint32 Mask = static_cast<uint32>(Button);
+	return Mask != 0 && (static_cast<uint32>(GetPressedSince(Previous, Current)) & Mask) == Mask;
 }
 
 bool FDatasetInputSample::WasReleased(const FDatasetInputSample& Previous, const FDatasetInputSample& Current, EDatasetGamepadButton Button)
 {
-	return false;
+	const uint32 Mask = static_cast<uint32>(Button);
+	return Mask != 0 && (static_cast<uint32>(GetReleasedSince(Previous, Current)) & Mask) == Mask;
 }
 
 bool FDatasetInputSample::operator==(const FDatasetInputSample& Other) const
 {
-	return false;
+	// Exact float comparison is intended. This operator backs the JSON round-trip tests,
+	// where any difference at all means data was lost or reinterpreted in transit.
+	return FrameNumber == Other.FrameNumber
+		&& LeftStickX == Other.LeftStickX
+		&& LeftStickY == Other.LeftStickY
+		&& RightStickX == Other.RightStickX
+		&& RightStickY == Other.RightStickY
+		&& LeftTrigger == Other.LeftTrigger
+		&& RightTrigger == Other.RightTrigger
+		&& Buttons == Other.Buttons;
 }
