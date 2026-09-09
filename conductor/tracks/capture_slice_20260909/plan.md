@@ -8,7 +8,7 @@ they still require the manual verification steps to be written into the task not
 
 ---
 
-## Phase 1: Plugin Skeleton
+## Phase 1: Plugin Skeleton [checkpoint: 7ea9a45]
 
 - [x] Task: Create `AnimotiveKimodoDatasetCapture.uplugin` — UE 5.7, Win64, `Takes` and `EnhancedInput` plugin dependencies, three module declarations with the types and loading phases from `tech-stack.md` (6d27c0c)
 - [x] Task: Add `KimodoDatasetCapture.Build.cs` (`UncookedOnly` deps: `Core`, `CoreUObject`, `Engine`, `EnhancedInput`, `MovieScene`, `MovieSceneTracks`, `Json`, `JsonUtilities`, `TakesCore`) and the module implementation with a dedicated log category (01d45c5)
@@ -17,7 +17,7 @@ they still require the manual verification steps to be written into the task not
 - [x] Task: Add `KimodoDatasetCaptureTests.Build.cs` and module implementation; make the harness test pass and confirm the headless command from `workflow.md` reports it (Green) (f7cc5a4)
 - [x] Task: Add `Resources/Icon128.png` and `Config/FilterPlugin.ini` (a2874e3)
 - [x] Task: Verify a clean `Build.bat KimodoEditor Win64 Development` with no new warnings, and that the plugin loads in the editor (91b474d)
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Plugin Skeleton' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Plugin Skeleton' (Protocol in workflow.md) (7ea9a45)
 
 ## Phase 2: Capture Data Model and Sidecar Schema v1
 
