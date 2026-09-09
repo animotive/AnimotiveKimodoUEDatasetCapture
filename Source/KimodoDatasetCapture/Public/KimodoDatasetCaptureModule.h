@@ -12,7 +12,7 @@
  *
  * This module owns no editor UI and must not depend on any editor-only module.
  */
-class FKimodoDatasetCaptureModule : public IModuleInterface
+class KIMODODATASETCAPTURE_API FKimodoDatasetCaptureModule : public IModuleInterface
 {
 public:
 	//~ Begin IModuleInterface
