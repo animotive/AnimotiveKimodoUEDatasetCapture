@@ -28,6 +28,9 @@ public class KimodoDatasetCapture : ModuleRules
 				"Engine",
 				"MovieScene",
 				"MovieSceneTracks",
+				// Public: DatasetInputSampler.h names FKey in its interface, so anything
+				// including it needs InputCore too.
+				"InputCore",
 			});
 
 		PrivateDependencyModuleNames.AddRange(

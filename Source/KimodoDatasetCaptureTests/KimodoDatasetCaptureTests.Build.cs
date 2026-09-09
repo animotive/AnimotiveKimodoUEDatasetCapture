@@ -19,6 +19,9 @@ public class KimodoDatasetCaptureTests : ModuleRules
 				"Core",
 				"CoreUObject",
 				"Engine",
+				// EKeys is referenced directly by the input sampler tests, which assert the
+				// key-to-bit table rather than trusting it.
+				"InputCore",
 				"KimodoDatasetCapture",
 				"MovieScene",
 				"MovieSceneTracks",
