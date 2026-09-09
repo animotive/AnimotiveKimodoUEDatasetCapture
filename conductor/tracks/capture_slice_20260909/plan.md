@@ -10,7 +10,7 @@ they still require the manual verification steps to be written into the task not
 
 ## Phase 1: Plugin Skeleton
 
-- [ ] Task: Create `AnimotiveKimodoDatasetCapture.uplugin` — UE 5.7, Win64, `Takes` and `EnhancedInput` plugin dependencies, three module declarations with the types and loading phases from `tech-stack.md`
+- [x] Task: Create `AnimotiveKimodoDatasetCapture.uplugin` — UE 5.7, Win64, `Takes` and `EnhancedInput` plugin dependencies, three module declarations with the types and loading phases from `tech-stack.md` (6d27c0c)
 - [ ] Task: Add `KimodoDatasetCapture.Build.cs` (`UncookedOnly` deps: `Core`, `CoreUObject`, `Engine`, `EnhancedInput`, `MovieScene`, `MovieSceneTracks`, `Json`, `JsonUtilities`, `TakesCore`) and the module implementation with a dedicated log category
 - [ ] Task: Add `KimodoDatasetCaptureEditor.Build.cs` and module implementation (editor deps per `tech-stack.md`); assert the dependency direction editor → capture
 - [ ] Task: Write tests — a trivial automation test in `KimodoDatasetCaptureTests` that fails, to prove the harness runs headless (Red)
