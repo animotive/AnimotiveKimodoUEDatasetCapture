@@ -205,6 +205,12 @@ bool FDatasetSidecarBuilderEmptySectionTest::RunTest(const FString& Parameters)
 	FDatasetSidecar Sidecar;
 	FString FailureReason;
 
+	// The builder logs an Error on this path, which is correct behaviour and which the
+	// automation framework otherwise counts as a test failure. Declaring it expected turns
+	// that into an assertion: the test now REQUIRES the diagnostic to be emitted, so a future
+	// change that fails silently breaks this test.
+	AddExpectedErrorPlain(TEXT("the input section is empty"), EAutomationExpectedErrorFlags::Contains, 1);
+
 	// A take that recorded nothing is a FAILED capture, not a clip with an empty stream.
 	// Producing a plausible sidecar describing no input is exactly the silent degradation the
 	// fail-loud rule in product-guidelines.md forbids.
