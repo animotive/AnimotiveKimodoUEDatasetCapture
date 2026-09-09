@@ -30,7 +30,7 @@ they still require the manual verification steps to be written into the task not
 - [x] Task: Write tests for the skeleton fingerprint — stable across runs for identical ordered bone name/parent pairs, different for a changed hierarchy or reordering (Red) (4b0f134)
 - [x] Task: Implement the skeleton fingerprint hash over the reference skeleton (Green) (948210a)
 - [x] Task: Write tests for trim frame math — defaults spanning the full recorded range, in/out clamped to recorded bounds, points landing exactly on frame edges (Red) (2908d1a)
-- [ ] Task: Implement trim frame helpers in frame space, no float seconds (Green)
+- [x] Task: Implement trim frame helpers in frame space, no float seconds (Green) (df0ded0)
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Capture Data Model and Sidecar Schema v1' (Protocol in workflow.md)
 
 ## Phase 3: MovieScene Input Track (Alignment Core)
