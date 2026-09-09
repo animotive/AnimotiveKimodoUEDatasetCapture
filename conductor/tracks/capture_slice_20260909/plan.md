@@ -19,7 +19,7 @@ they still require the manual verification steps to be written into the task not
 - [x] Task: Verify a clean `Build.bat KimodoEditor Win64 Development` with no new warnings, and that the plugin loads in the editor (91b474d)
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Plugin Skeleton' (Protocol in workflow.md) (7ea9a45)
 
-## Phase 2: Capture Data Model and Sidecar Schema v1
+## Phase 2: Capture Data Model and Sidecar Schema v1 [checkpoint: ed7b932]
 
 - [x] Task: Write tests for `FDatasetInputSample` — axis storage, button bitmask set/clear, press/release derivation between consecutive samples, boundary values (Red) (00855dd)
 - [x] Task: Implement `FDatasetInputSample` as an allocation-free `USTRUCT` with named button accessors (Green) (808fc46)
@@ -31,7 +31,7 @@ they still require the manual verification steps to be written into the task not
 - [x] Task: Implement the skeleton fingerprint hash over the reference skeleton (Green) (948210a)
 - [x] Task: Write tests for trim frame math — defaults spanning the full recorded range, in/out clamped to recorded bounds, points landing exactly on frame edges (Red) (2908d1a)
 - [x] Task: Implement trim frame helpers in frame space, no float seconds (Green) (df0ded0)
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Capture Data Model and Sidecar Schema v1' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Capture Data Model and Sidecar Schema v1' (Protocol in workflow.md) (ed7b932)
 
 ## Phase 3: MovieScene Input Track (Alignment Core)
 
