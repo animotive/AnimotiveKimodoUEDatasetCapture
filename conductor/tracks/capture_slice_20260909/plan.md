@@ -35,7 +35,7 @@ they still require the manual verification steps to be written into the task not
 
 ## Phase 3: MovieScene Input Track (Alignment Core)
 
-- [ ] Task: Write tests that construct a `UMovieSceneDatasetInputSection`, write known keys at known `FFrameNumber`s, and read them back at the same frames on a given tick resolution (Red)
+- [x] Task: Write tests that construct a `UMovieSceneDatasetInputSection`, write known keys at known `FFrameNumber`s, and read them back at the same frames on a given tick resolution (Red) (804632e)
 - [ ] Task: Implement `UMovieSceneDatasetInputTrack` and `UMovieSceneDatasetInputSection` with one channel per axis and one per button, in frame space (Green)
 - [ ] Task: Write tests for sample-to-channel conversion — a sequence of `FDatasetInputSample`s at frames N..N+k produces keys on exactly those frames, with no off-by-one at either end (Red)
 - [ ] Task: Implement the sample-to-channel writer, taking the frame number from the sequence clock rather than counting ticks (Green)
