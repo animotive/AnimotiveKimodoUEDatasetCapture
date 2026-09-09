@@ -43,12 +43,18 @@ will never see the client's project.
 ### 1. Capture panel (Slate)
 
 A dedicated editor panel that acts as an extension of Take Recorder: arm a capture, pick the
-target player pawn, set the max clip duration (default ~10 seconds), watch record state live.
+target player pawn, watch record state live, and start or stop recording without leaving the
+panel. The operator should never have to open Take Recorder's source menu themselves — the
+panel does that wiring (revised 2026-09-09).
 
 ### 2. Recording triggers
 
-- **Editor hotkey + panel button** — toggle recording during PIE; auto-stop when the
-  configured max duration is reached.
+- **Editor hotkey + panel button** — toggle recording during PIE. **The operator decides when
+  a take ends by pressing stop; there is no maximum duration** (revised 2026-09-09). A length
+  limit would be a setting the operator has to think about, and typical clips are short
+  because the work is short, not because the tool enforces it. A large internal buffer ceiling
+  exists purely so capture never allocates mid-take; reaching it is a loud failure, not a
+  feature.
 - **Gamepad trigger** — bindable controller button/chord, so an operator mid-session never
   puts the pad down to reach the keyboard.
 

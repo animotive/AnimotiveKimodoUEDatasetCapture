@@ -47,7 +47,7 @@ bool FDatasetAlignmentScriptedInputTest::RunTest(const FString& Parameters)
 	FDatasetTakeRecording Recording;
 	FDatasetTakeRecording::FConfig Config;
 	Config.DisplayRate = CaptureDisplayRate;
-	Config.MaxDurationSeconds = 10.0;
+	Config.SafetyCeilingSeconds = 10.0;
 
 	FText FailureReason;
 	TestTrue(TEXT("Take begins"), Recording.Begin(Config, FailureReason));

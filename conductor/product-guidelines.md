@@ -16,11 +16,13 @@ indistinguishable from Take Recorder in look and behaviour.
 **The operator's eyes are on the game, not the panel.** State the operator needs mid-take is
 drawn where they are looking.
 
-- A recording indicator with a **remaining-time countdown** is drawn in the PIE viewport for
+- A recording indicator with an **elapsed-time readout** is drawn in the PIE viewport for
   the duration of every capture.
 - The panel mirrors the same state (armed / recording / elapsed / stopped).
-- Auto-stop is never a surprise: the countdown is the contract that makes a fixed max
-  duration safe.
+- Elapsed, not remaining: the operator decides when a take ends, so there is nothing to count
+  down to (revised 2026-09-09). Nothing stops a take except the operator. The internal buffer
+  ceiling that protects memory is not a duration feature, and if it is ever reached the take
+  fails loudly rather than being silently truncated.
 - The overlay is capture-state only. It never carries menus, labels, or settings.
 
 ## Labelling

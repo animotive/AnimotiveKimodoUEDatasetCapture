@@ -85,7 +85,11 @@ and degrades to the raw layer when the opt-in layers are not present.
 ### Triggers
 
 - Editor hotkey via `UICommandList` / `FInputBindingManager`, plus panel button.
-- Configurable max duration with auto-stop; remaining time drawn in the PIE viewport.
+- **No maximum duration** (revised 2026-09-09). The operator presses stop, and the PIE
+  overlay shows elapsed time rather than a countdown.
+- The capture buffer is pre-reserved to an internal safety ceiling (5 minutes) purely so the
+  per-frame path never allocates. Exceeding it invalidates the take with a stated reason; it is
+  not a user-facing setting and must never be presented as one.
 - Bindable gamepad button/chord, read from the same raw input path as capture.
 
 ### Storage

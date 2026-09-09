@@ -19,12 +19,12 @@ bool FDatasetTakeRecording::Begin(const FConfig& Config, FText& OutFailureReason
 	bIsValid = true;
 	InvalidReason = FText::GetEmpty();
 
-	const int32 MaxSamples = FDatasetFrameMapping::SampleCountForDuration(Config.MaxDurationSeconds, Config.DisplayRate);
+	const int32 MaxSamples = FDatasetFrameMapping::SampleCountForDuration(Config.SafetyCeilingSeconds, Config.DisplayRate);
 	if (MaxSamples <= 0)
 	{
 		OutFailureReason = LOCTEXT(
 			"UnusableConfig",
-			"This capture cannot record anything. Check that the clip length is above zero and that the take has a frame rate.");
+			"This capture cannot record anything. The take does not have a usable frame rate.");
 		bIsValid = false;
 		InvalidReason = OutFailureReason;
 		return false;
@@ -32,6 +32,7 @@ bool FDatasetTakeRecording::Begin(const FConfig& Config, FText& OutFailureReason
 
 	// The single allocation of the take.
 	Buffer.Reserve(MaxSamples);
+	CeilingSeconds = Config.SafetyCeilingSeconds;
 	bIsRecording = true;
 
 	return true;
@@ -53,28 +54,33 @@ EDatasetTakeTickResult FDatasetTakeRecording::Tick(const FQualifiedFrameTime& Se
 
 	if (Buffer.Add(Sample))
 	{
-		// Reaching capacity ends the take here rather than on the next tick, so the buffer
-		// never has to refuse a sample during normal operation and the recorded length is
-		// exactly the configured length.
-		if (Buffer.IsFull())
-		{
-			bIsRecording = false;
-
-			UE_LOG(
-				LogKimodoDatasetCapture,
-				Verbose,
-				TEXT("Take reached its configured length at %d samples."),
-				Buffer.Num());
-
-			return EDatasetTakeTickResult::Full;
-		}
-
 		return EDatasetTakeTickResult::Sampled;
 	}
 
-	// Add refused. With the full case handled above, the only remaining reason is a frame
-	// that did not advance, which happens when Take Recorder ticks twice inside one frame.
-	// Normal, and not a fault: the take stays valid and recording.
+	// Add refused, for one of exactly two reasons.
+	if (Buffer.IsFull())
+	{
+		// The safety ceiling. A take is stopped by the operator, so arriving here means a
+		// recording ran for five minutes without being stopped. Its input now covers less
+		// time than its animation, which makes it unusable, so it fails loudly rather than
+		// being silently truncated into a clip that looks complete.
+		Invalidate(FText::Format(
+			LOCTEXT(
+				"CeilingExceeded",
+				"This recording ran past {0} minutes and was stopped to protect memory. Its input is incomplete, so please record a shorter clip."),
+			FText::AsNumber(FMath::RoundToInt(CeilingSeconds / 60.0), &FNumberFormattingOptions::DefaultNoGrouping())));
+
+		UE_LOG(
+			LogKimodoDatasetCapture,
+			Error,
+			TEXT("Take exceeded the %d sample safety ceiling and was invalidated."),
+			Buffer.Capacity());
+
+		return EDatasetTakeTickResult::CeilingExceeded;
+	}
+
+	// The frame did not advance, which happens when Take Recorder ticks twice inside one
+	// frame. Normal, and not a fault: the take stays valid and recording.
 	return EDatasetTakeTickResult::DuplicateFrame;
 }
 

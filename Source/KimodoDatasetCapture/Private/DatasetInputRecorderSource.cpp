@@ -106,9 +106,10 @@ void UDatasetInputRecorderSource::StartRecording(
 
 	const UMovieScene* MovieScene = InSequence ? InSequence->GetMovieScene() : nullptr;
 
+	// SafetyCeilingSeconds is left at its default. The operator stops the take; nothing here
+	// imposes a length.
 	FDatasetTakeRecording::FConfig Config;
 	Config.DisplayRate = MovieScene ? MovieScene->GetDisplayRate() : FFrameRate(30, 1);
-	Config.MaxDurationSeconds = MaxDurationSeconds;
 
 	FText BeginFailure;
 	if (!Recording.Begin(Config, BeginFailure))
@@ -120,10 +121,10 @@ void UDatasetInputRecorderSource::StartRecording(
 	UE_LOG(
 		LogKimodoDatasetCapture,
 		Verbose,
-		TEXT("Dataset input capture started: up to %d samples at %s, first frame %d."),
-		Recording.GetCapacity(),
+		TEXT("Dataset input capture started at %s, first frame %d; buffer holds up to %d samples."),
 		*Config.DisplayRate.ToPrettyText().ToString(),
-		InSectionFirstFrame.Value);
+		InSectionFirstFrame.Value,
+		Recording.GetCapacity());
 }
 
 void UDatasetInputRecorderSource::TickRecording(const FQualifiedFrameTime& CurrentSequenceTime)
@@ -154,15 +155,9 @@ void UDatasetInputRecorderSource::TickRecording(const FQualifiedFrameTime& Curre
 	// base from creeping in.
 	const FDatasetInputSample Input = FDatasetInputSampler::SampleFromPlayerInput(0, *PlayerInput);
 
-	const EDatasetTakeTickResult Result = Recording.Tick(CurrentSequenceTime, Input);
-	if (Result == EDatasetTakeTickResult::Full)
-	{
-		UE_LOG(
-			LogKimodoDatasetCapture,
-			Verbose,
-			TEXT("Dataset input capture reached its maximum length after %d samples."),
-			Recording.GetSampleCount());
-	}
+	// The result needs no handling here: Sampled and DuplicateFrame are both normal, and
+	// CeilingExceeded has already invalidated the take and logged the reason.
+	Recording.Tick(CurrentSequenceTime, Input);
 }
 
 void UDatasetInputRecorderSource::StopRecording(ULevelSequence* InSequence)

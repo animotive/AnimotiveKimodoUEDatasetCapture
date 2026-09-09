@@ -38,7 +38,7 @@ bool FDatasetFailLoudMidTakeTest::RunTest(const FString& Parameters)
 	FDatasetTakeRecording Recording;
 	FDatasetTakeRecording::FConfig Config;
 	Config.DisplayRate = FFrameRate(60, 1);
-	Config.MaxDurationSeconds = 10.0;
+	Config.SafetyCeilingSeconds = 10.0;
 
 	FText FailureReason;
 	TestTrue(TEXT("Take begins"), Recording.Begin(Config, FailureReason));
@@ -165,7 +165,7 @@ bool FDatasetFailLoudEmptyTakeTest::RunTest(const FString& Parameters)
 	// An unusable configuration fails at Begin, before any sampling, with a stated reason.
 	FDatasetTakeRecording::FConfig BadConfig;
 	BadConfig.DisplayRate = FFrameRate(60, 1);
-	BadConfig.MaxDurationSeconds = 0.0;
+	BadConfig.SafetyCeilingSeconds = 0.0;
 
 	FDatasetTakeRecording Unusable;
 	FText ConfigFailure;

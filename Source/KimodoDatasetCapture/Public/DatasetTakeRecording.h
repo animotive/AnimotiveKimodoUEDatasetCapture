@@ -22,8 +22,15 @@ enum class EDatasetTakeTickResult : uint8
 	 */
 	DuplicateFrame,
 
-	/** The configured duration was reached. Recording has ended, and the take is valid. */
-	Full,
+	/**
+	 * The safety ceiling was hit, so the take was invalidated.
+	 *
+	 * This is a failure, not a normal end. The operator decides when a take stops; the
+	 * ceiling exists only so a capture that was never stopped cannot allocate on a game
+	 * frame or grow without bound. If it is ever reached, the take's input covers less time
+	 * than its animation, so the take is unusable and says so.
+	 */
+	CeilingExceeded,
 
 	/** Not recording: either not begun, already finished, or invalidated. */
 	NotRecording,
@@ -46,12 +53,23 @@ public:
 		/** The take's display rate. Used only to size the buffer. */
 		FFrameRate DisplayRate = FFrameRate(60, 1);
 
-		/** Longest clip to record. Reaching it ends the take, valid. */
-		double MaxDurationSeconds = 10.0;
+		/**
+		 * Buffer ceiling in seconds. NOT a feature and NOT shown to the operator.
+		 *
+		 * The operator decides when a take stops by pressing stop. This number exists purely
+		 * so the buffer can be reserved once and never grow: growing would allocate on a game
+		 * frame, which perturbs the very motion being measured, and an unbounded take would
+		 * grow without limit.
+		 *
+		 * Five minutes is thirty times the product's typical clip, so reaching it means
+		 * something went wrong rather than that an operator wanted a long take. It is
+		 * therefore treated as a failure, loudly, instead of as a silent truncation.
+		 */
+		double SafetyCeilingSeconds = 300.0;
 	};
 
 	/**
-	 * Begins a take, reserving the buffer from the config.
+	 * Begins a take, reserving the buffer up to the safety ceiling.
 	 *
 	 * False, with an operator-readable reason, when the config cannot produce a recordable
 	 * take. Any previous take's state is cleared either way, so a failed Begin cannot leave
@@ -102,4 +120,7 @@ private:
 	bool bIsValid = true;
 
 	FText InvalidReason;
+
+	/** The ceiling this take was begun with, kept so its failure message can state it. */
+	double CeilingSeconds = 0.0;
 };

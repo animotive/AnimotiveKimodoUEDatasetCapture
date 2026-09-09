@@ -33,14 +33,9 @@ class UDatasetInputRecorderSource : public UTakeRecorderSource
 public:
 	UDatasetInputRecorderSource(const FObjectInitializer& ObjectInitializer);
 
-	/**
-	 * Longest clip this source will record, in seconds.
-	 *
-	 * The buffer is sized from this before recording starts and refuses samples once full, so
-	 * this value is also what stops the take. Ten seconds is the product's stated clip length.
-	 */
-	UPROPERTY(EditAnywhere, Category = "Dataset Capture", meta = (ClampMin = "0.5", ClampMax = "120.0"))
-	float MaxDurationSeconds = 10.0f;
+	// Deliberately no duration property. The operator decides when a take stops by pressing
+	// stop in Take Recorder; a maximum length would be a knob they should not have to think
+	// about. The buffer's internal safety ceiling is not a user-facing setting.
 
 	//~ Begin UTakeRecorderSource
 	KIMODODATASETCAPTURE_API virtual TArray<UTakeRecorderSource*> PreRecording(
