@@ -82,9 +82,9 @@ bool FDatasetSidecarRoundTripTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("JSON is not empty"), Json.IsEmpty());
 
 	FDatasetSidecar Restored;
-	FString FailureReason;
+	FText FailureReason;
 	TestTrue(TEXT("Parsed back from JSON"), FDatasetSidecarSerializer::FromJson(Json, Restored, FailureReason));
-	TestEqual(TEXT("No failure reason on success"), FailureReason, FString());
+	TestTrue(TEXT("No failure reason on success"), FailureReason.IsEmpty());
 
 	// Whole-object equality. Block-by-block assertions follow only to make a failure
 	// readable, since a single inequality says nothing about which field was lost.
@@ -117,7 +117,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FDatasetSidecarRoundTripEdgeCasesTest::RunTest(const FString& Parameters)
 {
 	FString Json;
-	FString FailureReason;
+	FText FailureReason;
 
 	// Empty tag list: tags are optional, and an empty array must not become a missing field
 	// that reads back as something else.
@@ -212,18 +212,18 @@ bool FDatasetSidecarSchemaVersionTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Reported version is 7"), Version, 7);
 
 		FDatasetSidecar Restored;
-		FString FailureReason;
+		FText FailureReason;
 		TestFalse(
 			TEXT("Unsupported version is rejected, not read optimistically"),
 			FDatasetSidecarSerializer::FromJson(FutureJson, Restored, FailureReason));
 		TestFalse(TEXT("Rejection states a reason"), FailureReason.IsEmpty());
-		TestTrue(TEXT("Reason names the offending version"), FailureReason.Contains(TEXT("7")));
+		TestTrue(TEXT("Reason names the offending version"), FailureReason.ToString().Contains(TEXT("7")));
 	}
 
 	// Malformed input fails with a reason rather than yielding a half-populated sidecar.
 	{
 		FDatasetSidecar Restored;
-		FString FailureReason;
+		FText FailureReason;
 		TestFalse(
 			TEXT("Malformed JSON rejected"),
 			FDatasetSidecarSerializer::FromJson(TEXT("{not json at all"), Restored, FailureReason));
@@ -236,7 +236,7 @@ bool FDatasetSidecarSchemaVersionTest::RunTest(const FString& Parameters)
 	// A document with no version field is not a sidecar.
 	{
 		FDatasetSidecar Restored;
-		FString FailureReason;
+		FText FailureReason;
 		TestFalse(
 			TEXT("Missing version rejected"),
 			FDatasetSidecarSerializer::FromJson(TEXT("{\"Identity\": {\"TakeName\": \"x\"}}"), Restored, FailureReason));
@@ -260,7 +260,7 @@ bool FDatasetSidecarFileRoundTripTest::RunTest(const FString& Parameters)
 	IFileManager::Get().Delete(*FilePath, false, true, true);
 	TestFalse(TEXT("Target file absent before save"), IFileManager::Get().FileExists(*FilePath));
 
-	FString FailureReason;
+	FText FailureReason;
 	TestTrue(TEXT("Saved to file"), FDatasetSidecarSerializer::SaveToFile(Original, FilePath, FailureReason));
 	TestTrue(TEXT("File exists after save"), IFileManager::Get().FileExists(*FilePath));
 
@@ -271,7 +271,7 @@ bool FDatasetSidecarFileRoundTripTest::RunTest(const FString& Parameters)
 	// A missing file must report a reason, not be indistinguishable from an empty sidecar.
 	{
 		FDatasetSidecar Missing;
-		FString MissingReason;
+		FText MissingReason;
 		TestFalse(
 			TEXT("Loading an absent file fails"),
 			FDatasetSidecarSerializer::LoadFromFile(MakeTempSidecarPath(TEXT("DoesNotExist.json")), Missing, MissingReason));

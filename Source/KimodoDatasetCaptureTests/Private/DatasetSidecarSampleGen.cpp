@@ -100,7 +100,7 @@ bool FDatasetSidecarSchemaSampleTest::RunTest(const FString& Parameters)
 	const FString FilePath = FPaths::Combine(
 		FPaths::ProjectSavedDir(), TEXT("KimodoDatasetCapture"), TEXT("SidecarSchemaSample.json"));
 
-	FString FailureReason;
+	FText FailureReason;
 	TestTrue(TEXT("Sample written"), FDatasetSidecarSerializer::SaveToFile(Sidecar, FilePath, FailureReason));
 	TestTrue(TEXT("Sample file exists"), IFileManager::Get().FileExists(*FilePath));
 

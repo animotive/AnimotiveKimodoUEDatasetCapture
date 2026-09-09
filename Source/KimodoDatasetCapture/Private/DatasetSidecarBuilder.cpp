@@ -6,13 +6,15 @@
 #include "KimodoDatasetCaptureLog.h"
 #include "MovieSceneDatasetInputSection.h"
 
+#define LOCTEXT_NAMESPACE "DatasetSidecarBuilder"
+
 bool FDatasetSidecarBuilder::BuildFromSection(
 	const UMovieSceneDatasetInputSection& Section,
 	const FBuildContext& Context,
 	FDatasetSidecar& OutSidecar,
-	FString& OutFailureReason)
+	FText& OutFailureReason)
 {
-	OutFailureReason.Reset();
+	OutFailureReason = FText::GetEmpty();
 
 	const TArray<FDatasetInputSample> Samples = Section.ReadAllSamples();
 	if (Samples.IsEmpty())
@@ -20,7 +22,7 @@ bool FDatasetSidecarBuilder::BuildFromSection(
 		// Fail-loud, per product-guidelines.md. A take that recorded nothing is a failed
 		// capture, not a clip with an empty stream, and a sidecar describing no input would
 		// look perfectly well formed to everything downstream.
-		OutFailureReason = TEXT("This take recorded no input. Nothing was captured, so there is no clip to label.");
+		OutFailureReason = LOCTEXT("NoInput", "This take recorded no input. Nothing was captured, so there is no clip to label.");
 		UE_LOG(LogKimodoDatasetCapture, Error, TEXT("Cannot build a sidecar for take '%s': the input section is empty."), *Context.TakeName);
 		return false;
 	}
@@ -58,9 +60,9 @@ bool FDatasetSidecarBuilder::BuildFromSection(
 			// section's keys are out of order or duplicated, which would misalign every
 			// frame lookup after the offending sample, so the whole build fails rather than
 			// producing a stream with a hole in it.
-			OutFailureReason = FString::Printf(
-				TEXT("This take's input is out of order at frame %d, so it cannot be saved. Please record it again."),
-				Sample.FrameNumber);
+			OutFailureReason = FText::Format(
+				LOCTEXT("OutOfOrder", "This take's input is out of order at frame {0}, so it cannot be saved. Please record it again."),
+				FText::AsNumber(Sample.FrameNumber, &FNumberFormattingOptions::DefaultNoGrouping()));
 			UE_LOG(
 				LogKimodoDatasetCapture,
 				Error,
@@ -88,3 +90,5 @@ bool FDatasetSidecarBuilder::BuildFromSection(
 	OutSidecar = MoveTemp(Sidecar);
 	return true;
 }
+
+#undef LOCTEXT_NAMESPACE

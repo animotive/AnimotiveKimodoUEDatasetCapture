@@ -10,6 +10,8 @@
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 
+#define LOCTEXT_NAMESPACE "DatasetSidecarSerializer"
+
 namespace
 {
 	const FString SchemaVersionField = TEXT("SchemaVersion");
@@ -44,14 +46,14 @@ bool FDatasetSidecarSerializer::ToJson(const FDatasetSidecar& Sidecar, FString& 
 	return true;
 }
 
-bool FDatasetSidecarSerializer::FromJson(const FString& Json, FDatasetSidecar& OutSidecar, FString& OutFailureReason)
+bool FDatasetSidecarSerializer::FromJson(const FString& Json, FDatasetSidecar& OutSidecar, FText& OutFailureReason)
 {
-	OutFailureReason.Reset();
+	OutFailureReason = FText::GetEmpty();
 
 	const TSharedPtr<FJsonObject> Root = ParseJsonObject(Json);
 	if (!Root.IsValid())
 	{
-		OutFailureReason = TEXT("This file is not valid JSON.");
+		OutFailureReason = LOCTEXT("NotJson", "This file is not valid JSON.");
 		return false;
 	}
 
@@ -60,23 +62,23 @@ bool FDatasetSidecarSerializer::FromJson(const FString& Json, FDatasetSidecar& O
 	int32 SchemaVersion = 0;
 	if (!Root->TryGetNumberField(SchemaVersionField, SchemaVersion))
 	{
-		OutFailureReason = TEXT("This file has no schema version, so it is not a dataset sidecar.");
+		OutFailureReason = LOCTEXT("NoSchemaVersion", "This file has no schema version, so it is not a dataset sidecar.");
 		return false;
 	}
 
 	if (!IsSupportedSchemaVersion(SchemaVersion))
 	{
-		OutFailureReason = FString::Printf(
-			TEXT("This sidecar is schema version %d. This plugin reads version %d. Update the plugin to read it."),
-			SchemaVersion,
-			KDatasetSidecarSchemaVersion);
+		OutFailureReason = FText::Format(
+			LOCTEXT("UnsupportedSchemaVersion", "This sidecar is schema version {0}. This plugin reads version {1}. Update the plugin to read it."),
+			FText::AsNumber(SchemaVersion, &FNumberFormattingOptions::DefaultNoGrouping()),
+			FText::AsNumber(KDatasetSidecarSchemaVersion, &FNumberFormattingOptions::DefaultNoGrouping()));
 		return false;
 	}
 
 	FDatasetSidecar Parsed;
 	if (!FJsonObjectConverter::JsonObjectToUStruct(Root.ToSharedRef(), &Parsed, 0, 0))
 	{
-		OutFailureReason = TEXT("This sidecar could not be read. Its contents do not match the expected layout.");
+		OutFailureReason = LOCTEXT("BadLayout", "This sidecar could not be read. Its contents do not match the expected layout.");
 		return false;
 	}
 
@@ -110,21 +112,22 @@ bool FDatasetSidecarSerializer::IsSupportedSchemaVersion(int32 SchemaVersion)
 	return SchemaVersion == KDatasetSidecarSchemaVersion;
 }
 
-bool FDatasetSidecarSerializer::SaveToFile(const FDatasetSidecar& Sidecar, const FString& FilePath, FString& OutFailureReason)
+bool FDatasetSidecarSerializer::SaveToFile(const FDatasetSidecar& Sidecar, const FString& FilePath, FText& OutFailureReason)
 {
-	OutFailureReason.Reset();
+	OutFailureReason = FText::GetEmpty();
 
 	FString Json;
 	if (!ToJson(Sidecar, Json))
 	{
-		OutFailureReason = TEXT("The sidecar could not be prepared for writing.");
+		OutFailureReason = LOCTEXT("PrepareFailed", "The sidecar could not be prepared for writing.");
 		return false;
 	}
 
 	if (!FFileHelper::SaveStringToFile(Json, *FilePath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM))
 	{
-		OutFailureReason = FString::Printf(TEXT("Could not write the sidecar to '%s'."), *FilePath);
-		UE_LOG(LogKimodoDatasetCapture, Error, TEXT("%s"), *OutFailureReason);
+		OutFailureReason = FText::Format(
+			LOCTEXT("WriteFailed", "Could not write the sidecar to '{0}'."), FText::FromString(FilePath));
+		UE_LOG(LogKimodoDatasetCapture, Error, TEXT("%s"), *OutFailureReason.ToString());
 		return false;
 	}
 
@@ -132,16 +135,19 @@ bool FDatasetSidecarSerializer::SaveToFile(const FDatasetSidecar& Sidecar, const
 	return true;
 }
 
-bool FDatasetSidecarSerializer::LoadFromFile(const FString& FilePath, FDatasetSidecar& OutSidecar, FString& OutFailureReason)
+bool FDatasetSidecarSerializer::LoadFromFile(const FString& FilePath, FDatasetSidecar& OutSidecar, FText& OutFailureReason)
 {
-	OutFailureReason.Reset();
+	OutFailureReason = FText::GetEmpty();
 
 	FString Json;
 	if (!FFileHelper::LoadFileToString(Json, *FilePath))
 	{
-		OutFailureReason = FString::Printf(TEXT("Could not read a sidecar at '%s'."), *FilePath);
+		OutFailureReason = FText::Format(
+			LOCTEXT("ReadFailed", "Could not read a sidecar at '{0}'."), FText::FromString(FilePath));
 		return false;
 	}
 
 	return FromJson(Json, OutSidecar, OutFailureReason);
 }
+
+#undef LOCTEXT_NAMESPACE

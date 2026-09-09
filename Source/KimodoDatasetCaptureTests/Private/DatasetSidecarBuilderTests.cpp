@@ -75,11 +75,11 @@ bool FDatasetSidecarBuilderDerivesStreamTest::RunTest(const FString& Parameters)
 	}
 
 	FDatasetSidecar Sidecar;
-	FString FailureReason;
+	FText FailureReason;
 	TestTrue(
 		TEXT("Sidecar built from section"),
 		FDatasetSidecarBuilder::BuildFromSection(*Section, MakeContext(), Sidecar, FailureReason));
-	TestEqual(TEXT("No failure reason on success"), FailureReason, FString());
+	TestTrue(TEXT("No failure reason on success"), FailureReason.IsEmpty());
 
 	// The stream must come from the section, sample for sample and frame for frame. Any
 	// difference means there are two records of the same capture, which is the situation this
@@ -140,7 +140,7 @@ bool FDatasetSidecarBuilderIdentityTest::RunTest(const FString& Parameters)
 	Context.OptionalLayers.Add(EDatasetCaptureLayer::CharacterState);
 
 	FDatasetSidecar Sidecar;
-	FString FailureReason;
+	FText FailureReason;
 	TestTrue(TEXT("Sidecar built"), FDatasetSidecarBuilder::BuildFromSection(*Section, Context, Sidecar, FailureReason));
 
 	TestEqual(TEXT("Schema version carried"), Sidecar.SchemaVersion, KDatasetSidecarSchemaVersion);
@@ -203,7 +203,7 @@ bool FDatasetSidecarBuilderEmptySectionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Section starts empty"), Section->GetSampleCount(), 0);
 
 	FDatasetSidecar Sidecar;
-	FString FailureReason;
+	FText FailureReason;
 
 	// The builder logs an Error on this path, which is correct behaviour and which the
 	// automation framework otherwise counts as a test failure. Declaring it expected turns
@@ -220,7 +220,7 @@ bool FDatasetSidecarBuilderEmptySectionTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Failure states a reason"), FailureReason.IsEmpty());
 
 	// The reason is read by an operator, so it must not be engine jargon.
-	TestFalse(TEXT("Reason avoids engine internals"), FailureReason.Contains(TEXT("UMovieScene")));
+	TestFalse(TEXT("Reason avoids engine internals"), FailureReason.ToString().Contains(TEXT("UMovieScene")));
 
 	return true;
 }

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "DatasetSidecar.h"
+#include "Internationalization/Text.h"
 
 /**
  * Reads and writes sidecar JSON.
@@ -28,9 +29,10 @@ public:
 	 * Parses Json into OutSidecar.
 	 *
 	 * False when the text is not valid JSON, or when its schema version is one this build
-	 * does not support. OutFailureReason receives plain language suitable for an operator.
+	 * does not support. OutFailureReason receives plain language suitable for an operator. It is FText, not
+	 * FString, because it is shown in the panel: operator-facing text is localizable text.
 	 */
-	static bool FromJson(const FString& Json, FDatasetSidecar& OutSidecar, FString& OutFailureReason);
+	static bool FromJson(const FString& Json, FDatasetSidecar& OutSidecar, FText& OutFailureReason);
 
 	/**
 	 * Reads only the schema version.
@@ -45,8 +47,8 @@ public:
 	static bool IsSupportedSchemaVersion(int32 SchemaVersion);
 
 	/** Writes Sidecar to FilePath as UTF-8 JSON, creating directories as needed. */
-	static bool SaveToFile(const FDatasetSidecar& Sidecar, const FString& FilePath, FString& OutFailureReason);
+	static bool SaveToFile(const FDatasetSidecar& Sidecar, const FString& FilePath, FText& OutFailureReason);
 
 	/** Reads a sidecar from FilePath. */
-	static bool LoadFromFile(const FString& FilePath, FDatasetSidecar& OutSidecar, FString& OutFailureReason);
+	static bool LoadFromFile(const FString& FilePath, FDatasetSidecar& OutSidecar, FText& OutFailureReason);
 };

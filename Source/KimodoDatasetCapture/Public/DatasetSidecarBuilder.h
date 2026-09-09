@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "DatasetSidecar.h"
+#include "Internationalization/Text.h"
 #include "Misc/FrameRate.h"
 
 class UMovieSceneDatasetInputSection;
@@ -56,5 +57,5 @@ public:
 		const UMovieSceneDatasetInputSection& Section,
 		const FBuildContext& Context,
 		FDatasetSidecar& OutSidecar,
-		FString& OutFailureReason);
+		FText& OutFailureReason);
 };
