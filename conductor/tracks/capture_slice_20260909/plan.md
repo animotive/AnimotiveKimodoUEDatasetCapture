@@ -15,7 +15,7 @@ they still require the manual verification steps to be written into the task not
 - [x] Task: Add `KimodoDatasetCaptureEditor.Build.cs` and module implementation (editor deps per `tech-stack.md`); assert the dependency direction editor → capture (28a5ebb)
 - [x] Task: Write tests — a trivial automation test in `KimodoDatasetCaptureTests` that fails, to prove the harness runs headless (Red) (e412081)
 - [x] Task: Add `KimodoDatasetCaptureTests.Build.cs` and module implementation; make the harness test pass and confirm the headless command from `workflow.md` reports it (Green) (f7cc5a4)
-- [ ] Task: Add `Resources/Icon128.png` and `Config/FilterPlugin.ini`
+- [x] Task: Add `Resources/Icon128.png` and `Config/FilterPlugin.ini` (a2874e3)
 - [ ] Task: Verify a clean `Build.bat KimodoEditor Win64 Development` with no new warnings, and that the plugin loads in the editor
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Plugin Skeleton' (Protocol in workflow.md)
 
