@@ -38,7 +38,7 @@ they still require the manual verification steps to be written into the task not
 - [x] Task: Write tests that construct a `UMovieSceneDatasetInputSection`, write known keys at known `FFrameNumber`s, and read them back at the same frames on a given tick resolution (Red) (804632e)
 - [x] Task: Implement `UMovieSceneDatasetInputTrack` and `UMovieSceneDatasetInputSection` with one channel per axis and one per button, in frame space (Green) (14064f7)
 - [x] Task: Write tests for sample-to-channel conversion — a sequence of `FDatasetInputSample`s at frames N..N+k produces keys on exactly those frames, with no off-by-one at either end (Red) (c4dc86f)
-- [ ] Task: Implement the sample-to-channel writer, taking the frame number from the sequence clock rather than counting ticks (Green)
+- [x] Task: Implement the sample-to-channel writer, taking the frame number from the sequence clock rather than counting ticks (Green) (bbf0c9b)
 - [ ] Task: Write tests for channel-to-sidecar extraction — reading the section back yields the same frame-keyed stream that was written (Red)
 - [ ] Task: Implement sidecar generation derived from the section, so JSON has no independent source of truth (Green)
 - [ ] Task: Register a minimal track editor so the input track is visible in Sequencer **(exempt)**
