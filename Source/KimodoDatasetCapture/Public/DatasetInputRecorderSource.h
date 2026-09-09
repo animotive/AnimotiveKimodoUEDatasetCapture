@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "DatasetCaptureBuffer.h"
 #include "DatasetPawnResolver.h"
+#include "DatasetTakeRecording.h"
 #include "TakeRecorderSource.h"
 
 #include "DatasetInputRecorderSource.generated.h"
@@ -87,15 +87,21 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UMovieSceneDatasetInputSection> InputSection;
 
-	/** Reserved once in StartRecording; never grown during the take. */
-	FDatasetCaptureBuffer Buffer;
+	/**
+	 * The take's state machine, and the only place take decisions are made.
+	 *
+	 * This source is a shell that forwards Take Recorder's callbacks. Keeping a second copy of
+	 * the recording state here would mean two state machines able to disagree about whether a
+	 * take is valid, and the disagreement would surface as a written clip that the panel
+	 * believed had failed.
+	 */
+	FDatasetTakeRecording Recording;
 
 	/** Pawn, mesh and player input resolved at record start. */
 	FDatasetPawnTarget Target;
 
-	bool bIsRecording = false;
+	/** Set when the source itself fails before a take can begin, e.g. no sequence. */
+	bool bShellFailed = false;
 
-	bool bIsCaptureValid = true;
-
-	FText InvalidReason;
+	FText ShellFailureReason;
 };

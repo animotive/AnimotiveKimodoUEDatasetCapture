@@ -31,6 +31,11 @@ public class KimodoDatasetCapture : ModuleRules
 				// Public: DatasetInputSampler.h names FKey in its interface, so anything
 				// including it needs InputCore too.
 				"InputCore",
+				// Public: DatasetInputRecorderSource.h includes TakeRecorderSource.h, so any
+				// module including that header needs TakesCore on its own include path.
+				// TakesCore is UncookedOnly, the same module type as this one, so this does
+				// not weaken the no-shipping-footprint guarantee.
+				"TakesCore",
 			});
 
 		PrivateDependencyModuleNames.AddRange(
@@ -39,7 +44,6 @@ public class KimodoDatasetCapture : ModuleRules
 				"EnhancedInput",
 				"Json",
 				"JsonUtilities",
-				"TakesCore",
 			});
 
 		// This module must never depend on an editor-only module. The editor module

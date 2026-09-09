@@ -2,7 +2,6 @@
 
 #include "DatasetInputRecorderSource.h"
 
-#include "DatasetFrameMapping.h"
 #include "DatasetInputSampler.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerInput.h"
@@ -19,10 +18,10 @@ namespace
 	/**
 	 * The world a capture reads from.
 	 *
-	 * GamePreview is Play In Editor, which is where every capture happens; Game covers a
-	 * standalone session. The editor world is deliberately excluded: it has no player input
-	 * to read, and recording it would produce a take full of neutral samples that looks like
-	 * a player standing perfectly still.
+	 * PIE is where every capture happens; Game covers a standalone session. The editor world
+	 * is deliberately excluded: it has no player input to read, and recording it would
+	 * produce a take full of neutral samples that looks exactly like a player standing
+	 * perfectly still.
 	 */
 	UWorld* FindCaptureWorld()
 	{
@@ -59,8 +58,8 @@ TArray<UTakeRecorderSource*> UDatasetInputRecorderSource::PreRecording(
 	FManifestSerializer* InManifestSerializer)
 {
 	InputSection = nullptr;
-	bIsCaptureValid = true;
-	InvalidReason = FText::GetEmpty();
+	bShellFailed = false;
+	ShellFailureReason = FText::GetEmpty();
 
 	UMovieScene* MovieScene = InSequence ? InSequence->GetMovieScene() : nullptr;
 	if (!MovieScene)
@@ -88,12 +87,9 @@ void UDatasetInputRecorderSource::StartRecording(
 	const FFrameNumber& InSectionFirstFrame,
 	ULevelSequence* InSequence)
 {
-	Buffer.Reset();
-	bIsRecording = false;
-
-	if (!bIsCaptureValid)
+	if (bShellFailed)
 	{
-		// PreRecording already failed. Starting anyway would produce a take whose input
+		// PreRecording already failed. Beginning a take anyway would produce a take whose
 		// section exists but was never written, which reads downstream as a clip that
 		// recorded nothing rather than as a failure.
 		return;
@@ -109,39 +105,36 @@ void UDatasetInputRecorderSource::StartRecording(
 	}
 
 	const UMovieScene* MovieScene = InSequence ? InSequence->GetMovieScene() : nullptr;
-	const FFrameRate DisplayRate = MovieScene ? MovieScene->GetDisplayRate() : FFrameRate(30, 1);
 
-	// Sized from the operator's duration and the take's own display rate, once, here. The
-	// buffer refuses samples when full, which is what ends the take, so this single number is
-	// both the memory bound and the duration limit.
-	const int32 MaxSamples = FDatasetFrameMapping::SampleCountForDuration(MaxDurationSeconds, DisplayRate);
-	if (MaxSamples <= 0)
+	FDatasetTakeRecording::FConfig Config;
+	Config.DisplayRate = MovieScene ? MovieScene->GetDisplayRate() : FFrameRate(30, 1);
+	Config.MaxDurationSeconds = MaxDurationSeconds;
+
+	FText BeginFailure;
+	if (!Recording.Begin(Config, BeginFailure))
 	{
-		Invalidate(LOCTEXT("BadDuration", "The maximum clip length is not usable. Set a clip length above zero and try again."));
+		Invalidate(BeginFailure);
 		return;
 	}
-
-	Buffer.Reserve(MaxSamples);
-	bIsRecording = true;
 
 	UE_LOG(
 		LogKimodoDatasetCapture,
 		Verbose,
 		TEXT("Dataset input capture started: up to %d samples at %s, first frame %d."),
-		MaxSamples,
-		*DisplayRate.ToPrettyText().ToString(),
+		Recording.GetCapacity(),
+		*Config.DisplayRate.ToPrettyText().ToString(),
 		InSectionFirstFrame.Value);
 }
 
 void UDatasetInputRecorderSource::TickRecording(const FQualifiedFrameTime& CurrentSequenceTime)
 {
-	if (!bIsRecording)
+	if (!Recording.IsRecording())
 	{
 		return;
 	}
 
-	// The pawn is rechecked every tick. PIE can end and an actor can be destroyed mid-take,
-	// and a take that lost its subject is invalid rather than shorter: the remaining samples
+	// Rechecked every tick. PIE can end and an actor can be destroyed mid-take, and a take
+	// that lost its subject is INVALID rather than merely shorter: the remaining samples
 	// would describe input with no motion to pair it with.
 	if (!Target.IsStillValid())
 	{
@@ -156,68 +149,59 @@ void UDatasetInputRecorderSource::TickRecording(const FQualifiedFrameTime& Curre
 		return;
 	}
 
-	// THE alignment guarantee, in one line: the frame comes from the sequence time Take
-	// Recorder handed us, floored to a frame. Nothing here counts ticks, accumulates elapsed
-	// seconds, or consults a wall clock, so there is no second time base able to drift from
-	// the animation being recorded alongside this.
-	const FFrameNumber SampleFrame = FDatasetFrameMapping::SampleFrameForTime(CurrentSequenceTime.Time);
+	// The sample's frame is assigned inside FDatasetTakeRecording from the sequence time
+	// below, not here. This shell never computes a frame, which is what keeps a second time
+	// base from creeping in.
+	const FDatasetInputSample Input = FDatasetInputSampler::SampleFromPlayerInput(0, *PlayerInput);
 
-	const FDatasetInputSample Sample = FDatasetInputSampler::SampleFromPlayerInput(SampleFrame.Value, *PlayerInput);
-
-	if (!Buffer.Add(Sample))
+	const EDatasetTakeTickResult Result = Recording.Tick(CurrentSequenceTime, Input);
+	if (Result == EDatasetTakeTickResult::Full)
 	{
-		// Two reasons Add refuses, and both mean this take is done sampling rather than
-		// broken: the buffer is full (the configured duration elapsed), or the sequence
-		// clock did not advance past the last sample, which happens when Take Recorder ticks
-		// twice within one frame. Neither is a failure, so the take stays valid.
-		if (Buffer.IsFull())
-		{
-			bIsRecording = false;
-			UE_LOG(
-				LogKimodoDatasetCapture,
-				Verbose,
-				TEXT("Dataset input capture reached its maximum length after %d samples."),
-				Buffer.Num());
-		}
+		UE_LOG(
+			LogKimodoDatasetCapture,
+			Verbose,
+			TEXT("Dataset input capture reached its maximum length after %d samples."),
+			Recording.GetSampleCount());
 	}
 }
 
 void UDatasetInputRecorderSource::StopRecording(ULevelSequence* InSequence)
 {
-	bIsRecording = false;
-
-	if (!bIsCaptureValid)
+	if (bShellFailed)
 	{
-		// Fail loud, and write NOTHING. A partially written section is the one outcome
-		// product-guidelines.md rules out: it would look like a real clip downstream.
 		UE_LOG(
 			LogKimodoDatasetCapture,
 			Error,
 			TEXT("Dataset input capture failed and was not written: %s"),
-			*InvalidReason.ToString());
+			*ShellFailureReason.ToString());
 		return;
 	}
 
 	if (!InputSection)
 	{
 		Invalidate(LOCTEXT("NoSection", "This take has nowhere to store its input. Please record it again."));
+		UE_LOG(LogKimodoDatasetCapture, Error, TEXT("Dataset input capture failed and was not written: no section."));
 		return;
 	}
 
-	if (Buffer.Num() == 0)
+	FText FinishFailure;
+	if (!Recording.Finish(*InputSection, FinishFailure))
 	{
-		Invalidate(LOCTEXT("NoSamples", "No input was recorded during this take. Please record it again."));
+		// Finish already wrote nothing. The reason comes from the take's own state machine, so
+		// the panel and the log agree by construction rather than by being kept in step.
+		UE_LOG(
+			LogKimodoDatasetCapture,
+			Error,
+			TEXT("Dataset input capture failed and was not written: %s"),
+			*FinishFailure.ToString());
 		return;
 	}
-
-	// Written once, at stop, from the buffer that was filled on the sequence's own frames.
-	InputSection->WriteSamples(Buffer.GetSamples());
 
 	UE_LOG(
 		LogKimodoDatasetCapture,
 		Verbose,
 		TEXT("Dataset input capture wrote %d samples to the input section."),
-		Buffer.Num());
+		Recording.GetSampleCount());
 }
 
 FText UDatasetInputRecorderSource::GetDisplayTextImpl() const
@@ -232,22 +216,30 @@ FText UDatasetInputRecorderSource::GetCategoryTextImpl() const
 
 bool UDatasetInputRecorderSource::IsRecording() const
 {
-	return bIsRecording;
+	return Recording.IsRecording();
 }
 
 int32 UDatasetInputRecorderSource::GetRecordedSampleCount() const
 {
-	return Buffer.Num();
+	return Recording.GetSampleCount();
 }
 
 bool UDatasetInputRecorderSource::IsCaptureValid() const
 {
-	return bIsCaptureValid;
+	// Either failure counts: the shell can fail before a take exists (no sequence), and the
+	// take can fail once it does (pawn lost). A caller asking "is this capture good" must not
+	// have to know which layer failed.
+	return !bShellFailed && Recording.IsValid();
 }
 
 FText UDatasetInputRecorderSource::GetInvalidReason() const
 {
-	return InvalidReason;
+	if (bShellFailed)
+	{
+		return ShellFailureReason;
+	}
+
+	return Recording.GetInvalidReason();
 }
 
 UMovieSceneDatasetInputSection* UDatasetInputRecorderSource::GetInputSection() const
@@ -257,15 +249,16 @@ UMovieSceneDatasetInputSection* UDatasetInputRecorderSource::GetInputSection() c
 
 void UDatasetInputRecorderSource::Invalidate(const FText& Reason)
 {
-	// First reason wins. A later, vaguer message would replace the specific one the operator
-	// actually needs to act on.
-	if (bIsCaptureValid)
+	// Recorded in both places deliberately. The take's state machine owns validity once a
+	// take has begun; the shell flag covers failures that happen before Begin, when there is
+	// no take to invalidate yet.
+	if (!bShellFailed)
 	{
-		bIsCaptureValid = false;
-		InvalidReason = Reason;
+		bShellFailed = true;
+		ShellFailureReason = Reason;
 	}
 
-	bIsRecording = false;
+	Recording.Invalidate(Reason);
 }
 
 #undef LOCTEXT_NAMESPACE
