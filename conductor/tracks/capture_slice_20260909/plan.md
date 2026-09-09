@@ -49,8 +49,8 @@ they still require the manual verification steps to be written into the task not
 - [x] Task: Write tests for target pawn resolution — resolves the local player controller's pawn, and reports a named failure when there is no controller or no pawn (Red) (9262d44)
 - [x] Task: Implement target pawn resolution through engine interfaces only, with no project-specific assumptions (Green) (5f7997e)
 - [x] Task: Write tests for buffer pre-reservation — capacity derived from max duration × frame rate at record start, and no reallocation across a full simulated capture (Red) (ead213c)
-- [ ] Task: Implement `UDatasetInputRecorderSource : UTakeRecorderSource` with `PreRecording` / `TickRecording` / `StopRecording`, sampling `UPlayerInput` into pre-reserved storage (Green)
-- [ ] Task: Register the source with Take Recorder so it appears in the sources list **(exempt)**
+- [x] Task: Implement `UDatasetInputRecorderSource : UTakeRecorderSource` with `PreRecording` / `TickRecording` / `StopRecording`, sampling `UPlayerInput` into pre-reserved storage (Green) (4a5c0d0)
+- [x] Task: Register the source with Take Recorder so it appears in the sources list **(exempt)** (4a5c0d0 - no code needed, see note)
 - [ ] Task: Write tests for the alignment claim — a scripted input pattern (button pressed at a known frame) lands on the same `FFrameNumber` in the section as the corresponding animation frame (Red)
 - [ ] Task: Make the alignment test pass, taking frame numbers from the take's clock (Green)
 - [ ] Task: Write tests for fail-loud behaviour — pawn destroyed mid-take and no-pawn-at-arm produce an invalid result with a reason, and no partial section or sidecar is written (Red)
