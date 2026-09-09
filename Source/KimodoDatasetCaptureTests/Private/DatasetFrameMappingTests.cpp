@@ -80,14 +80,22 @@ bool FDatasetFrameMappingRateConversionTest::RunTest(const FString& Parameters)
 		FDatasetFrameMapping::TicksPerDisplayFrame(Display60, Tick24000).Value,
 		400);
 
-	// NTSC 29.97, the rate that motivated storing frame rate as a rational rather than a
-	// float. 24000/1001 is the matching tick resolution, giving a whole 800 ticks per frame.
+	// NTSC 29.97 is the case that matters, and it does NOT divide evenly: on a 24000-tick
+	// resolution a display frame is 24000 * 1001 / 30000 = 800.8 ticks. TicksPerDisplayFrame
+	// floors that to 800, which is why it must never be used to place samples.
 	const FFrameRate Display2997(30000, 1001);
-	const FFrameRate Tick24000Drop(24000, 1001);
 	TestEqual(
-		TEXT("29.97 on its matching tick resolution is 800 ticks per frame"),
-		FDatasetFrameMapping::TicksPerDisplayFrame(Display2997, Tick24000Drop).Value,
+		TEXT("29.97 on 24000 ticks floors to 800 ticks per frame"),
+		FDatasetFrameMapping::TicksPerDisplayFrame(Display2997, Tick24000).Value,
 		800);
+
+	// The exact conversion keeps the missing 0.8 tick per frame. Display frame 300 is
+	// 300 * 800.8 = 240240 ticks, not 300 * 800 = 240000. That 240-tick gap is the drift a
+	// fixed step would introduce, and it is the reason AssignFrameNumbersForRate exists.
+	TestEqual(
+		TEXT("29.97 display frame 300 converts exactly, not by stepping"),
+		FDatasetFrameMapping::DisplayToTick(FFrameTime(300), Display2997, Tick24000).Value,
+		240240);
 
 	// An invalid rate must yield zero rather than a garbage interval that would key every
 	// sample onto the same frame.
@@ -215,6 +223,77 @@ bool FDatasetFrameMappingAssignmentTest::RunTest(const FString& Parameters)
 			TEXT("Empty run succeeds"),
 			FDatasetFrameMapping::AssignFrameNumbers(Empty, FFrameNumber(0), FFrameNumber(1)));
 	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FDatasetFrameMappingNoDriftTest,
+	"KimodoDatasetCapture.FrameMapping.NoDriftAcrossATake",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FDatasetFrameMappingNoDriftTest::RunTest(const FString& Parameters)
+{
+	// Ten seconds of NTSC 29.97 on a 24000-tick sequence: 300 samples, at 800.8 ticks per
+	// frame. This is the case a fixed-step assignment gets wrong.
+	const FFrameRate Display2997(30000, 1001);
+	const FFrameRate Tick24000(24000, 1);
+	const int32 SampleCount = FDatasetFrameMapping::SampleCountForDuration(10.0, Display2997);
+
+	TestEqual(TEXT("Ten seconds of 29.97 is 300 samples"), SampleCount, 300);
+
+	TArray<FDatasetInputSample> Exact;
+	Exact.SetNum(SampleCount);
+	TestTrue(
+		TEXT("Rate-based assignment succeeds"),
+		FDatasetFrameMapping::AssignFrameNumbersForRate(Exact, 0, Display2997, Tick24000));
+
+	TArray<FDatasetInputSample> Stepped;
+	Stepped.SetNum(SampleCount);
+	TestTrue(
+		TEXT("Fixed-step assignment succeeds"),
+		FDatasetFrameMapping::AssignFrameNumbers(
+			Stepped, FFrameNumber(0), FDatasetFrameMapping::TicksPerDisplayFrame(Display2997, Tick24000)));
+
+	// Both agree at the start, by construction.
+	TestEqual(TEXT("Both start at frame 0"), Exact[0].FrameNumber, 0);
+	TestEqual(TEXT("Stepped also starts at frame 0"), Stepped[0].FrameNumber, 0);
+
+	// Every exact frame must equal an independent conversion of its display frame. This is
+	// the property that makes the assignment drift-free: each frame stands on its own.
+	bool bAllExact = true;
+	for (int32 Index = 0; Index < SampleCount; ++Index)
+	{
+		const int32 Expected = FDatasetFrameMapping::DisplayToTick(FFrameTime(Index), Display2997, Tick24000).Value;
+		if (Exact[Index].FrameNumber != Expected)
+		{
+			AddError(FString::Printf(
+				TEXT("Sample %d is at tick frame %d but its display frame converts to %d."),
+				Index, Exact[Index].FrameNumber, Expected));
+			bAllExact = false;
+			break;
+		}
+	}
+	TestTrue(TEXT("Every sample sits on its exactly converted frame"), bAllExact);
+
+	// And the fixed step really does drift, so this test is testing something. The last
+	// sample should be behind by very nearly 0.8 ticks per frame.
+	const int32 Drift = Exact.Last().FrameNumber - Stepped.Last().FrameNumber;
+	TestTrue(TEXT("Fixed stepping drifts behind over a take"), Drift > 0);
+	TestEqual(TEXT("Drift over 300 frames of 29.97 is 239 ticks"), Drift, 239);
+
+	// Frames must still be strictly increasing, or the sidecar would reject them.
+	bool bStrictlyIncreasing = true;
+	for (int32 Index = 1; Index < SampleCount; ++Index)
+	{
+		if (Exact[Index].FrameNumber <= Exact[Index - 1].FrameNumber)
+		{
+			AddError(FString::Printf(TEXT("Sample %d does not advance past sample %d."), Index, Index - 1));
+			bStrictlyIncreasing = false;
+			break;
+		}
+	}
+	TestTrue(TEXT("Exactly converted frames strictly increase"), bStrictlyIncreasing);
 
 	return true;
 }

@@ -33,10 +33,17 @@ public:
 	static FFrameNumber DisplayToTick(FFrameTime DisplayTime, FFrameRate DisplayRate, FFrameRate TickResolution);
 
 	/**
-	 * Ticks between two consecutive display frames.
+	 * Ticks between the first two display frames, FLOORED.
 	 *
-	 * Zero when either rate is invalid, so a caller cannot silently step by a garbage
+	 * Zero when either rate is unusable, so a caller cannot silently step by a garbage
 	 * interval and write every sample onto the same frame.
+	 *
+	 * WARNING. This is a whole number, and for many real frame rates the true interval is
+	 * not. At 30000/1001 on a 24000/1 tick resolution a display frame is 800.8 ticks, so this
+	 * returns 800 and stepping by it loses 0.8 ticks per frame: about 480 ticks, or 0.6 of a
+	 * frame, across a ten-second capture. Use it for display and diagnostics. To place
+	 * samples, use AssignFrameNumbersForRate, which converts each frame exactly and cannot
+	 * accumulate error.
 	 */
 	static FFrameNumber TicksPerDisplayFrame(FFrameRate DisplayRate, FFrameRate TickResolution);
 
@@ -57,4 +64,24 @@ public:
 	 * every sample onto one frame and a negative step would run the take backwards.
 	 */
 	static bool AssignFrameNumbers(TArrayView<FDatasetInputSample> Samples, FFrameNumber StartFrame, FFrameNumber FrameStep);
+
+	/**
+	 * Assigns frame numbers by converting each sample's display frame to ticks exactly.
+	 *
+	 * This is the function capture should use. Sample i is placed at the tick frame for
+	 * display frame (StartDisplayFrame + i), computed independently, so no rounding error can
+	 * accumulate across a take.
+	 *
+	 * The fixed-step alternative above is only correct when a display frame is a whole number
+	 * of ticks. It is not for NTSC-family rates: 30000/1001 on 24000/1 is 800.8 ticks per
+	 * frame, and stepping by 800 drifts roughly 0.6 of a frame over ten seconds, which is
+	 * enough to put a jump on the wrong pose in a training clip.
+	 *
+	 * Returns false, changing nothing, when either rate is unusable.
+	 */
+	static bool AssignFrameNumbersForRate(
+		TArrayView<FDatasetInputSample> Samples,
+		int32 StartDisplayFrame,
+		FFrameRate DisplayRate,
+		FFrameRate TickResolution);
 };
