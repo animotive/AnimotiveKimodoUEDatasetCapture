@@ -21,7 +21,7 @@ they still require the manual verification steps to be written into the task not
 
 ## Phase 2: Capture Data Model and Sidecar Schema v1
 
-- [ ] Task: Write tests for `FDatasetInputSample` — axis storage, button bitmask set/clear, press/release derivation between consecutive samples, boundary values (Red)
+- [x] Task: Write tests for `FDatasetInputSample` — axis storage, button bitmask set/clear, press/release derivation between consecutive samples, boundary values (Red) (00855dd)
 - [ ] Task: Implement `FDatasetInputSample` as an allocation-free `USTRUCT` with named button accessors (Green)
 - [ ] Task: Write tests for the sidecar `USTRUCT` set — all four blocks present, `SchemaVersion` first and readable standalone, frame-keyed input stream (Red)
 - [ ] Task: Implement the sidecar `USTRUCT`s: identity + timing, raw input stream, skeleton identity, label block (Green)
