@@ -46,7 +46,7 @@ they still require the manual verification steps to be written into the task not
 
 ## Phase 4: Take Recorder Source
 
-- [ ] Task: Write tests for target pawn resolution — resolves the local player controller's pawn, and reports a named failure when there is no controller or no pawn (Red)
+- [x] Task: Write tests for target pawn resolution — resolves the local player controller's pawn, and reports a named failure when there is no controller or no pawn (Red) (9262d44)
 - [ ] Task: Implement target pawn resolution through engine interfaces only, with no project-specific assumptions (Green)
 - [ ] Task: Write tests for buffer pre-reservation — capacity derived from max duration × frame rate at record start, and no reallocation across a full simulated capture (Red)
 - [ ] Task: Implement `UDatasetInputRecorderSource : UTakeRecorderSource` with `PreRecording` / `TickRecording` / `StopRecording`, sampling `UPlayerInput` into pre-reserved storage (Green)
