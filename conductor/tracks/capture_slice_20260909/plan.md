@@ -55,8 +55,8 @@ they still require the manual verification steps to be written into the task not
 - [x] Task: Make the alignment test pass, taking frame numbers from the take's clock (Green) (b7c480a)
 - [x] Task: Write tests for fail-loud behaviour — pawn destroyed mid-take and no-pawn-at-arm produce an invalid result with a reason, and no partial section or sidecar is written (Red) (19304ac - passed immediately, see note)
 - [x] Task: Implement fail-loud capture invalidation per `product-guidelines.md` (Green) (19304ac - source refactored to one state machine)
-- [ ] Task: Write tests for auto-stop — capture ends exactly at the configured max duration in frames (Red)
-- [ ] Task: Implement auto-stop at max duration (Green)
+- [x] Task: Write tests for auto-stop — capture ends exactly at the configured max duration in frames (Red) (c40920f - passed immediately, see note)
+- [x] Task: Implement auto-stop at max duration (Green) (c40920f - implemented in b7c480a, see note)
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Take Recorder Source' (Protocol in workflow.md)
 
 ## Phase 5: Capture Panel, Overlay and Labels
