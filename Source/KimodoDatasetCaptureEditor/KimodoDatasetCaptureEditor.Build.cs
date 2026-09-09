@@ -8,6 +8,11 @@ public class KimodoDatasetCaptureEditor : ModuleRules
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
+		// Current engine include order regardless of the host target; see the comment in
+		// KimodoDatasetCapture.Build.cs. Module-level wins over target-level, so a client
+		// target cannot un-pin it.
+		IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
+
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{

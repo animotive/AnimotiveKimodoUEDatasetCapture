@@ -8,6 +8,18 @@ public class KimodoDatasetCapture : ModuleRules
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
+		// Compile against the CURRENT engine include order, whatever the host target asks for.
+		//
+		// Unset, a module inherits the target's IncludeOrderVersion, which defaults to
+		// EngineIncludeOrderVersion.Oldest. At Oldest the engine's public headers still drag in
+		// their legacy transitive includes, so a header of ours that names a type without
+		// including or forward-declaring it compiles here and fails in a client tree whose
+		// target sets Latest. KimodoExporter reached a customer that way.
+		//
+		// Set per module rather than on the target, because module-level wins over target-level:
+		// no consumer's target settings can un-pin it.
+		IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
+
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{

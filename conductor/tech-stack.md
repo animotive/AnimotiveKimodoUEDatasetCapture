@@ -24,6 +24,26 @@ non-goal is enforced by the build system, not by convention.
 
 Dependency direction: `Editor` -> `Capture`. **Never the reverse.**
 
+### Include order (added 2026-09-09)
+
+Every module sets `IncludeOrderVersion = EngineIncludeOrderVersion.Latest;` in its
+`Build.cs`.
+
+Unset, a module inherits the host target's `IncludeOrderVersion`, which defaults to
+`EngineIncludeOrderVersion.Oldest`. At `Oldest`, the engine's public headers still drag in
+their legacy transitive includes, so a header of ours that names a type without including or
+forward-declaring it compiles locally and fails in a client tree whose target sets `Latest`.
+`KimodoExporter` reached a customer that way, which is how this rule was learned.
+
+Set per module rather than on the target, because module-level wins over target-level: no
+consumer's target settings can un-pin it, and a module installed under `Engine/Plugins/` is
+forced to `Latest` regardless, so the engine-plugin install case becomes a no-op instead of a
+break.
+
+Note: the host `KimodoEditor.Target.cs` is at `Unreal5_4` and emits an `[Upgrade]` diagnostic
+on every build. That is the host project's setting, not this plugin's, and the per-module pin
+above is what protects this plugin's code from it.
+
 ## Engine Dependencies
 
 **`.uplugin` plugin dependencies:**
