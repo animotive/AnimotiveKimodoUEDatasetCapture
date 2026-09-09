@@ -8,7 +8,7 @@ but they are not planned. Expand a stub with `/conductor:new-track` (or by filli
 
 ---
 
-## [ ] Track: Build the end-to-end capture slice — Slate capture panel, Take Recorder input source writing frame-aligned raw gamepad channels into the take's MovieScene, and a versioned sidecar JSON carrying identity, timing, skeleton fingerprint and labels
+## [~] Track: Build the end-to-end capture slice — Slate capture panel, Take Recorder input source writing frame-aligned raw gamepad channels into the take's MovieScene, and a versioned sidecar JSON carrying identity, timing, skeleton fingerprint and labels
 
 _Link: [./conductor/tracks/capture_slice_20260909/](./conductor/tracks/capture_slice_20260909/)_
 
