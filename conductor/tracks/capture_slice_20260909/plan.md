@@ -61,10 +61,18 @@ they still require the manual verification steps to be written into the task not
 
 ## Phase 5: Capture Panel, Overlay and Labels
 
-- [ ] Task: Write tests for the non-Slate panel controller — arm/disarm/record/stop state machine, elapsed and remaining time in frames, invalid state with reason, illegal transitions rejected (Red)
+> Revised 2026-09-09 after Phase 4 review:
+> - **No duration limit.** The operator presses stop, so the overlay shows elapsed time
+>   rather than a countdown, and the panel has no duration control.
+> - **The panel does the Take Recorder wiring.** An operator should never have to open the
+>   `+ Source` menu and add the source by hand; arming from the panel sets that up.
+
+- [ ] Task: Write tests for the non-Slate panel controller — arm/disarm/record/stop state machine, **elapsed** time in frames (nothing counts down; the operator stops the take), invalid state with reason, illegal transitions rejected (Red)
 - [ ] Task: Implement the panel controller as a plain type with no Slate dependency (Green)
-- [ ] Task: Implement `SDatasetCapturePanel` bound to the controller, registered under Window → Tools, `FAppStyle` only, all strings `LOCTEXT` **(exempt)**
-- [ ] Task: Implement the PIE viewport overlay — recording indicator plus remaining-time countdown, capture state only **(exempt)**
+- [ ] Task: Write tests for panel-driven Take Recorder wiring — arming finds an existing `UDatasetInputRecorderSource` in the take's sources or adds one, never adds a second, and reports a stated reason when Take Recorder is unavailable (Red)
+- [ ] Task: Implement panel-driven arming so the operator never opens Take Recorder's `+ Source` menu (Green)
+- [ ] Task: Implement `SDatasetCapturePanel` bound to the controller, registered under Window → Tools, with Arm and Record/Stop buttons that drive Take Recorder directly, `FAppStyle` only, all strings `LOCTEXT` **(exempt)**
+- [ ] Task: Implement the PIE viewport overlay — recording indicator plus **elapsed-time** readout, capture state only **(exempt)**
 - [ ] Task: Write tests for the record-toggle command — editor hotkey and gamepad chord both drive the same controller transition (Red)
 - [ ] Task: Implement the `UICommandList` hotkey binding and the gamepad trigger read from the raw input path (Green)
 - [ ] Task: Write tests for label validation — save blocked with an empty caption, tags optional, tags accepted only from the project vocabulary, vocabulary loaded as data (Red)
