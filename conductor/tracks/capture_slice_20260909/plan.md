@@ -52,7 +52,7 @@ they still require the manual verification steps to be written into the task not
 - [x] Task: Implement `UDatasetInputRecorderSource : UTakeRecorderSource` with `PreRecording` / `TickRecording` / `StopRecording`, sampling `UPlayerInput` into pre-reserved storage (Green) (4a5c0d0)
 - [x] Task: Register the source with Take Recorder so it appears in the sources list **(exempt)** (4a5c0d0 - no code needed, see note)
 - [x] Task: Write tests for the alignment claim — a scripted input pattern (button pressed at a known frame) lands on the same `FFrameNumber` in the section as the corresponding animation frame (Red) (3092ba5)
-- [ ] Task: Make the alignment test pass, taking frame numbers from the take's clock (Green)
+- [x] Task: Make the alignment test pass, taking frame numbers from the take's clock (Green) (b7c480a)
 - [ ] Task: Write tests for fail-loud behaviour — pawn destroyed mid-take and no-pawn-at-arm produce an invalid result with a reason, and no partial section or sidecar is written (Red)
 - [ ] Task: Implement fail-loud capture invalidation per `product-guidelines.md` (Green)
 - [ ] Task: Write tests for auto-stop — capture ends exactly at the configured max duration in frames (Red)
