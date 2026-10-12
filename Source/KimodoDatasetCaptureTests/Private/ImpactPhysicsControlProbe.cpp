@@ -982,11 +982,23 @@ namespace KimodoImpactProbe
 
 namespace KimodoImpactProbe
 {
+	/** BakeAndSave result when a review copy with the same package name already exists in Content. */
+	constexpr int64 SkippedReviewCopy = -2;
+
 	/** Bakes recorded parent-space poses to an AnimSequence and saves it as a real package file. Returns bytes written. */
 	int64 BakeAndSave(USkeletalMesh* Mesh, const TArray<TArray<FTransform>>& Frames, const FString& Name, double& OutBakeSeconds, double& OutSaveSeconds, const FString& Folder = TEXT("KimodoImpactSpikeProbe"))
 	{
 		const double BakeStart = FPlatformTime::Seconds();
-		UPackage* Package = CreatePackage(*FString::Printf(TEXT("/Game/%s/%s"), *Folder, *Name));
+		const FString PackageName = FString::Printf(TEXT("/Game/%s/%s"), *Folder, *Name);
+		if (FPackageName::DoesPackageExist(PackageName))
+		{
+			// A review copy of this clip is already in the project's Content. Never overwrite or
+			// collide with it; the caller reports a skip, not a failure.
+			OutBakeSeconds = 0.0;
+			OutSaveSeconds = 0.0;
+			return SkippedReviewCopy;
+		}
+		UPackage* Package = CreatePackage(*PackageName);
 		UAnimSequence* Sequence = NewObject<UAnimSequence>(Package, *Name, RF_Public | RF_Standalone);
 		Sequence->SetSkeleton(Mesh->GetSkeleton());
 
@@ -1224,7 +1236,7 @@ bool FKimodoImpactThroughputProbe::RunTest(const FString& Parameters)
 
 		double Bake = 0.0, Save = 0.0;
 		const int64 Size = BakeAndSave(Mesh, Trace.LocalPoses, FString::Printf(TEXT("SpikeClip_%02d"), Clip), Bake, Save);
-		TestTrue(*FString::Printf(TEXT("Clip %d saved"), Clip), Size > 0);
+		TestTrue(*FString::Printf(TEXT("Clip %d saved"), Clip), Size > 0 || Size == SkippedReviewCopy);
 		BakeSeconds += Bake;
 		SaveSeconds += Save;
 		Bytes += FMath::Max<int64>(Size, 0);
@@ -1291,8 +1303,15 @@ bool FKimodoImpactStumbleProbe::RunTest(const FString& Parameters)
 					*(FPaths::ProjectSavedDir() / TEXT("KimodoImpactSpikeV9") / FString::Printf(TEXT("Feet_%s.csv"), *Label)));
 			}
 			double Bake = 0.0, Save = 0.0;
-			TestTrue(*FString::Printf(TEXT("%s saved"), *Label),
-				BakeAndSave(Mesh, Trace.LocalPoses, FString::Printf(TEXT("Stumble_%s"), *Label), Bake, Save, TEXT("KimodoImpactSpikeV9")) > 0);
+			const int64 Saved = BakeAndSave(Mesh, Trace.LocalPoses, FString::Printf(TEXT("Stumble_%s"), *Label), Bake, Save, TEXT("KimodoImpactSpikeV9"));
+			if (Saved == SkippedReviewCopy)
+			{
+				AddInfo(FString::Printf(TEXT("%s: review copy already in Content; save skipped"), *Label));
+			}
+			else
+			{
+				TestTrue(*FString::Printf(TEXT("%s saved"), *Label), Saved > 0);
+			}
 		}
 	}
 	CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
