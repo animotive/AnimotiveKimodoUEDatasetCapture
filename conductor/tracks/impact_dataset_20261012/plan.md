@@ -31,7 +31,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Write tests for contact-size distribution — impulse split across bodies within radius sums to the sampled impulse; point contact hits exactly one body (Red) (d037e0c)
 - [x] Task: Implement size-based impulse distribution (Green) (cd1de36)
 - [x] Task: Write tests for clip ID hashing — stable for identical params, changes when any param changes (Red) (50e3288)
-- [ ] Task: Implement deterministic clip IDs (Green)
+- [x] Task: Implement deterministic clip IDs (Green) (c36a4fa)
 - [ ] Task: Implement `UImpactBatchDefinition` data asset (source anim set, character setup, distributions, timing, seed, output root, grid/count mode) and write tests for source anim resolution — folder + skeleton filter, empty set reported as a named failure (Red → Green)
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Batch Definition and Deterministic Parameter Sampling' (Protocol in workflow.md)
 
