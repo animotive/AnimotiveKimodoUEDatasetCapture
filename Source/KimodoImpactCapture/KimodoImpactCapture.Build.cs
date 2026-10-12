@@ -28,6 +28,7 @@ public class KimodoImpactCapture : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
+				"AssetRegistry",
 				"Json",
 				"JsonUtilities",
 				"PhysicsCore",
