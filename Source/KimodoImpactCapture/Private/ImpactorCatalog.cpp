@@ -48,7 +48,7 @@ TArray<FImpactorArchetype> UImpactorCatalog::MakeStarterArchetypes()
 
 	// Masses and speeds are real-world figures. For people and limbs, mass is the effective
 	// mass behind the blow, not the whole body.
-	return {
+	TArray<FImpactorArchetype> Starter = {
 		Make(TEXT("SmallBullet"), TEXT("a small bullet"), TEXT("A small-calibre pistol round."),
 			{ TEXT("shot") }, Sphere, 0.9f, { 0.006f, 0.010f }, { 250.0f, 380.0f }, { 0.5f, 1.0f }, Instant),
 		Make(TEXT("RifleRound"), TEXT("a rifle round"), TEXT("A high-velocity rifle bullet."),
@@ -78,6 +78,23 @@ TArray<FImpactorArchetype> UImpactorCatalog::MakeStarterArchetypes()
 		Make(TEXT("WindPush"), TEXT("a gust of wind"), TEXT("A strong, sustained gust of wind."),
 			{ TEXT("buffeted"), TEXT("pushed") }, Area, 200.0f, { 5.0f, 20.0f }, { 10.0f, 25.0f }, { 60.0f, 100.0f }, Sustained),
 	};
+
+	// Reaction gains. Physical transfer is the reduced-mass momentum; the gain turns it into the
+	// reaction the simulation applies. Projectiles transfer almost nothing, yet people react hard
+	// to them: a small bullet lands near 18k kg cm/s (medium), a rifle round near 32k (heavy).
+	// Heavy impactors already transfer body-scale momentum and need little or none.
+	const TMap<FName, float> Gains = {
+		{ TEXT("SmallBullet"), 60.0f }, { TEXT("RifleRound"), 40.0f }, { TEXT("ShotgunBlast"), 12.0f },
+		{ TEXT("ThrownStone"), 4.0f }, { TEXT("Baseball"), 4.0f }, { TEXT("Football"), 3.0f },
+		{ TEXT("Punch"), 2.5f }, { TEXT("Kick"), 2.0f }, { TEXT("Shove"), 1.5f },
+		{ TEXT("SportsTackle"), 1.5f }, { TEXT("SwingingBat"), 2.5f }, { TEXT("CarBumper"), 1.0f },
+		{ TEXT("WreckingBall"), 1.5f }, { TEXT("WindPush"), 1.0f },
+	};
+	for (FImpactorArchetype& Archetype : Starter)
+	{
+		Archetype.ReactionGain = Gains.FindRef(Archetype.Id, 1.0f);
+	}
+	return Starter;
 }
 
 bool UImpactorCatalog::Validate(FText& OutReason) const
