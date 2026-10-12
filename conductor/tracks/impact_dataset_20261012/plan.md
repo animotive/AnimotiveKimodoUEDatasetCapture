@@ -54,7 +54,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement the source pose sampler and source clock (Green) (25d86c7)
 - [x] Task: Write tests for surface-point delivery — contact point on the struck body's surface along the incoming direction; impulse spread across bodies within the contact radius sums to the sampled impulse; off-centre contact yields torque (Red) (ca2867e)
 - [x] Task: Implement root tracking during ragdoll — root follows pelvis ground projection; write tests for the projection math (Red → Green) (c5ea5a0)
-- [ ] Task: Implement invalid-clip detection — NaN transforms, velocity explosion, ground penetration beyond threshold; write tests over synthetic traces (Red → Green)
+- [x] Task: Implement invalid-clip detection — NaN transforms, velocity explosion, ground penetration beyond threshold; write tests over synthetic traces (Red → Green) (eab0c0f)
 - [ ] Task: Implement `AImpactReactionCharacter` — skeletal mesh with no anim instance (posed only by physics), named per-body controls and body modifiers (`W_`/`P_`/`M_`), targets from the source pose sampler in a fixed reference frame carrying root motion **(exempt)** — moved after the pure-logic tasks it is assembled from
 - [ ] Task: Implement impact delivery — `AddImpulseAtLocation` at the surface point, contact-radius spread, burst, sustained force, spawned projectile actors with collision **(exempt for the physics scene; spread maths covered above)**
 - [ ] Task: Wire the reaction character: kinematic pre-roll, kinematic planted/stepping feet, explicit per-body targets in a fixed reference frame, joint projection, one world per process **(exempt)**
