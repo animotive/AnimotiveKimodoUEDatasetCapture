@@ -4,21 +4,35 @@
 
 #include "ImpactRandom.h"
 
-// Red: stubs returning neutral values so the tests compile and fail.
-
 FVector FImpactSurfaceContact::AimOffset(const FVector& Direction, float RadiusCm, float AimFraction, FImpactRandom& Random)
 {
-	return FVector(1, 1, 1) * RadiusCm * 10.0f;
+	// Uniform over the disc: radius by square root, angle uniform.
+	const double DiscRadius = FMath::Max(0.0f, RadiusCm * AimFraction);
+	const double R = DiscRadius * FMath::Sqrt(Random.NextUnit());
+	const double Angle = Random.Range(0.0, 2.0 * UE_DOUBLE_PI);
+	FVector Tangent, Bitangent;
+	Direction.GetSafeNormal().FindBestAxisVectors(Tangent, Bitangent);
+	return Tangent * (R * FMath::Cos(Angle)) + Bitangent * (R * FMath::Sin(Angle));
 }
 
 FVector FImpactSurfaceContact::Contact(const FVector& Center, float RadiusCm, const FVector& Direction, const FVector& Offset)
 {
-	return FVector::ZeroVector;
+	const FVector Travel = Direction.GetSafeNormal();
+	// Only the part of the aim across the line of travel matters; clamp it to graze the surface.
+	FVector Across = Offset - Travel * FVector::DotProduct(Offset, Travel);
+	const double Radius = FMath::Max(0.0f, RadiusCm);
+	if (Across.Size() > Radius)
+	{
+		Across = Across.GetSafeNormal() * Radius;
+	}
+	// The line meets the sphere first on the side facing the impactor.
+	const double Depth = FMath::Sqrt(FMath::Max(0.0, Radius * Radius - Across.SizeSquared()));
+	return Center + Across - Travel * Depth;
 }
 
 FVector FImpactSurfaceContact::Torque(const FVector& Point, const FVector& CenterOfMass, const FVector& Impulse)
 {
-	return FVector::ZeroVector;
+	return FVector::CrossProduct(Point - CenterOfMass, Impulse);
 }
 
 TArray<FImpactBodyShare> FImpactContactSpread::Distribute(
