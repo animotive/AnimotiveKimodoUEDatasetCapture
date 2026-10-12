@@ -20,6 +20,8 @@ enum class EImpactRandomStream : uint8
 	Delivery = 5,
 	StrengthProfile = 6,
 	Caption = 7,
+	/** Aim offset and struck-body choice within a region. */
+	Contact = 8,
 };
 
 /**
