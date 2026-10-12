@@ -43,3 +43,8 @@ _Link: [./conductor/tracks/kimodo_native_export_20260909/](./conductor/tracks/ki
 
 _Shares: sidecar JSON schema + `IDatasetExporter` contract. Not an Unreal plugin._
 _Link: [./conductor/tracks/legacy_injector_20260909/](./conductor/tracks/legacy_injector_20260909/)_
+
+---
+
+## [~] Track: Automated impact reaction dataset generator — GASP source animations on a Physics Control driven character, parameterised impacts (region, intensity, size, direction, timing, bursts, sustained force, projectiles), emergent flinch-to-ragdoll reactions baked to AnimSequence plus sidecar v3, run hands-off headless and resumable
+*Link: [./conductor/tracks/impact_dataset_20261012/](./conductor/tracks/impact_dataset_20261012/)*

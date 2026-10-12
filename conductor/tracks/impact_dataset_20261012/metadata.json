@@ -1,0 +1,8 @@
+{
+  "track_id": "impact_dataset_20261012",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-10-12T00:00:00Z",
+  "updated_at": "2026-10-12T00:00:00Z",
+  "description": "Automated, hands-off pipeline that plays GameAnimationSample animations on a Physics Control driven character, applies parameterised impacts (region, intensity, size, direction, timing, bursts, sustained force, projectiles), lets the reaction emerge from flinch to full ragdoll with recovery, and bakes each result to an AnimSequence plus sidecar JSON for the training dataset."
+}
