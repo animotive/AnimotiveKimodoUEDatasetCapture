@@ -36,19 +36,38 @@ no operator in the loop. `product.md` gains a "Synthetic impact generation" feat
   edited).
 
 ### FR3 — Impact parameter space
-Each clip samples:
+
+**Impactor archetypes (added 2026-10-12).** Every hit is delivered by a named *impactor*,
+sampled from a project-editable catalog (data, not code). An archetype defines what the hit
+*represents* and its physical character:
+- `id`, display noun phrase used in captions ("a small bullet", "a thrown baseball", "a car"),
+  and a one-line plain-language description;
+- physical size (characteristic dimension, cm) and shape;
+- mass range (kg) and speed range (m/s), from which impulse is derived — not picked
+  independently, so a bullet and a car never share an impulse by accident;
+- contact radius range and default delivery mode;
+- verb set for captions ("shot", "hit", "punched", "kicked", "shoved", "struck", "rammed").
+
+Starter catalog: small bullet, rifle round, shotgun blast (multi-pellet burst), thrown stone,
+baseball, football, punch, kick, shove, sports tackle, swinging bat, car bumper, wrecking
+ball, sustained wind/water push. Weights per archetype are set in the batch.
+
+Each clip then samples:
 - **Body region:** head, neck, chest, abdomen, pelvis, upper/lower arm L/R, hand L/R,
   thigh/shin L/R, foot L/R (mapped to physics bodies via a per-skeleton region table).
-- **Intensity:** impulse magnitude buckets (tap / light / medium / heavy / knockdown /
-  extreme), continuous within bucket.
-- **Size:** contact radius (point → fist → shove → wide/vehicle-scale area), distributing
-  impulse across affected bodies.
+- **Impactor:** archetype from the catalog; mass, speed, radius drawn within its ranges.
+- **Intensity:** derived from the resulting impulse into descriptive buckets (tap / light /
+  medium / heavy / knockdown / extreme) used in captions and the report; not sampled
+  independently.
+- **Size:** contact radius from the archetype (point → fist → shove → vehicle-scale area),
+  distributing impulse across affected bodies.
 - **Direction:** sampled on a sphere relative to character facing (front/back/left/right/
   above/below + oblique).
 - **Timing:** normalised phase in the source animation when the first hit lands.
-- **Delivery mode:** instant impulse | multi-hit burst (2–N hits, spacing sampled) |
-  sustained force over a duration | physical projectile actor (sphere/box/capsule, mass,
-  velocity) that actually collides.
+- **Delivery mode:** archetype default, optionally overridden by batch weights: instant
+  impulse | multi-hit burst (2–N hits, spacing sampled) | sustained force over a duration |
+  physical projectile actor (shape and size from the archetype, mass, velocity) that actually
+  collides.
 
 ### FR4 — Reaction and outcome
 - Physics Control strength profile sampled per clip (stiff → loose).
@@ -70,11 +89,18 @@ Each clip samples:
 ### FR6 — Labels and sidecar
 - Sidecar JSON per clip, **schema v3** (additive over v2): `clipSource: "synthetic_impact"`,
   raw input layers absent (not zero-filled), new `impact` block — source anim + start time,
-  every hit (frame, region, body, world/local direction, impulse, radius, mode, projectile
-  spec), control profile, detected outcome + outcome frame, seed.
-- Auto-generated natural-language caption from a template set, e.g. *"a person jogging is
-  struck hard in the chest from the left and falls backwards"*, plus tags
-  (`impact`, region, outcome, intensity bucket, source-motion type).
+  every hit (frame, impactor archetype id + noun + description + size + mass + speed, region,
+  body, world/local direction, impulse, radius, mode, projectile spec), control profile,
+  detected outcome + outcome frame, seed.
+- **Human-language description of what happens**, generated per clip for training: subject +
+  source motion + impactor + region + direction + outcome, e.g.
+  *"A person is shot in the foot with a small bullet while running and stumbles but keeps
+  going."*, *"A person walking is rammed from the left by a car and is thrown to the
+  ground."*, *"A person standing idle is punched in the face from the front and staggers
+  backwards."* Multiple template phrasings per slot so captions are not one fixed sentence
+  shape. Source motion words come from a per-animation description table (data), falling
+  back to a name-derived phrase.
+- Tags: `impact`, impactor id, region, outcome, intensity bucket, source-motion type.
 - Clips flagged invalid (physics explosion, NaN, interpenetration with ground beyond
   threshold, ceiling hit) are written with a reason or discarded per batch setting.
 
@@ -105,13 +131,15 @@ Each clip samples:
    editor interaction.
 2. Each clip yields a playable `UAnimSequence` on the source skeleton and a valid v3 sidecar
    that round-trips.
-3. All four outcome classes appear in a mixed-intensity batch, and the distribution report
+3. Every clip's caption names its impactor, body region, source motion and outcome, and
+   the sidecar records the impactor's size and description.
+4. All four outcome classes appear in a mixed-intensity batch, and the distribution report
    shows them.
-4. All four delivery modes produce clips; projectile clips show a real collision.
-5. Killing the process mid-batch and rerunning completes the batch with no duplicates.
-6. Same seed + index regenerates identical parameters (test) and visually identical motion
+5. All four delivery modes produce clips; projectile clips show a real collision.
+6. Killing the process mid-batch and rerunning completes the batch with no duplicates.
+7. Same seed + index regenerates identical parameters (test) and visually identical motion
    (manual).
-7. Panel preview shows hits with debug draw in PIE.
+8. Panel preview shows hits with debug draw in PIE.
 
 ## Out of Scope
 - Get-up / stand-up animations after knockdown (ragdoll settles; no authored recovery).

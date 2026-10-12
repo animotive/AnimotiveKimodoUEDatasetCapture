@@ -143,8 +143,10 @@ fixed-step frame index.
 
 **Pipeline per clip:**
 1. **Parameters.** `(batch seed, clip index)` derives a per-clip RNG stream; the sampler draws
-   source anim + start phase, Physics Control strength profile, and the hit schedule (body
-   region, intensity bucket, contact radius, direction, timing, delivery mode). Parameters are
+   source anim + start phase, Physics Control strength profile, and the hit schedule (impactor
+   archetype from a data catalog — what hit them, its size, mass and speed — body region,
+   direction, timing, delivery mode). Impulse and intensity are derived from the archetype,
+   never sampled independently. Parameters are
    pure data and are hashed into a deterministic clip ID.
 2. **Character.** A dedicated spawned actor — not the player pawn — with the source skeletal
    mesh, single-node playback of the source anim (root motion applied to the actor), and a
@@ -162,7 +164,9 @@ fixed-step frame index.
    pelvis ground projection.
 6. **Bake.** Buffer → `UAnimSequence` on the source skeleton through
    `IAnimationDataController`, saved under `<OutputRoot>/<Batch>/<ClipId>`, plus a schema v3
-   sidecar and a generated caption.
+   sidecar and a generated human-language description naming the source motion, the
+   impactor, the region and the outcome ("A person is shot in the foot with a small bullet
+   while running and stumbles but keeps going").
 7. **Manifest.** Completed clip ID appended and flushed atomically; rerun skips completed IDs.
 
 **Hosts.** One runner, two hosts: the editor panel runs it in PIE for preview and tuning with
