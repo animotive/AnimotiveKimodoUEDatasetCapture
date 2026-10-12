@@ -23,6 +23,7 @@ public class KimodoDatasetCaptureTests : ModuleRules
 				// key-to-bit table rather than trusting it.
 				"InputCore",
 				"KimodoDatasetCapture",
+				"KimodoImpactCapture",
 				"MovieScene",
 				"MovieSceneTracks",
 				// The Physics Control feasibility probe drives UPhysicsControlComponent directly.
