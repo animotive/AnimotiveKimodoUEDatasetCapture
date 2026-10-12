@@ -16,6 +16,7 @@
 |--------|------|---------------|----------------|
 | `KimodoDatasetCapture` | `UncookedOnly` | `Default` | Per-frame input sampling, capture data structs, sidecar JSON schema (versioned `USTRUCT`s), trim math |
 | `KimodoDatasetCaptureEditor` | `Editor` | `PostEngineInit` | Slate capture panel, `UTakeRecorderSource` registration, MovieScene input track + track editor, PIE viewport overlay, labelling & session triage UI, export UI |
+| `KimodoImpactCapture` (added 2026-10-12) | `UncookedOnly` | `Default` | Synthetic impact generation: batch definition, deterministic parameter sampling, reaction character, outcome detection, fixed-step pose recorder, `AnimSequence` bake, batch runner, manifest |
 | `KimodoDatasetCaptureTests` | `Editor` | `PostDefault` | UE Automation Tests |
 
 `UncookedOnly` for the capture module is deliberate: the code is live during PIE (which runs
@@ -23,6 +24,8 @@ in the editor process) but cannot reach a cooked client build. The "no shipping 
 non-goal is enforced by the build system, not by convention.
 
 Dependency direction: `Editor` -> `Capture`. **Never the reverse.**
+`KimodoImpactCapture` -> `KimodoDatasetCapture` (it reuses the sidecar schema and serializer);
+`Editor` -> `KimodoImpactCapture`. The capture module never depends on the impact module.
 
 ### Include order (added 2026-09-09)
 
@@ -49,10 +52,15 @@ above is what protects this plugin's code from it.
 **`.uplugin` plugin dependencies:**
 - `Takes` — Take Recorder (provides `TakeRecorder`, `TakesCore`, `TakeTrackRecorders`, `TakeMovieScene`)
 - `EnhancedInput` — semantic action layer
+- `PhysicsControl` (added 2026-10-12) — `UPhysicsControlComponent` drives the reaction
+  character toward the animated pose. Engine plugin under `Plugins/Experimental`, marked Beta
+  in 5.7; its `PhysicsControl` module is `Runtime`, which is fine because only our
+  `UncookedOnly` module links it.
 - Sequencer editor surface as needed for the custom track editor
 
 **Key module dependencies:**
 - Capture module: `Core`, `CoreUObject`, `Engine`, `EnhancedInput`, `MovieScene`, `MovieSceneTracks`, `Json`, `JsonUtilities`, `TakesCore`
+- Impact module (added 2026-10-12): `Core`, `CoreUObject`, `Engine`, `PhysicsCore`, `PhysicsControl`, `Json`, `JsonUtilities`, `KimodoDatasetCapture`
 - Editor module: the above plus `Slate`, `SlateCore`, `ToolWidgets`, `UnrealEd`, `EditorFramework`, `LevelSequence`, `LevelSequenceEditor`, `Sequencer`, `MovieSceneTools`, `TakeRecorder`, `TakeTrackRecorders`, `WorkspaceMenuStructure`, `InputCore`
 
 ## Architecture
@@ -108,12 +116,63 @@ and degrades to the raw layer when the opt-in layers are not present.
   `RawInput` layer split into `RawGamepadInput` + `RawKeyboardMouseInput`, both always
   recorded. v1 files are rejected rather than upgraded: nothing had been captured at v1, so a
   migration path would be untested code guarding an empty set.
+- **Schema v3** (2026-10-12, planned in `impact_dataset_20261012`): additive over v2. Adds
+  `clipSource` (`player_capture` | `synthetic_impact`) and an optional `impact` block
+  (source anim + start time, every hit, control profile, detected outcome + frame, seed).
+  Synthetic clips omit the raw input layers rather than writing zeros, because a zeroed stick
+  is a real reading. Unlike v1, v2 data may now exist, so v2 files keep reading and default
+  to `player_capture`.
 - **Wire format** (full notes in `DatasetSidecar.h`): lower camel
   case field names; booleans keep the Unreal `b` prefix on the wire (`bIsValid`); enum fields
   serialise as enumerator **names**, so enumerators may be added but never renamed or
   reordered; floats are written at full double precision and round-trip exactly. The test
   suite writes a live sample to `Saved/KimodoDatasetCapture/SidecarSchemaSample.json`, so the
   documented format cannot drift from the code.
+
+### Synthetic impact generation (added 2026-10-12)
+
+A second producer of dataset clips, with no operator and no Take Recorder. Track:
+`impact_dataset_20261012`.
+
+**Why Take Recorder is not the host here.** A Take per clip creates a `LevelSequence`, an
+`AnimSequence`, and drives a record lifecycle built for a human pressing buttons. At the target
+volume (tens of thousands of clips per batch) that cost dominates. Clips are instead sampled
+directly and baked once. Frame alignment is still structural, for a different reason: there is
+no input stream to align with, and every pose and every hit is stamped with the same
+fixed-step frame index.
+
+**Pipeline per clip:**
+1. **Parameters.** `(batch seed, clip index)` derives a per-clip RNG stream; the sampler draws
+   source anim + start phase, Physics Control strength profile, and the hit schedule (body
+   region, intensity bucket, contact radius, direction, timing, delivery mode). Parameters are
+   pure data and are hashed into a deterministic clip ID.
+2. **Character.** A dedicated spawned actor — not the player pawn — with the source skeletal
+   mesh, single-node playback of the source anim (root motion applied to the actor), and a
+   `UPhysicsControlComponent` whose controls and body modifiers are created from limb bones
+   (`CreateControlsAndBodyModifiersFromLimbBones`), then driven by
+   `SetControlMultiplier(s)` / `SetBodyModifiersMovementType` /
+   `SetBodyModifiersPhysicsBlendWeight` as the strength profile evolves.
+3. **Impact.** Instant impulse, burst, sustained force, or a spawned projectile actor that
+   genuinely collides. Contact size spreads impulse across bodies inside the radius.
+4. **Outcome.** Pure-logic classifier over per-frame pelvis height, centre of mass against
+   the support polygon, and control blend: `flinch` / `stagger` / `knockdown` / `ragdoll`.
+   Recoverable → blend control strength back up; balance lost → strength to zero, settle.
+5. **Record.** Component-space bone transforms written each fixed step into a buffer reserved
+   at clip start from `max clip frames × bone count`. During ragdoll the root bone follows the
+   pelvis ground projection.
+6. **Bake.** Buffer → `UAnimSequence` on the source skeleton through
+   `IAnimationDataController`, saved under `<OutputRoot>/<Batch>/<ClipId>`, plus a schema v3
+   sidecar and a generated caption.
+7. **Manifest.** Completed clip ID appended and flushed atomically; rerun skips completed IDs.
+
+**Hosts.** One runner, two hosts: the editor panel runs it in PIE for preview and tuning with
+debug draw; a headless host runs it as fast as the fixed step allows, sharded with
+`-Batch= -Start= -Count=`. Which headless host (commandlet ticking its own world vs a
+`-game -NullRHI` run) is decided by the Phase 1 throughput spike and recorded here.
+
+**Logic stays out of the actor.** Sampling, classification, clip-window state, strength
+blending, root projection, invalid detection, manifest and report are plain types tested
+headless; the actor and the physics scene are the exempt layer.
 
 ### Export
 
@@ -169,6 +228,12 @@ Framework: **UE Automation Tests** in `KimodoDatasetCaptureTests`.
   -Unattended -NullRHI -nopause
 ```
 
+Impact module coverage (2026-10-12): deterministic per-clip RNG, parameter bounds at bucket
+edges, region-to-body mapping, impulse distribution summing to the sampled impulse, outcome
+classification on synthetic traces, clip-window state machine, pose buffer reservation, bake
+frame/bone/transform equality, v3 round-trip, caption coverage of every outcome × mode,
+manifest resume and sharding.
+
 Required coverage: frame alignment of input samples to animation frames, sidecar JSON
 round-trip (write -> read -> compare), trim math at boundary values, graceful degradation when
 Enhanced Input or `ACharacter` is absent.
@@ -210,6 +275,7 @@ AnimotiveKimodoDatasetCapture/
 ├── AnimotiveKimodoDatasetCapture.uplugin
 ├── Source/
 │   ├── KimodoDatasetCapture/{Public,Private}/
+│   ├── KimodoImpactCapture/{Public,Private}/
 │   ├── KimodoDatasetCaptureEditor/{Public,Private}/
 │   └── KimodoDatasetCaptureTests/Private/
 ├── Resources/            # plugin icon
