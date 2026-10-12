@@ -18,7 +18,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 
 ## Phase 2: Batch Definition and Deterministic Parameter Sampling
 
-- [ ] Task: Write tests for the deterministic RNG stream — `(seed, clipIndex)` yields identical streams across runs, different indices diverge, independent of evaluation order (Red)
+- [x] Task: Write tests for the deterministic RNG stream — `(seed, clipIndex)` yields identical streams across runs, different indices diverge, independent of evaluation order (Red) (c485d52)
 - [ ] Task: Implement per-clip RNG derivation (Green)
 - [ ] Task: Write tests for the impactor archetype catalog — loaded as data; every archetype has noun phrase, description, size, mass/speed/radius ranges and verbs; impulse derived from sampled mass × speed stays within the archetype's implied range; catalog weights respected over N samples; empty or malformed catalog fails with a stated reason (Red)
 - [ ] Task: Implement `UImpactorCatalog` data asset with the starter catalog (small bullet … wrecking ball) and archetype sampling (Green)
@@ -45,6 +45,8 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [ ] Task: Implement the strength profile and blend logic, matching the approved spike values in `tech-stack.md` (Green)
 - [ ] Task: Write tests for the balance planner as pure logic — capture point from CoM, excess velocity and height; low-pass on excess velocity; step trigger threshold; landing at capture point with stance width; reach clamp; feet alternate; minimum stance frames; step budget; fall on repeated short steps or low CoM; settle detection; target frame ends centred over new footing (Red)
 - [ ] Task: Implement `FImpactBalancePlanner` (Green)
+- [ ] Task: Write tests for fall decisions as pure logic — high-impact threshold (impulse vs body and struck-body mass) releases to full ragdoll with no recovery; trip: a leg hit on a moving source disrupts that leg's stride and, when momentum carries the CoM past a support the feet cannot catch, falls forward; moving sources run the capture-point balance check (stumble, recover or fall); outcome records the trip (Red)
+- [ ] Task: Implement fall and trip decisions in the balance planner (Green)
 - [ ] Task: Write tests for the foot swing arc — endpoints exact, peak lift at mid-swing, monotonic horizontal progress, smooth start and end (Red)
 - [ ] Task: Implement the swing arc (Green)
 - [ ] Task: Write tests for the source clock — moving/standing classified once from unwarped root speed; time warp drop proportional to momentum removed along travel, clamped, recovering over the configured frames; root motion carried across loops (Red)
