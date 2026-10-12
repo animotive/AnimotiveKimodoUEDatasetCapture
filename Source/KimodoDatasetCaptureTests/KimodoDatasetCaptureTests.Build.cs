@@ -28,6 +28,8 @@ public class KimodoDatasetCaptureTests : ModuleRules
 				// The Physics Control feasibility probe drives UPhysicsControlComponent directly.
 				"PhysicsControl",
 				"PhysicsCore",
+				// Two-bone leg IK in the impact recorder spike.
+				"AnimationCore",
 			});
 	}
 }

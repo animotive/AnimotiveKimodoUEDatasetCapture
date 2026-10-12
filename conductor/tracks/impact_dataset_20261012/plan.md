@@ -41,10 +41,18 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [ ] Task: Implement the outcome classifier as pure logic over per-frame state (Green)
 - [ ] Task: Write tests for the clip window state machine — pre-roll → hit(s) → reaction → settle/recover → end; settle requires velocity under threshold for N frames; max-reaction ceiling ends clip and records reason (Red)
 - [ ] Task: Implement the clip window state machine (Green)
-- [ ] Task: Write tests for control strength profile — sampled profile within bounds; recover blend returns to target strength over configured frames; ragdoll transition zeroes strength (Red)
-- [ ] Task: Implement the strength profile and blend logic (Green)
+- [ ] Task: Write tests for control strength profile — sampled profile within bounds; per-body release by body-tree distance from contact (strongest at contact, joint release only within 2 links); impact phase (upper body near-zero for the impact frames, then blend); legs follow the hips' impact curve on moving sources; recover blend returns to full strength; ragdoll transition zeroes strength; no strength changes in a single frame (Red)
+- [ ] Task: Implement the strength profile and blend logic, matching the approved spike values in `tech-stack.md` (Green)
+- [ ] Task: Write tests for the balance planner as pure logic — capture point from CoM, excess velocity and height; low-pass on excess velocity; step trigger threshold; landing at capture point with stance width; reach clamp; feet alternate; minimum stance frames; step budget; fall on repeated short steps or low CoM; settle detection; target frame ends centred over new footing (Red)
+- [ ] Task: Implement `FImpactBalancePlanner` (Green)
+- [ ] Task: Write tests for the foot swing arc — endpoints exact, peak lift at mid-swing, monotonic horizontal progress, smooth start and end (Red)
+- [ ] Task: Implement the swing arc (Green)
+- [ ] Task: Write tests for the source clock — moving/standing classified once from unwarped root speed; time warp drop proportional to momentum removed along travel, clamped, recovering over the configured frames; root motion carried across loops (Red)
+- [ ] Task: Implement the source pose sampler and source clock (Green)
 - [ ] Task: Implement `AImpactReactionCharacter` — skeletal mesh, single-node source anim playback with root motion applied to the actor, `UPhysicsControlComponent` setup from the profile **(exempt)**
-- [ ] Task: Implement impact delivery — instant impulse, burst, sustained force, spawned projectile actors with collision **(exempt)**
+- [ ] Task: Write tests for surface-point delivery — contact point on the struck body's surface along the incoming direction; impulse spread across bodies within the contact radius sums to the sampled impulse; off-centre contact yields torque (Red)
+- [ ] Task: Implement impact delivery — `AddImpulseAtLocation` at the surface point, contact-radius spread, burst, sustained force, spawned projectile actors with collision **(exempt for the physics scene; spread maths covered above)**
+- [ ] Task: Wire the reaction character: kinematic pre-roll, kinematic planted/stepping feet, explicit per-body targets in a fixed reference frame, joint projection, one world per process **(exempt)**
 - [ ] Task: Implement root tracking during ragdoll — root follows pelvis ground projection; write tests for the projection math (Red → Green)
 - [ ] Task: Implement invalid-clip detection — NaN transforms, velocity explosion, ground penetration beyond threshold; write tests over synthetic traces (Red → Green)
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Reaction Character, Impact Delivery and Outcome Detection' (Protocol in workflow.md)
@@ -53,6 +61,10 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 
 - [ ] Task: Write tests for the pose buffer — pre-reserved from max clip frames × bone count at clip start, no reallocation across a full simulated clip, overflow invalidates with reason (Red)
 - [ ] Task: Implement the fixed-step pose recorder (component-space transforms) (Green)
+- [ ] Task: Write tests for the pose rebuild — body rotations kept, positions rebuilt from source bone lengths (no joint separation for any input), non-body bones from the source, root carries displacement (Red)
+- [ ] Task: Implement the pose rebuild (Green)
+- [ ] Task: Write tests for leg IK in the recorder — planted foot lands exactly on target; source-contact detection for moving sources; knee follows the pole; bones below the foot keep their locals; unreachable targets do not stretch (Red)
+- [ ] Task: Implement recorder leg IK (Green)
 - [ ] Task: Write tests for the bake — recorded buffer → `UAnimSequence` with matching frame count, frame rate, bone tracks, and sampled transforms equal at first/middle/last frame (Red)
 - [ ] Task: Implement the bake via `IAnimationDataController` and save under `<OutputRoot>/<Batch>/<ClipId>` (Green)
 - [ ] Task: Write tests for sidecar schema v3 — `clipSource`, absent input layers, `impact` block with all hits and outcome; v2 files still read; v3 round-trips (Red)

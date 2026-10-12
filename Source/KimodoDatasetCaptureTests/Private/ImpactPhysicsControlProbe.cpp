@@ -16,6 +16,8 @@
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "Misc/AutomationTest.h"
+#include "TwoBoneIK.h"
+#include "Misc/FileHelper.h"
 #include "PhysicsControlComponent.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/PhysicsAsset.h"
@@ -76,6 +78,8 @@ namespace KimodoImpactProbe
 		float ParentStrength = 16.0f;
 		float ImpulseKgCmPerS = 0.0f;
 		bool bRecordPose = false;
+		/** Capture-point stepping balance layer (spike). */
+		bool bStepping = false;
 	};
 
 	struct FTrace
@@ -86,6 +90,20 @@ namespace KimodoImpactProbe
 		TArray<FString> Notes;
 		/** Per frame, per mesh bone, parent-space transforms ready to bake. Filled when recording. */
 		TArray<TArray<FTransform>> LocalPoses;
+		/** Source animation's parent-space pose on the same frames, for comparison. */
+		TArray<TArray<FTransform>> SourceLocalPoses;
+		/** Component-space recorded and source poses on the same frames. */
+		TArray<TArray<FTransform>> RecordedComponentPoses;
+		TArray<TArray<FTransform>> SourceComponentPoses;
+		/** Per-frame foot diagnostics as CSV rows (spike). */
+		TArray<FString> FootCsv;
+		/** Largest raw physics separation between a calf and its foot (spike diagnostic). */
+		float MaxAnkleGapCm = 0.0f;
+		/** Per recorded frame: raw physics calf_l parent-space rotation deviation from source (deg). */
+		TArray<float> RawCalfDeviation;
+		int32 Steps = 0;
+		bool bFell = false;
+		FVector FinalOffset = FVector::ZeroVector;
 		int32 BodyCount = 0;
 		int32 ControlCount = 0;
 		float SphereDrop = 0.0f;
@@ -244,6 +262,15 @@ namespace KimodoImpactProbe
 		MeshComponent->RegisterComponent();
 		Trace.BodyCount = MeshComponent->Bodies.Num();
 
+		// Projection pulls a separated joint back together each step instead of letting it stretch.
+		for (FConstraintInstance* Constraint : MeshComponent->Constraints)
+		{
+			if (Constraint)
+			{
+				Constraint->SetProjectionParams(true, 1.0f, 1.0f, 1.0f, 5.0f);
+			}
+		}
+
 		UPhysicsControlComponent* Control = NewObject<UPhysicsControlComponent>(Character);
 		Control->RegisterComponent();
 
@@ -273,6 +300,38 @@ namespace KimodoImpactProbe
 				Trace.ControlCount += Control->CreateNamedControl(ParentControlName(Bone), MeshComponent, Parent, MeshComponent, Bone, ParentData, FPhysicsControlTarget(), NAME_None) ? 1 : 0;
 			}
 		}
+
+		// Body-tree distance from the contact body, for local release around the hit.
+		TArray<int32> ContactDistance;
+		ContactDistance.Init(MAX_int32, Bindings.Num());
+		{
+			auto IndexOf = [&Bindings](FName Bone) { return Bindings.IndexOfByPredicate([Bone](const FBodyBinding& B) { return B.Bone == Bone; }); };
+			TArray<int32> Queue;
+			const int32 Contact = IndexOf(ChestBone);
+			if (Contact != INDEX_NONE)
+			{
+				ContactDistance[Contact] = 0;
+				Queue.Add(Contact);
+			}
+			for (int32 Head = 0; Head < Queue.Num(); ++Head)
+			{
+				const int32 Current = Queue[Head];
+				for (int32 Other = 0; Other < Bindings.Num(); ++Other)
+				{
+					const bool bAdjacent = Bindings[Other].ParentBone == Bindings[Current].Bone || Bindings[Current].ParentBone == Bindings[Other].Bone;
+					if (bAdjacent && ContactDistance[Other] == MAX_int32)
+					{
+						ContactDistance[Other] = ContactDistance[Current] + 1;
+						Queue.Add(Other);
+					}
+				}
+			}
+		}
+		auto IsLeg = [](FName Bone)
+		{
+			const FString Name = Bone.ToString();
+			return Name.StartsWith(TEXT("thigh")) || Name.StartsWith(TEXT("calf")) || Name.StartsWith(TEXT("foot")) || Name.StartsWith(TEXT("ball"));
+		};
 
 		// Start every body exactly on the first sampled pose.
 		TArray<FTransform> Pose;
@@ -305,12 +364,290 @@ namespace KimodoImpactProbe
 		}
 		TArray<FTransform> RecordedComponentSpace;
 		RecordedComponentSpace.SetNum(Ref.GetNum());
+
+		// ---- Capture-point stepping (spike) ----------------------------------------------------
+		// Offset: horizontal displacement of the whole target frame, driven by the body's excess
+		// momentum, so a push moves the character instead of springing it back.
+		// Feet: after the hit, each foot is pinned where it stood (foot IK) until the planner
+		// steps it along an arc to the capture point.
+		const int32 HitFrameIndex = PreRollFrames + 1;
+		constexpr int32 SwingFrames = 15;
+		constexpr float SwingLiftCm = 15.0f;
+		constexpr float StepTriggerCm = 15.0f;
+		constexpr float MaxStepCm = 70.0f;
+		constexpr float StanceHalfWidthCm = 11.0f;
+		constexpr int32 SettleHoldFrames = 20;
+		constexpr int32 SettleBlendFrames = 20;
+		struct FFoot
+		{
+			int32 Binding = INDEX_NONE;
+			bool bPinned = false;
+			FVector Planted = FVector::ZeroVector;
+			bool bSwing = false;
+			FVector SwingFrom = FVector::ZeroVector;
+			FVector SwingTo = FVector::ZeroVector;
+			int32 SwingStart = 0;
+			FVector Current = FVector::ZeroVector;
+		};
+		FFoot Feet[2];
+		FVector FootIKTarget[2] = { FVector::ZeroVector, FVector::ZeroVector };
+		// Lowest source foot height per side over one loop: the source's ground level for each foot.
+		float SourceFootGroundZ[2] = { MAX_flt, MAX_flt };
+		{
+			TArray<FTransform> Probe;
+			for (int32 Sample = 0; Sample <= 60; ++Sample)
+			{
+				Sampler.SampleLoop(Sampler.Length * Sample / 60.0, Probe);
+				for (int32 Side = 0; Side < 2; ++Side)
+				{
+					const int32 FootIndex = Ref.FindBoneIndex(Side == 0 ? TEXT("foot_l") : TEXT("foot_r"));
+					if (FootIndex != INDEX_NONE)
+					{
+						SourceFootGroundZ[Side] = FMath::Min(SourceFootGroundZ[Side], float(Probe[FootIndex].GetLocation().Z));
+					}
+				}
+			}
+		}
+		bool bFootIK[2] = { false, false };
+		Feet[0].Binding = Bindings.IndexOfByPredicate([](const FBodyBinding& B) { return B.Bone == FName(TEXT("foot_l")); });
+		Feet[1].Binding = Bindings.IndexOfByPredicate([](const FBodyBinding& B) { return B.Bone == FName(TEXT("foot_r")); });
+		FVector Offset = FVector::ZeroVector;
+		FVector FootingAtHit = FVector::ZeroVector;
+		FVector SmoothedExcess = FVector::ZeroVector;
+		int32 UncaughtSteps = 0;
+		int32 LastSwingSide = INDEX_NONE;
+		int32 LastLandFrame = INDEX_NONE;
+		constexpr int32 MinStanceFrames = 8;
+		constexpr int32 MaxSteps = 5;
+		bool bFeetReleased = false;
+		constexpr int32 MaxUncaughtSteps = 3;
+		constexpr float FallComHeightCm = 55.0f;
+		int32 CalmFrames = 0;
+		int32 SettleStart = INDEX_NONE;
+		// Classified once from the source's own (unwarped) root speed. Re-deciding every frame from
+		// the warped speed reclassified a slowed run as idle mid-stumble: its feet were pinned
+		// mid-stride and leg IK wrenched the legs up to 136 degrees, leaving the feet floating.
+		const bool bMovingSource = Sampler.LoopDelta.GetLocation().Size2D() / FMath::Max(Sampler.Length, UE_SMALL_NUMBER) > 100.0;
+		const bool bPlanner = Settings.bStepping && Scenario == EScenario::Controlled && Feet[0].Binding != INDEX_NONE && Feet[1].Binding != INDEX_NONE;
+		TArray<FTransform> NextPose;
+
+		// Source clock. A hit against the direction of travel slows the source playback (and its
+		// root motion) in proportion to the momentum it removed, then recovers.
+		double SourceTime = 0.0;
+		float PlaybackDrop = 0.0f;
+		constexpr int32 PlaybackRecoverFrames = 48;
+		auto PlaybackRate = [&](int32 Frame)
+		{
+			if (Frame <= HitFrameIndex + 2)
+			{
+				return 1.0f;
+			}
+			const float Recover = FMath::SmoothStep(0.0f, 1.0f, float(Frame - (HitFrameIndex + 2)) / PlaybackRecoverFrames);
+			return 1.0f - PlaybackDrop * (1.0f - Recover);
+		};
+		// Leg multipliers are smoothed so strength never switches in a single frame.
+		TArray<float> LegWorldScale;
+		LegWorldScale.Init(1.0f, Bindings.Num());
+
 		for (int32 Frame = 0; Frame < PreRollFrames + ReactionFrames; ++Frame)
 		{
-			Sampler.Sample(Frame * StepSeconds, Pose);
-			for (const FBodyBinding& Binding : Bindings)
+			Sampler.Sample(SourceTime, Pose);
+
+			if (bPlanner && Frame >= HitFrameIndex && !Trace.bFell)
 			{
-				const FTransform Target = Pose[Binding.BoneIndex] * ReferenceTM;
+				// Source pelvis velocity, for the momentum the animation itself carries.
+				Sampler.Sample(SourceTime + StepSeconds * PlaybackRate(Frame), NextPose);
+				const int32 PelvisIndex = Ref.FindBoneIndex(PelvisBone);
+				const FVector SourceVelocity = ReferenceTM.TransformVectorNoScale(NextPose[PelvisIndex].GetLocation() - Pose[PelvisIndex].GetLocation()) / StepSeconds;
+
+				// Simulated centre of mass and velocity.
+				float Mass = 0.0f;
+				FVector Com = FVector::ZeroVector, ComVelocity = FVector::ZeroVector;
+				for (const FBodyBinding& Binding : Bindings)
+				{
+					if (const FBodyInstance* Body = MeshComponent->GetBodyInstance(Binding.Bone))
+					{
+						const float M = Body->GetBodyMass();
+						Mass += M;
+						Com += Body->GetCOMPosition() * M;
+						ComVelocity += Body->GetUnrealWorldVelocity() * M;
+					}
+				}
+				Com /= FMath::Max(Mass, 1.0f);
+				ComVelocity /= FMath::Max(Mass, 1.0f);
+				FVector Excess = ComVelocity - SourceVelocity;
+				Excess.Z = 0.0;
+				if (Frame == HitFrameIndex + 2 && bMovingSource && Settings.bStepping)
+				{
+					const FVector Travel = SourceVelocity.GetSafeNormal2D();
+					const float Lost = -float(FVector::DotProduct(Excess, Travel));
+					PlaybackDrop = FMath::Clamp(Lost / FMath::Max(float(SourceVelocity.Size2D()), 1.0f) * 2.5f, 0.0f, 0.85f);
+					Trace.Notes.Add(FString::Printf(TEXT("run deceleration: lost %.0f cm/s of %.0f, playback drop %.2f"), Lost, SourceVelocity.Size2D(), PlaybackDrop));
+				}
+
+				// Low-pass: an arm or the struck chest spikes for a frame or two; the capture point
+				// should follow the whole body's momentum, not that spike.
+				SmoothedExcess = FMath::Lerp(SmoothedExcess, Excess, 0.3f);
+				Excess = SmoothedExcess;
+
+				if (Com.Z < FallComHeightCm)
+				{
+					Trace.bFell = true;
+					Control->SetControlsInSetEnabled(TEXT("All"), false);
+				}
+
+				// The target frame carries the excess momentum while it lasts.
+				if (bMovingSource)
+				{
+					// Along the direction of travel the time warp owns deceleration; integrating that
+					// component too dragged the frame forward against it (run 30k drifted 2 m).
+					const FVector Travel = SourceVelocity.GetSafeNormal2D();
+					Offset += (Excess - Travel * FVector::DotProduct(Excess, Travel)) * StepSeconds;
+				}
+				else
+				{
+					Offset += Excess * StepSeconds * 0.8f;
+				}
+				if (!bMovingSource && Trace.Steps > 0 && Feet[0].bPinned && Feet[1].bPinned)
+				{
+					// Once the character has stepped, its new home is over its new footing.
+					FVector FootingShift = (Feet[0].Planted + Feet[1].Planted) * 0.5f - FootingAtHit;
+					FootingShift.Z = 0.0;
+					Offset = FMath::Lerp(Offset, FootingShift, 0.08f);
+				}
+
+				if (!bMovingSource && !Trace.bFell)
+				{
+					const FVector CapturePoint = Com + Excess * FMath::Sqrt(FMath::Max(float(Com.Z), 10.0f) / 980.0f);
+
+					for (FFoot& Foot : Feet)
+					{
+						if (!Foot.bPinned)
+						{
+							// Pin each foot where it stands at the hit.
+							Foot.bPinned = true;
+							Foot.Planted = MeshComponent->GetBodyInstance(Bindings[Foot.Binding].Bone)->GetUnrealWorldTransform().GetLocation();
+							Foot.Current = Foot.Planted;
+							// A spring-held foot sat 8-13 cm off its pin and rocked under the body's
+							// weight. Kinematic feet are exact: the simulated leg between the pelvis and
+							// the fixed foot resolves knee and hip, which is foot IK done by physics.
+							Control->SetBodyModifierMovementType(ModifierName(Bindings[Foot.Binding].Bone), EPhysicsMovementType::Kinematic);
+						}
+					}
+					if (FootingAtHit.IsZero())
+					{
+						FootingAtHit = (Feet[0].Planted + Feet[1].Planted) * 0.5f;
+					}
+					const FVector Mid = (Feet[0].Planted + Feet[1].Planted) * 0.5f;
+					const float Error = float(FVector::Dist2D(CapturePoint, Mid));
+					const bool bAnySwing = Feet[0].bSwing || Feet[1].bSwing;
+
+					const bool bStanceLongEnough = LastLandFrame == INDEX_NONE || Frame - LastLandFrame >= MinStanceFrames;
+					if (!bAnySwing && SettleStart == INDEX_NONE && Error > StepTriggerCm && bStanceLongEnough)
+					{
+						CalmFrames = 0;
+						// Step with the foot farther from the capture point; keep stance width.
+						// Feet alternate. Choosing "the foot farther from the capture point" every time
+						// picked the same foot eight steps running and pedalled it in place.
+						const int32 SwingSide = LastSwingSide == INDEX_NONE
+							? (FVector::Dist2D(CapturePoint, Feet[0].Planted) > FVector::Dist2D(CapturePoint, Feet[1].Planted) ? 0 : 1)
+							: 1 - LastSwingSide;
+						FFoot& Swing = Feet[SwingSide];
+						const FFoot& Stance = (&Swing == &Feet[0]) ? Feet[1] : Feet[0];
+						FVector Direction = (CapturePoint - Mid);
+						Direction.Z = 0.0;
+						Direction = Direction.GetSafeNormal();
+						FVector Lateral(-Direction.Y, Direction.X, 0.0);
+						const float Side = FMath::Sign(float(FVector::DotProduct(Swing.Planted - Stance.Planted, Lateral)));
+						FVector Landing = CapturePoint + Lateral * (Side * StanceHalfWidthCm);
+						Landing.Z = Swing.Planted.Z;
+						// Step as far as a leg reaches toward the capture point. A step that falls short
+						// buys time for the next one; repeated short steps mean balance is lost.
+						FVector Reach = Landing - Swing.Planted;
+						Reach.Z = 0.0;
+						if (Reach.Size() > MaxStepCm)
+						{
+							Landing = Swing.Planted + Reach.GetSafeNormal() * MaxStepCm;
+							++UncaughtSteps;
+						}
+						else
+						{
+							UncaughtSteps = 0;
+						}
+						if (UncaughtSteps > MaxUncaughtSteps || Trace.Steps >= MaxSteps)
+						{
+							Trace.bFell = true;
+							Control->SetControlsInSetEnabled(TEXT("All"), false);
+						}
+						else
+						{
+							Swing.bSwing = true;
+							LastSwingSide = SwingSide;
+							Swing.SwingFrom = Swing.Current;
+							Swing.SwingTo = Landing;
+							Swing.SwingStart = Frame;
+						}
+					}
+					else if (!bAnySwing && SettleStart == INDEX_NONE)
+					{
+						CalmFrames = (Error < StepTriggerCm * 0.5f && Excess.Size2D() < 20.0f) ? CalmFrames + 1 : 0;
+						if (CalmFrames >= SettleHoldFrames)
+						{
+							SettleStart = Frame;
+						}
+					}
+
+					for (FFoot& Foot : Feet)
+					{
+						if (Foot.bSwing)
+						{
+							const float Phase = FMath::Clamp(float(Frame - Foot.SwingStart) / SwingFrames, 0.0f, 1.0f);
+							Foot.Current = FMath::Lerp(Foot.SwingFrom, Foot.SwingTo, FMath::SmoothStep(0.0f, 1.0f, Phase));
+							Foot.Current.Z += SwingLiftCm * FMath::Sin(PI * Phase);
+							if (Phase >= 1.0f)
+							{
+								Foot.bSwing = false;
+								Foot.Planted = Foot.SwingTo;
+								Foot.Current = Foot.Planted;
+								LastLandFrame = Frame;
+								++Trace.Steps;
+							}
+						}
+					}
+				}
+			}
+
+			if (bPlanner && !bFeetReleased && Trace.bFell)
+			{
+				// Fallen: feet go back to simulation. A settled character keeps kinematic feet on the
+				// blended source pose; handing them back to a spring left a foot hovering ~9 cm up.
+				bFeetReleased = true;
+				for (const FFoot& Foot : Feet)
+				{
+					Control->SetBodyModifierMovementType(ModifierName(Bindings[Foot.Binding].Bone), EPhysicsMovementType::Simulated);
+				}
+			}
+
+			for (int32 BindingIndex = 0; BindingIndex < Bindings.Num(); ++BindingIndex)
+			{
+				const FBodyBinding& Binding = Bindings[BindingIndex];
+				FTransform Target = Pose[Binding.BoneIndex] * ReferenceTM;
+				Target.AddToTranslation(Offset);
+				if (bPlanner && !bMovingSource)
+				{
+					for (const FFoot& Foot : Feet)
+					{
+						if (Foot.Binding == BindingIndex && Foot.bPinned)
+						{
+							// Feet follow the planner; once settled, they blend back onto the source pose.
+							const float Settle = SettleStart == INDEX_NONE ? 0.0f : FMath::SmoothStep(0.0f, 1.0f, float(Frame - SettleStart) / SettleBlendFrames);
+							Target.SetLocation(FMath::Lerp(Foot.Current, Target.GetLocation(), Settle));
+							const int32 Side = (&Foot == &Feet[0]) ? 0 : 1;
+							FootIKTarget[Side] = Target.GetLocation();
+							bFootIK[Side] = !Trace.bFell;
+						}
+					}
+				}
 				Control->SetBodyModifierKinematicTarget(ModifierName(Binding.Bone), Target.GetLocation(), Target.Rotator(), false);
 				// bEnableControl false: setting a target must never re-enable a released control.
 				Control->SetControlTargetPositionAndOrientation(WorldControlName(Binding.Bone), Target.GetLocation(), Target.Rotator(), StepSeconds, false, false, true, false);
@@ -333,14 +670,102 @@ namespace KimodoImpactProbe
 			constexpr int32 HitFrame = PreRollFrames + 1;
 			if (Scenario == EScenario::Controlled && Frame >= HitFrame)
 			{
-				// Strength profile: world-space controls let go at the hit and blend back, so the
-				// reaction is visible; parent-space controls keep the body's shape throughout.
-				// At full strength the controls cancelled the hit within one frame.
+				// Strength profile, per body. Releasing world-space control everywhere (the first
+				// attempt) let the whole character rotate ~60 degrees as a stiff column about its
+				// feet. Now: legs keep world-space control so feet stay planted; release is
+				// strongest at the contact body and fades along the skeleton; joint strength also
+				// drops near the contact so the hit area bends locally. All of it ramps back.
 				const float Alpha = FMath::SmoothStep(0.0f, 1.0f, float(Frame - HitFrame) / RecoverFrames);
-				FPhysicsControlMultiplier Multiplier;
-				Multiplier.LinearStrengthMultiplier = FVector(Alpha);
-				Multiplier.AngularStrengthMultiplier = Alpha;
-				Control->SetControlMultipliersInSet(WorldSet, Multiplier, false);
+				for (int32 Index = 0; Index < Bindings.Num(); ++Index)
+				{
+					const FBodyBinding& Binding = Bindings[Index];
+					const int32 Distance = ContactDistance[Index];
+					const float WorldRelease = IsLeg(Binding.Bone) ? 0.0f : FMath::Clamp(1.0f - 0.25f * Distance, 0.4f, 1.0f);
+					const float JointRelease = Distance == 0 ? 0.8f : Distance == 1 ? 0.6f : Distance == 2 ? 0.3f : 0.0f;
+
+					// Impact phase: for the first frames after contact the whole upper body (pelvis
+					// included) lets go almost completely, so the torso, head and arms visibly take the
+					// hit before recovery begins. Without it a run hit read as a slowdown, not a hit.
+					constexpr int32 ImpactFrames = 10;
+					constexpr int32 ImpactBlendFrames = 20;
+					const float Impact = Frame - HitFrame < ImpactFrames ? 1.0f
+						: 1.0f - FMath::SmoothStep(0.0f, 1.0f, float(Frame - HitFrame - ImpactFrames) / ImpactBlendFrames);
+					const bool bUpper = !IsLeg(Binding.Bone);
+
+					FPhysicsControlMultiplier WorldMultiplier;
+					float WorldScale = FMath::Lerp(1.0f - WorldRelease, 1.0f, Alpha);
+					if (bUpper)
+					{
+						// On a run the pelvis keeps some hold: released to 2% it tore away from the legs.
+						const bool bPelvis = Binding.Bone == PelvisBone;
+						WorldScale = FMath::Lerp(WorldScale, (bMovingSource && bPelvis) ? 0.3f : 0.02f, Impact);
+					}
+					else if (bMovingSource)
+					{
+						// A running leg travels with the hips through the impact (joint hold only) instead
+						// of being held to the run's path while the hips fly: that tug of war twisted the
+						// legs up to 140 degrees and left the feet floating.
+						WorldScale = FMath::Lerp(WorldScale, 0.2f, Impact);
+					}
+					WorldMultiplier.LinearStrengthMultiplier = FVector(WorldScale);
+					WorldMultiplier.AngularStrengthMultiplier = WorldScale;
+					Control->SetControlMultiplier(WorldControlName(Binding.Bone), WorldMultiplier, false);
+
+					if (Binding.ParentIndex != INDEX_NONE)
+					{
+						FPhysicsControlMultiplier Joint;
+						Joint.AngularStrengthMultiplier = FMath::Lerp(1.0f - JointRelease, 1.0f, Alpha);
+						if (bUpper)
+						{
+							Joint.AngularStrengthMultiplier = FMath::Lerp(Joint.AngularStrengthMultiplier, 0.15f, Impact);
+						}
+						Control->SetControlMultiplier(ParentControlName(Binding.Bone), Joint, false);
+					}
+				}
+
+				if (bPlanner && !Trace.bFell)
+				{
+					// Pinned feet hold hard (foot IK); a swinging leg's thigh and calf go compliant so
+					// the knee bends to follow the foot. For a moving source the legs loosen partly so
+					// the stride visibly breaks. Every change eases in over a few frames: switching
+					// strength in one frame was the leg jitter.
+					for (const FFoot& Foot : Feet)
+					{
+						const FString Side = Bindings[Foot.Binding].Bone.ToString().Right(2);
+						for (int32 Index = 0; Index < Bindings.Num(); ++Index)
+						{
+							const FString Name = Bindings[Index].Bone.ToString();
+							if (!Name.EndsWith(Side) || !IsLeg(Bindings[Index].Bone))
+							{
+								continue;
+							}
+							const bool bFoot = Index == Foot.Binding;
+							float Wanted = 1.0f;
+							if (bMovingSource)
+							{
+								// Same impact curve as the upper body: legs go with the hips for the first frames,
+								// then return to full hold. (A flat 50% for the whole reaction stretched the ankle
+								// up to 37 cm.)
+								const int32 SinceHit = Frame - HitFrameIndex;
+								const float LegImpact = SinceHit < 10 ? 1.0f : 1.0f - FMath::SmoothStep(0.0f, 1.0f, float(SinceHit - 10) / 20.0f);
+								Wanted = FMath::Lerp(1.0f, 0.2f, LegImpact);
+							}
+							else
+							{
+								Wanted = bFoot ? 3.0f : (Foot.bSwing ? 0.3f : 1.0f);
+							}
+							LegWorldScale[Index] = FMath::Lerp(LegWorldScale[Index], Wanted, 0.35f);
+							FPhysicsControlMultiplier Leg;
+							Leg.LinearStrengthMultiplier = FVector(LegWorldScale[Index]);
+							// A pinned foot also holds its orientation hard and heavily damped: a weak angular
+							// hold let the foot chatter against the floor (15x source jitter).
+							Leg.AngularStrengthMultiplier = bFoot && !bMovingSource ? 2.5f : LegWorldScale[Index];
+							Leg.LinearDampingRatioMultiplier = FVector(1.5f);
+							Leg.AngularDampingRatioMultiplier = bFoot ? 3.0f : 1.5f;
+							Control->SetControlMultiplier(WorldControlName(Bindings[Index].Bone), Leg, false);
+						}
+					}
+				}
 			}
 			if (Frame == HitFrame && Scenario != EScenario::Baseline)
 			{
@@ -356,6 +781,29 @@ namespace KimodoImpactProbe
 			}
 
 			ProbeWorld.Step();
+			SourceTime += StepSeconds * PlaybackRate(Frame);
+
+			if (bPlanner && Frame >= PreRollFrames - 5)
+			{
+				for (int32 Side = 0; Side < 2; ++Side)
+				{
+					const FFoot& Foot = Feet[Side];
+					const FBodyInstance* Body = MeshComponent->GetBodyInstance(Bindings[Foot.Binding].Bone);
+					if (!Body)
+					{
+						continue;
+					}
+					const FTransform TM = Body->GetUnrealWorldTransform();
+					const FVector V = Body->GetUnrealWorldVelocity();
+					const FVector W = FMath::RadiansToDegrees(Body->GetUnrealWorldAngularVelocityInRadians());
+					const FRotator R = TM.Rotator();
+					Trace.FootCsv.Add(FString::Printf(TEXT("%d,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.1f,%.1f,%.1f,%.2f,%.2f,%.2f,%d,%d,%d"),
+						Frame, Side, TM.GetLocation().X, TM.GetLocation().Y, TM.GetLocation().Z,
+						V.X, V.Y, V.Z, R.Pitch, R.Yaw, R.Roll, W.Size(),
+						Foot.Current.Z, FVector::Dist2D(Foot.Current, TM.GetLocation()),
+						Foot.bPinned ? 1 : 0, Foot.bSwing ? 1 : 0, Trace.Steps));
+				}
+			}
 
 			if (Settings.bRecordPose)
 			{
@@ -366,15 +814,121 @@ namespace KimodoImpactProbe
 					const int32 Parent = Ref.GetParentIndex(Bone);
 					if (BodyByBone[Bone])
 					{
-						RecordedComponentSpace[Bone] = BodyByBone[Bone]->GetUnrealWorldTransform().GetRelativeTransform(ReferenceTM);
+						// Rotation from physics; position rebuilt down the chain from real bone lengths,
+						// so a stretched physics constraint can never separate joints in the output.
+						// The pelvis (first body under the root) keeps its simulated position.
+						const FTransform Physical = BodyByBone[Bone]->GetUnrealWorldTransform().GetRelativeTransform(ReferenceTM);
+						const bool bParentHasBody = Parent != INDEX_NONE && BodyByBone[Parent] != nullptr;
+						if (bParentHasBody)
+						{
+							const FVector BoneOffset = Pose[Bone].GetRelativeTransform(Pose[Parent]).GetTranslation();
+							RecordedComponentSpace[Bone] = FTransform(Physical.GetRotation(), RecordedComponentSpace[Parent].TransformPosition(BoneOffset));
+							const float Gap = float(FVector::Dist(Physical.GetLocation(), RecordedComponentSpace[Parent].TransformPosition(BoneOffset)));
+							if (Ref.GetBoneName(Bone).ToString().StartsWith(TEXT("foot")))
+							{
+								Trace.MaxAnkleGapCm = FMath::Max(Trace.MaxAnkleGapCm, Gap);
+							}
+						}
+						else
+						{
+							RecordedComponentSpace[Bone] = Physical;
+						}
 					}
 					else
 					{
-						const FTransform Sampled = Parent == INDEX_NONE ? Pose[Bone] : Pose[Bone].GetRelativeTransform(Pose[Parent]);
+						FTransform Sampled = Parent == INDEX_NONE ? Pose[Bone] : Pose[Bone].GetRelativeTransform(Pose[Parent]);
+						if (Parent == INDEX_NONE)
+						{
+							// The root carries the stumble's displacement, so the baked clip travels with it.
+							Sampled.AddToTranslation(ReferenceTM.InverseTransformVectorNoScale(Offset));
+						}
 						RecordedComponentSpace[Bone] = Parent == INDEX_NONE ? Sampled : Sampled * RecordedComponentSpace[Parent];
 					}
 					Local[Bone] = Parent == INDEX_NONE ? RecordedComponentSpace[Bone] : RecordedComponentSpace[Bone].GetRelativeTransform(RecordedComponentSpace[Parent]);
 				}
+
+				{
+					const int32 Calf = Ref.FindBoneIndex(TEXT("calf_l"));
+					const int32 Thigh = Ref.FindBoneIndex(TEXT("thigh_l"));
+					if (BodyByBone[Calf] && BodyByBone[Thigh])
+					{
+						const FQuat RawLocal = BodyByBone[Calf]->GetUnrealWorldTransform().GetRelativeTransform(BodyByBone[Thigh]->GetUnrealWorldTransform()).GetRotation();
+						const FQuat SourceLocal = Pose[Calf].GetRelativeTransform(Pose[Thigh]).GetRotation();
+						Trace.RawCalfDeviation.Add(FMath::RadiansToDegrees(float(RawLocal.AngularDistance(SourceLocal))));
+					}
+				}
+
+				// Leg IK: a planted foot lands exactly on its planned spot. The simulated knee is the
+				// pole, so the knee bends the way the physics bent it. Only thigh, calf and foot change;
+				// everything below the foot keeps its local transform and follows.
+				for (int32 Side = 0; Side < 2; ++Side)
+				{
+					const TCHAR* Suffix = Side == 0 ? TEXT("_l") : TEXT("_r");
+					const int32 SourceFoot = Ref.FindBoneIndex(*(FString(TEXT("foot")) + Suffix));
+					bool bGroundContact = false;
+					FVector GroundTarget = FVector::ZeroVector;
+					if (bMovingSource && Frame >= HitFrameIndex && SourceFoot != INDEX_NONE)
+					{
+						// Source foot within 3 cm of its lowest height in the clip counts as on the ground.
+						const float SourceZ = float(Pose[SourceFoot].GetLocation().Z);
+						if (SourceZ < SourceFootGroundZ[Side] + 3.0f)
+						{
+							bGroundContact = true;
+							const FVector Recorded = RecordedComponentSpace[SourceFoot].GetLocation();
+							GroundTarget = ReferenceTM.TransformPosition(FVector(Recorded.X, Recorded.Y, SourceZ));
+						}
+					}
+					if (!bFootIK[Side] && !bGroundContact)
+					{
+						continue;
+					}
+					if (bGroundContact)
+					{
+						FootIKTarget[Side] = GroundTarget;
+					}
+					const int32 Thigh = Ref.FindBoneIndex(*(FString(TEXT("thigh")) + Suffix));
+					const int32 Calf = Ref.FindBoneIndex(*(FString(TEXT("calf")) + Suffix));
+					const int32 FootBone = Ref.FindBoneIndex(*(FString(TEXT("foot")) + Suffix));
+					if (Thigh == INDEX_NONE || Calf == INDEX_NONE || FootBone == INDEX_NONE)
+					{
+						continue;
+					}
+					FTransform ThighCS = RecordedComponentSpace[Thigh];
+					FTransform CalfCS = RecordedComponentSpace[Calf];
+					FTransform FootCS = RecordedComponentSpace[FootBone];
+					const FQuat FootRotation = FootCS.GetRotation();
+					const FVector Effector = ReferenceTM.InverseTransformPosition(FootIKTarget[Side]);
+					// Pole: the simulated knee, pushed forward a little so a straight leg stays stable.
+					const FVector Pole = CalfCS.GetLocation() + ReferenceTM.InverseTransformVectorNoScale(FVector(0.0, 30.0, 0.0));
+					const double Upper = (CalfCS.GetLocation() - ThighCS.GetLocation()).Size();
+					const double Lower = (FootCS.GetLocation() - CalfCS.GetLocation()).Size();
+					AnimationCore::SolveTwoBoneIK(ThighCS, CalfCS, FootCS, Pole, Effector, Upper, Lower, false, 1.0, 1.0);
+					FootCS.SetRotation(FootRotation);
+					RecordedComponentSpace[Thigh] = ThighCS;
+					RecordedComponentSpace[Calf] = CalfCS;
+					RecordedComponentSpace[FootBone] = FootCS;
+					Local[Thigh] = ThighCS.GetRelativeTransform(RecordedComponentSpace[Ref.GetParentIndex(Thigh)]);
+					Local[Calf] = CalfCS.GetRelativeTransform(ThighCS);
+					Local[FootBone] = FootCS.GetRelativeTransform(CalfCS);
+					// Bones below the foot keep their locals; refresh their component-space copies.
+					for (int32 Child = FootBone + 1; Child < Ref.GetNum(); ++Child)
+					{
+						const int32 ChildParent = Ref.GetParentIndex(Child);
+						if (ChildParent >= FootBone && (ChildParent == FootBone || Ref.BoneIsChildOf(ChildParent, FootBone)))
+						{
+							RecordedComponentSpace[Child] = Local[Child] * RecordedComponentSpace[ChildParent];
+						}
+					}
+				}
+				TArray<FTransform>& SourceLocal = Trace.SourceLocalPoses.AddDefaulted_GetRef();
+				SourceLocal.SetNum(Ref.GetNum());
+				for (int32 Bone = 0; Bone < Ref.GetNum(); ++Bone)
+				{
+					const int32 Parent = Ref.GetParentIndex(Bone);
+					SourceLocal[Bone] = Parent == INDEX_NONE ? Pose[Bone] : Pose[Bone].GetRelativeTransform(Pose[Parent]);
+				}
+				Trace.RecordedComponentPoses.Add(RecordedComponentSpace);
+				Trace.SourceComponentPoses.Add(Pose);
 			}
 
 			if (Scenario != EScenario::Baseline && Frame >= PreRollFrames + 1 && Frame <= PreRollFrames + 3)
@@ -392,7 +946,7 @@ namespace KimodoImpactProbe
 				Trace.Chest.Add(ChestBody ? ChestBody->GetUnrealWorldTransform().GetLocation() : FVector::ZeroVector);
 				Trace.PelvisHeight.Add(PelvisBody ? float(PelvisBody->GetUnrealWorldTransform().GetLocation().Z) : 0.0f);
 				TArray<FTransform> Next;
-				Sampler.Sample((Frame + 1) * StepSeconds, Next);
+				Sampler.Sample(SourceTime, Next);
 				Trace.TargetChest.Add((Next[Ref.FindBoneIndex(ChestBone)] * ReferenceTM).GetLocation());
 			}
 		}
@@ -405,6 +959,7 @@ namespace KimodoImpactProbe
 			}
 			Trace.Notes.Add(FString::Printf(TEXT("pelvis every 10 frames: %s"), *Heights));
 		}
+		Trace.FinalOffset = Offset;
 		Trace.SphereDrop = SphereStartZ - float(Sphere->GetComponentLocation().Z);
 		Ball->Destroy();
 		Character->Destroy();
@@ -428,10 +983,10 @@ namespace KimodoImpactProbe
 namespace KimodoImpactProbe
 {
 	/** Bakes recorded parent-space poses to an AnimSequence and saves it as a real package file. Returns bytes written. */
-	int64 BakeAndSave(USkeletalMesh* Mesh, const TArray<TArray<FTransform>>& Frames, const FString& Name, double& OutBakeSeconds, double& OutSaveSeconds)
+	int64 BakeAndSave(USkeletalMesh* Mesh, const TArray<TArray<FTransform>>& Frames, const FString& Name, double& OutBakeSeconds, double& OutSaveSeconds, const FString& Folder = TEXT("KimodoImpactSpikeProbe"))
 	{
 		const double BakeStart = FPlatformTime::Seconds();
-		UPackage* Package = CreatePackage(*FString::Printf(TEXT("/Game/KimodoImpactSpike/%s"), *Name));
+		UPackage* Package = CreatePackage(*FString::Printf(TEXT("/Game/%s/%s"), *Folder, *Name));
 		UAnimSequence* Sequence = NewObject<UAnimSequence>(Package, *Name, RF_Public | RF_Standalone);
 		Sequence->SetSkeleton(Mesh->GetSkeleton());
 
@@ -465,7 +1020,7 @@ namespace KimodoImpactProbe
 		OutBakeSeconds = FPlatformTime::Seconds() - BakeStart;
 
 		// Saved/, never Content/: a spike must not add assets to the project.
-		const FString File = FPaths::ProjectSavedDir() / TEXT("KimodoImpactSpike") / (Name + FPackageName::GetAssetPackageExtension());
+		const FString File = FPaths::ProjectSavedDir() / Folder / (Name + FPackageName::GetAssetPackageExtension());
 		const double SaveStart = FPlatformTime::Seconds();
 		FSavePackageArgs Args;
 		Args.TopLevelFlags = RF_Public | RF_Standalone;
@@ -476,6 +1031,152 @@ namespace KimodoImpactProbe
 		Sequence->ClearFlags(RF_Public | RF_Standalone);
 		Package->MarkAsGarbage();
 		return bSaved ? IFileManager::Get().FileSize(*File) : -1;
+	}
+}
+
+namespace KimodoImpactProbe
+{
+	/** Describes how a recorded clip differs from its source: joint deviation, whole-body tilt, foot slide. */
+	TArray<FString> AnalyseMotion(const FTrace& Trace, const FReferenceSkeleton& Ref, const UPhysicsAsset* PhysicsAsset)
+	{
+		TArray<FString> Lines;
+		const int32 HitIndex = PreRollFrames + 1;
+		if (Trace.LocalPoses.Num() <= HitIndex)
+		{
+			return Lines;
+		}
+
+		// 1. Per body bone: largest joint (parent-space) rotation deviation from the source after the hit.
+		FString Joints;
+		float LargestJoint = 0.0f;
+		for (const TObjectPtr<USkeletalBodySetup>& BodySetup : PhysicsAsset->SkeletalBodySetups)
+		{
+			const int32 Bone = Ref.FindBoneIndex(BodySetup->BoneName);
+			float MaxDegrees = 0.0f;
+			for (int32 Frame = HitIndex; Frame < Trace.LocalPoses.Num(); ++Frame)
+			{
+				const float Radians = float(Trace.LocalPoses[Frame][Bone].GetRotation().AngularDistance(Trace.SourceLocalPoses[Frame][Bone].GetRotation()));
+				MaxDegrees = FMath::Max(MaxDegrees, FMath::RadiansToDegrees(Radians));
+			}
+			LargestJoint = FMath::Max(LargestJoint, MaxDegrees);
+			Joints += FString::Printf(TEXT("%s %.1f, "), *BodySetup->BoneName.ToString(), MaxDegrees);
+		}
+		Lines.Add(FString::Printf(TEXT("joint deviation from source after hit (deg, max per body): %s"), *Joints));
+
+		// 2. Whole-body: pelvis component-space rotation and position deviation from source.
+		const int32 Pelvis = Ref.FindBoneIndex(PelvisBone);
+		float PelvisDegrees = 0.0f, PelvisCm = 0.0f;
+		for (int32 Frame = HitIndex; Frame < Trace.RecordedComponentPoses.Num(); ++Frame)
+		{
+			const FTransform& Recorded = Trace.RecordedComponentPoses[Frame][Pelvis];
+			const FTransform& Source = Trace.SourceComponentPoses[Frame][Pelvis];
+			PelvisDegrees = FMath::Max(PelvisDegrees, FMath::RadiansToDegrees(float(Recorded.GetRotation().AngularDistance(Source.GetRotation()))));
+			PelvisCm = FMath::Max(PelvisCm, float(FVector::Dist(Recorded.GetLocation(), Source.GetLocation())));
+		}
+		Lines.Add(FString::Printf(TEXT("pelvis vs source after hit: max tilt %.1f deg, max offset %.1f cm; largest joint deviation %.1f deg"),
+			PelvisDegrees, PelvisCm, LargestJoint));
+
+		// Impact visibility: peak upper-body angular speed after the hit vs the source's own peak.
+		{
+			FString Peaks;
+			for (const TCHAR* UpperBone : { TEXT("spine_03"), TEXT("neck_01"), TEXT("head"), TEXT("upperarm_l"), TEXT("upperarm_r") })
+			{
+				const int32 Bone = Ref.FindBoneIndex(UpperBone);
+				auto PeakSpeed = [&](const TArray<TArray<FTransform>>& Poses)
+				{
+					float Peak = 0.0f;
+					for (int32 Frame = HitIndex; Frame + 1 < Poses.Num() && Frame < HitIndex + 30; ++Frame)
+					{
+						Peak = FMath::Max(Peak, FMath::RadiansToDegrees(float(Poses[Frame][Bone].GetRotation().AngularDistance(Poses[Frame + 1][Bone].GetRotation()))) / StepSeconds);
+					}
+					return Peak;
+				};
+				const float Recorded = PeakSpeed(Trace.RecordedComponentPoses);
+				const float Source = FMath::Max(PeakSpeed(Trace.SourceComponentPoses), 1.0f);
+				Peaks += FString::Printf(TEXT("%s %.0f deg/s (%.1fx), "), UpperBone, Recorded, Recorded / Source);
+			}
+			Lines.Add(FString::Printf(TEXT("impact visibility, peak angular speed in first 0.5 s (x source): %s"), *Peaks));
+		}
+
+		// Per-frame trace of the left leg: output local calf deviation, raw physics calf deviation,
+		// output and source foot height. Answers when the leg goes wrong and whether physics or the
+		// recorder does it.
+		{
+			const int32 Calf = Ref.FindBoneIndex(TEXT("calf_l"));
+			const int32 FootL = Ref.FindBoneIndex(TEXT("foot_l"));
+			FString Rows;
+			for (int32 Frame = 0; Frame < Trace.LocalPoses.Num(); Frame += 6)
+			{
+				const float Output = FMath::RadiansToDegrees(float(Trace.LocalPoses[Frame][Calf].GetRotation().AngularDistance(Trace.SourceLocalPoses[Frame][Calf].GetRotation())));
+				const float Raw = Trace.RawCalfDeviation.IsValidIndex(Frame) ? Trace.RawCalfDeviation[Frame] : -1.0f;
+				Rows += FString::Printf(TEXT("[f%d out %.0f raw %.0f footZ %.0f/%.0f] "), Frame, Output, Raw,
+					Trace.RecordedComponentPoses[Frame][FootL].GetLocation().Z, Trace.SourceComponentPoses[Frame][FootL].GetLocation().Z);
+			}
+			Lines.Add(FString::Printf(TEXT("left leg trace: %s"), *Rows));
+		}
+
+		// Floating: over the last 30 frames, pelvis and lowest-foot height relative to the source.
+		{
+			const int32 PelvisBoneIndex = Ref.FindBoneIndex(PelvisBone);
+			const int32 FootL = Ref.FindBoneIndex(TEXT("foot_l"));
+			const int32 FootR = Ref.FindBoneIndex(TEXT("foot_r"));
+			float PelvisDelta = 0.0f, FootDelta = 0.0f;
+			int32 Count = 0;
+			for (int32 Frame = FMath::Max(HitIndex, Trace.RecordedComponentPoses.Num() - 30); Frame < Trace.RecordedComponentPoses.Num(); ++Frame)
+			{
+				const TArray<FTransform>& R = Trace.RecordedComponentPoses[Frame];
+				const TArray<FTransform>& S = Trace.SourceComponentPoses[Frame];
+				PelvisDelta += float(R[PelvisBoneIndex].GetLocation().Z - S[PelvisBoneIndex].GetLocation().Z);
+				FootDelta += float(FMath::Min(R[FootL].GetLocation().Z, R[FootR].GetLocation().Z) - FMath::Min(S[FootL].GetLocation().Z, S[FootR].GetLocation().Z));
+				++Count;
+			}
+			Lines.Add(FString::Printf(TEXT("end of clip vs source (last 30 frames, mean): pelvis height %+.1f cm, lowest foot %+.1f cm"),
+				PelvisDelta / FMath::Max(Count, 1), FootDelta / FMath::Max(Count, 1)));
+		}
+
+		// Leg jitter: mean absolute frame-to-frame angular acceleration of parent-space rotations.
+		{
+			FString Jitter;
+			for (const TCHAR* LegBone : { TEXT("thigh_l"), TEXT("calf_l"), TEXT("foot_l"), TEXT("thigh_r"), TEXT("calf_r"), TEXT("foot_r") })
+			{
+				const int32 Bone = Ref.FindBoneIndex(LegBone);
+				auto Acceleration = [&](const TArray<TArray<FTransform>>& Poses)
+				{
+					double Sum = 0.0;
+					int32 Count = 0;
+					for (int32 Frame = HitIndex + 1; Frame + 1 < Poses.Num(); ++Frame)
+					{
+						const float A = float(Poses[Frame - 1][Bone].GetRotation().AngularDistance(Poses[Frame][Bone].GetRotation()));
+						const float B = float(Poses[Frame][Bone].GetRotation().AngularDistance(Poses[Frame + 1][Bone].GetRotation()));
+						Sum += FMath::Abs(FMath::RadiansToDegrees(B - A));
+						++Count;
+					}
+					return Count ? Sum / Count : 0.0;
+				};
+				Jitter += FString::Printf(TEXT("%s %.2f/%.2f, "), LegBone, Acceleration(Trace.LocalPoses), Acceleration(Trace.SourceLocalPoses));
+			}
+			Lines.Add(FString::Printf(TEXT("leg jitter, mean |angular accel| deg/frame^2 recorded/source: %s"), *Jitter));
+		}
+
+		// 3. Feet: drift from source (component space) and ground height after the hit.
+		for (const TCHAR* FootName : { TEXT("foot_l"), TEXT("foot_r") })
+		{
+			const int32 Foot = Ref.FindBoneIndex(FootName);
+			if (Foot == INDEX_NONE)
+			{
+				continue;
+			}
+			float MaxDrift = 0.0f, MaxHeight = 0.0f;
+			for (int32 Frame = HitIndex; Frame < Trace.RecordedComponentPoses.Num(); ++Frame)
+			{
+				const FVector Recorded = Trace.RecordedComponentPoses[Frame][Foot].GetLocation();
+				const FVector Source = Trace.SourceComponentPoses[Frame][Foot].GetLocation();
+				MaxDrift = FMath::Max(MaxDrift, float(FVector::Dist2D(Recorded, Source)));
+				MaxHeight = FMath::Max(MaxHeight, float(Recorded.Z - Source.Z));
+			}
+			Lines.Add(FString::Printf(TEXT("%s after hit: max horizontal drift from source %.1f cm, max lift above source %.1f cm"), FootName, MaxDrift, MaxHeight));
+		}
+		return Lines;
 	}
 }
 
@@ -513,6 +1214,13 @@ bool FKimodoImpactThroughputProbe::RunTest(const FString& Parameters)
 		const FTrace Trace = Run(ProbeWorld, Mesh, PhysicsAsset, (Clip % 2) ? RunAnim : Idle, EScenario::Controlled, Settings);
 		SimSeconds += FPlatformTime::Seconds() - SimStart;
 		Frames += Trace.LocalPoses.Num();
+		if (Clip < 2)
+		{
+			for (const FString& Line : AnalyseMotion(Trace, Mesh->GetRefSkeleton(), PhysicsAsset))
+			{
+				AddInfo(FString::Printf(TEXT("Motion %s: %s"), Clip ? TEXT("run") : TEXT("idle"), *Line));
+			}
+		}
 
 		double Bake = 0.0, Save = 0.0;
 		const int64 Size = BakeAndSave(Mesh, Trace.LocalPoses, FString::Printf(TEXT("SpikeClip_%02d"), Clip), Bake, Save);
@@ -530,6 +1238,64 @@ bool FKimodoImpactThroughputProbe::RunTest(const FString& Parameters)
 		1000.0 * SimSeconds / Frames, (Frames * StepSeconds) / SimSeconds, 1000.0 * BakeSeconds / ClipCount, 1000.0 * SaveSeconds / ClipCount));
 	AddInfo(FString::Printf(TEXT("Throughput: %.0f ms per clip end to end -> %.0f clips/hour/process, %.0f KB per clip on disk"),
 		1000.0 * ClipSeconds, 3600.0 / ClipSeconds, Bytes / 1024.0 / ClipCount));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FKimodoImpactStumbleProbe,
+	"KimodoDatasetCapture.Impact.Spike.StumbleProbe",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FKimodoImpactStumbleProbe::RunTest(const FString& Parameters)
+{
+	using namespace KimodoImpactProbe;
+
+	USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, MeshPath);
+	UPhysicsAsset* PhysicsAsset = LoadObject<UPhysicsAsset>(nullptr, PhysicsAssetPath);
+	UAnimSequence* Idle = LoadObject<UAnimSequence>(nullptr, IdleAnimPath);
+	UAnimSequence* RunAnim = LoadObject<UAnimSequence>(nullptr, RunAnimPath);
+	if (!Mesh || !PhysicsAsset || !Idle || !RunAnim)
+	{
+		AddWarning(TEXT("GameAnimationSample content not found; probe skipped. Run it in GameAnimationSample."));
+		return true;
+	}
+
+	FProbeWorld ProbeWorld;
+	for (UAnimSequence* Anim : { Idle, RunAnim })
+	{
+		for (const float Impulse : { 15000.0f, 30000.0f, 50000.0f })
+		{
+			FSettings Settings;
+			Settings.ImpulseKgCmPerS = Impulse;
+			Settings.bRecordPose = true;
+			Settings.bStepping = true;
+			const FTrace Trace = Run(ProbeWorld, Mesh, PhysicsAsset, Anim, EScenario::Controlled, Settings);
+			const FString Label = FString::Printf(TEXT("%s_%dk"), Anim == Idle ? TEXT("Idle") : TEXT("Run"), int32(Impulse / 1000.0f));
+			AddInfo(FString::Printf(TEXT("Stumble %s: steps %d, fell %d, displacement %.1f cm, raw physics ankle gap max %.1f cm (output rebuilt, gap 0)"),
+				*Label, Trace.Steps, Trace.bFell ? 1 : 0, Trace.FinalOffset.Size2D(), Trace.MaxAnkleGapCm));
+			for (const FString& Note : Trace.Notes)
+			{
+				if (Note.StartsWith(TEXT("run deceleration")))
+				{
+					AddInfo(FString::Printf(TEXT("Stumble %s: %s"), *Label, *Note));
+				}
+			}
+			for (const FString& Line : AnalyseMotion(Trace, Mesh->GetRefSkeleton(), PhysicsAsset))
+			{
+				AddInfo(FString::Printf(TEXT("Stumble %s: %s"), *Label, *Line));
+			}
+			if (!Trace.FootCsv.IsEmpty())
+			{
+				FFileHelper::SaveStringToFile(
+					TEXT("frame,side,x,y,z,vx,vy,vz,pitch,yaw,roll,angspeed,targetz,targetdist2d,pinned,swing,steps\n") + FString::Join(Trace.FootCsv, TEXT("\n")),
+					*(FPaths::ProjectSavedDir() / TEXT("KimodoImpactSpikeV9") / FString::Printf(TEXT("Feet_%s.csv"), *Label)));
+			}
+			double Bake = 0.0, Save = 0.0;
+			TestTrue(*FString::Printf(TEXT("%s saved"), *Label),
+				BakeAndSave(Mesh, Trace.LocalPoses, FString::Printf(TEXT("Stumble_%s"), *Label), Bake, Save, TEXT("KimodoImpactSpikeV9")) > 0);
+		}
+	}
+	CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
 	return true;
 }
 

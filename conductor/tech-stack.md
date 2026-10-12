@@ -234,6 +234,41 @@ on the UEFN skeleton, so that is the bake skeleton). Each item is load-bearing f
 Tuning baseline: world strength 8, parent strength 16, critically damped, 60 Hz fixed step.
 UEFN mannequin faces +Y.
 
+**Reaction look — approved by eye 2026-10-12** (`KimodoDatasetCapture.Impact.Spike.StumbleProbe`,
+idle and run sources at 15k/30k/50k kg·cm/s). The first numeric pass was rejected on sight: the
+character tilted ~60° as a stiff column, feet slid. Each item below fixed something the user
+saw, and the generator must reproduce all of them:
+
+- **Per-body release by contact distance.** Release is strongest at the struck body and fades
+  along the body tree; joint (parent-space) strength also drops near the contact so the hit bends
+  locally. Releasing world control everywhere made the whole body pivot about the feet.
+- **Impact phase.** For ~10 frames after contact the upper body nearly lets go (world 2%, joints
+  15%), then blends into the release profile over 20 frames. Without it a run hit read as a
+  slowdown. Measured as peak upper-body angular speed vs the source's own peak (run: 3–50×).
+- **Capture-point stepping (standing sources).** CoM excess velocity is low-passed; capture point
+  `CoM + v·√(h/g)`; when it leaves the support by >15 cm a step is planned to it (≤70 cm reach,
+  stance width kept), 15-frame arc with 15 cm lift. Feet alternate, ≥8 frames stance between
+  steps, ≤5 steps; >3 short steps or CoM <55 cm → balance lost → release (knockdown). The target
+  frame follows the body's momentum and ends centred over the new footing.
+- **Feet are kinematic while planted or stepping** (foot IK done by physics: the simulated leg
+  between pelvis and fixed foot resolves knee and hip). A spring-held foot sat 8–13 cm off its pin
+  and rocked; handing feet back to a spring after settling left one hovering 9 cm up.
+- **Moving sources: time warp, not stepping.** A hit against the direction of travel slows source
+  playback (and root motion) in proportion to the momentum removed (drop ≤0.85), recovering over
+  48 frames; the target frame carries only the sideways component of excess momentum. Running legs
+  follow the same impact curve as the hips (never a flat release: 50% for the whole reaction
+  stretched the ankle 37 cm).
+- **"Moving" is decided once per clip from the source's unwarped root speed.** Deciding it per
+  frame from the warped speed reclassified a slowed run as idle mid-stumble, pinned its feet
+  mid-stride and wrenched the legs 140°.
+- **Recorder rebuilds positions, then IKs the legs.** Body rotations come from physics; positions
+  are rebuilt down the chain from source bone lengths, so a stretched constraint can never separate
+  joints in the output. Planted feet (standing) and source-contact feet (moving: source foot within
+  3 cm of its lowest height) are placed by two-bone IK with the simulated knee as pole. Joint
+  projection is enabled on every constraint.
+- **Hit delivery is still crude:** one impulse at the struck body's centre of mass. Surface-point
+  impulses (torque) and contact-radius spread are the next improvement.
+
 **Logic stays out of the actor.** Sampling, classification, clip-window state, strength
 blending, root projection, invalid detection, manifest and report are plain types tested
 headless; the actor and the physics scene are the exempt layer.
