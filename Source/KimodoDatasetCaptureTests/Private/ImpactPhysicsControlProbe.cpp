@@ -1,5 +1,6 @@
 // Copyright Animotive. All Rights Reserved.
 
+#include "Animation/AnimData/IAnimationDataController.h"
 #include "Animation/AnimSequence.h"
 #include "Animation/Skeleton.h"
 #include "Components/BoxComponent.h"
@@ -10,11 +11,17 @@
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/WorldSettings.h"
+#include "HAL/FileManager.h"
+#include "HAL/PlatformTime.h"
+#include "Misc/PackageName.h"
+#include "Misc/Paths.h"
 #include "Misc/AutomationTest.h"
 #include "PhysicsControlComponent.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "PhysicsEngine/SkeletalBodySetup.h"
+#include "UObject/Package.h"
+#include "UObject/SavePackage.h"
 #include "UObject/UObjectGlobals.h"
 
 /**
@@ -68,6 +75,7 @@ namespace KimodoImpactProbe
 		float WorldStrength = 8.0f;
 		float ParentStrength = 16.0f;
 		float ImpulseKgCmPerS = 0.0f;
+		bool bRecordPose = false;
 	};
 
 	struct FTrace
@@ -76,6 +84,8 @@ namespace KimodoImpactProbe
 		TArray<FVector> TargetChest;
 		TArray<float> PelvisHeight;
 		TArray<FString> Notes;
+		/** Per frame, per mesh bone, parent-space transforms ready to bake. Filled when recording. */
+		TArray<TArray<FTransform>> LocalPoses;
 		int32 BodyCount = 0;
 		int32 ControlCount = 0;
 		float SphereDrop = 0.0f;
@@ -280,6 +290,21 @@ namespace KimodoImpactProbe
 		// the character drifts away (it floated upward at ~4 m/s before this).
 		const FTransform ReferenceTM = MeshComponent->GetComponentTransform();
 		const float SphereStartZ = float(Sphere->GetComponentLocation().Z);
+
+		// Recorder lookup: body bones are read from their rigid bodies, every other bone (fingers,
+		// twists, root) from the sampled source pose.
+		TArray<FBodyInstance*> BodyByBone;
+		BodyByBone.Init(nullptr, Ref.GetNum());
+		for (const FBodyBinding& Binding : Bindings)
+		{
+			BodyByBone[Binding.BoneIndex] = MeshComponent->GetBodyInstance(Binding.Bone);
+		}
+		if (Settings.bRecordPose)
+		{
+			Trace.LocalPoses.Reserve(PreRollFrames + ReactionFrames);
+		}
+		TArray<FTransform> RecordedComponentSpace;
+		RecordedComponentSpace.SetNum(Ref.GetNum());
 		for (int32 Frame = 0; Frame < PreRollFrames + ReactionFrames; ++Frame)
 		{
 			Sampler.Sample(Frame * StepSeconds, Pose);
@@ -332,6 +357,26 @@ namespace KimodoImpactProbe
 
 			ProbeWorld.Step();
 
+			if (Settings.bRecordPose)
+			{
+				TArray<FTransform>& Local = Trace.LocalPoses.AddDefaulted_GetRef();
+				Local.SetNum(Ref.GetNum());
+				for (int32 Bone = 0; Bone < Ref.GetNum(); ++Bone)
+				{
+					const int32 Parent = Ref.GetParentIndex(Bone);
+					if (BodyByBone[Bone])
+					{
+						RecordedComponentSpace[Bone] = BodyByBone[Bone]->GetUnrealWorldTransform().GetRelativeTransform(ReferenceTM);
+					}
+					else
+					{
+						const FTransform Sampled = Parent == INDEX_NONE ? Pose[Bone] : Pose[Bone].GetRelativeTransform(Pose[Parent]);
+						RecordedComponentSpace[Bone] = Parent == INDEX_NONE ? Sampled : Sampled * RecordedComponentSpace[Parent];
+					}
+					Local[Bone] = Parent == INDEX_NONE ? RecordedComponentSpace[Bone] : RecordedComponentSpace[Bone].GetRelativeTransform(RecordedComponentSpace[Parent]);
+				}
+			}
+
 			if (Scenario != EScenario::Baseline && Frame >= PreRollFrames + 1 && Frame <= PreRollFrames + 3)
 			{
 				if (const FBodyInstance* ChestBody = MeshComponent->GetBodyInstance(ChestBone))
@@ -378,6 +423,114 @@ namespace KimodoImpactProbe
 			OutFinal = Error;
 		}
 	}
+}
+
+namespace KimodoImpactProbe
+{
+	/** Bakes recorded parent-space poses to an AnimSequence and saves it as a real package file. Returns bytes written. */
+	int64 BakeAndSave(USkeletalMesh* Mesh, const TArray<TArray<FTransform>>& Frames, const FString& Name, double& OutBakeSeconds, double& OutSaveSeconds)
+	{
+		const double BakeStart = FPlatformTime::Seconds();
+		UPackage* Package = CreatePackage(*FString::Printf(TEXT("/Game/KimodoImpactSpike/%s"), *Name));
+		UAnimSequence* Sequence = NewObject<UAnimSequence>(Package, *Name, RF_Public | RF_Standalone);
+		Sequence->SetSkeleton(Mesh->GetSkeleton());
+
+		IAnimationDataController& Controller = Sequence->GetController();
+		Controller.InitializeModel();
+		Controller.OpenBracket(INVTEXT("Bake impact clip"), false);
+		Controller.SetFrameRate(FFrameRate(60, 1), false);
+		Controller.SetNumberOfFrames(FFrameNumber(Frames.Num() - 1), false);
+
+		const FReferenceSkeleton& Ref = Mesh->GetRefSkeleton();
+		TArray<FVector3f> Positions;
+		TArray<FQuat4f> Rotations;
+		TArray<FVector3f> Scales;
+		for (int32 Bone = 0; Bone < Ref.GetNum(); ++Bone)
+		{
+			Positions.Reset(Frames.Num());
+			Rotations.Reset(Frames.Num());
+			Scales.Reset(Frames.Num());
+			for (const TArray<FTransform>& Frame : Frames)
+			{
+				Positions.Add(FVector3f(Frame[Bone].GetLocation()));
+				Rotations.Add(FQuat4f(Frame[Bone].GetRotation()));
+				Scales.Add(FVector3f(Frame[Bone].GetScale3D()));
+			}
+			const FName BoneName = Ref.GetBoneName(Bone);
+			Controller.AddBoneCurve(BoneName, false);
+			Controller.SetBoneTrackKeys(BoneName, Positions, Rotations, Scales, false);
+		}
+		Controller.NotifyPopulated();
+		Controller.CloseBracket(false);
+		OutBakeSeconds = FPlatformTime::Seconds() - BakeStart;
+
+		// Saved/, never Content/: a spike must not add assets to the project.
+		const FString File = FPaths::ProjectSavedDir() / TEXT("KimodoImpactSpike") / (Name + FPackageName::GetAssetPackageExtension());
+		const double SaveStart = FPlatformTime::Seconds();
+		FSavePackageArgs Args;
+		Args.TopLevelFlags = RF_Public | RF_Standalone;
+		Args.SaveFlags = SAVE_NoError;
+		const bool bSaved = UPackage::SavePackage(Package, Sequence, *File, Args);
+		OutSaveSeconds = FPlatformTime::Seconds() - SaveStart;
+
+		Sequence->ClearFlags(RF_Public | RF_Standalone);
+		Package->MarkAsGarbage();
+		return bSaved ? IFileManager::Get().FileSize(*File) : -1;
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FKimodoImpactThroughputProbe,
+	"KimodoDatasetCapture.Impact.Spike.ThroughputProbe",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FKimodoImpactThroughputProbe::RunTest(const FString& Parameters)
+{
+	using namespace KimodoImpactProbe;
+
+	USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, MeshPath);
+	UPhysicsAsset* PhysicsAsset = LoadObject<UPhysicsAsset>(nullptr, PhysicsAssetPath);
+	UAnimSequence* Idle = LoadObject<UAnimSequence>(nullptr, IdleAnimPath);
+	UAnimSequence* RunAnim = LoadObject<UAnimSequence>(nullptr, RunAnimPath);
+	if (!Mesh || !PhysicsAsset || !Idle || !RunAnim)
+	{
+		AddWarning(TEXT("GameAnimationSample content not found; probe skipped. Run it in GameAnimationSample."));
+		return true;
+	}
+
+	constexpr int32 ClipCount = 20;
+	FProbeWorld ProbeWorld;
+	FSettings Settings;
+	Settings.ImpulseKgCmPerS = 30000.0f;
+	Settings.bRecordPose = true;
+
+	double SimSeconds = 0.0, BakeSeconds = 0.0, SaveSeconds = 0.0;
+	int64 Bytes = 0;
+	int32 Frames = 0;
+	for (int32 Clip = 0; Clip < ClipCount; ++Clip)
+	{
+		const double SimStart = FPlatformTime::Seconds();
+		const FTrace Trace = Run(ProbeWorld, Mesh, PhysicsAsset, (Clip % 2) ? RunAnim : Idle, EScenario::Controlled, Settings);
+		SimSeconds += FPlatformTime::Seconds() - SimStart;
+		Frames += Trace.LocalPoses.Num();
+
+		double Bake = 0.0, Save = 0.0;
+		const int64 Size = BakeAndSave(Mesh, Trace.LocalPoses, FString::Printf(TEXT("SpikeClip_%02d"), Clip), Bake, Save);
+		TestTrue(*FString::Printf(TEXT("Clip %d saved"), Clip), Size > 0);
+		BakeSeconds += Bake;
+		SaveSeconds += Save;
+		Bytes += FMath::Max<int64>(Size, 0);
+	}
+	CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
+
+	const double ClipSeconds = (SimSeconds + BakeSeconds + SaveSeconds) / ClipCount;
+	AddInfo(FString::Printf(TEXT("Throughput: %d clips, %d frames (%.1f s of motion), %d bones"),
+		ClipCount, Frames, Frames * StepSeconds, Mesh->GetRefSkeleton().GetNum()));
+	AddInfo(FString::Printf(TEXT("Throughput: sim %.2f ms/step (%.1fx real time), bake %.1f ms/clip, save %.1f ms/clip"),
+		1000.0 * SimSeconds / Frames, (Frames * StepSeconds) / SimSeconds, 1000.0 * BakeSeconds / ClipCount, 1000.0 * SaveSeconds / ClipCount));
+	AddInfo(FString::Printf(TEXT("Throughput: %.0f ms per clip end to end -> %.0f clips/hour/process, %.0f KB per clip on disk"),
+		1000.0 * ClipSeconds, 3600.0 / ClipSeconds, Bytes / 1024.0 / ClipCount));
+	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

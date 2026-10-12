@@ -171,8 +171,27 @@ fixed-step frame index.
 
 **Hosts.** One runner, two hosts: the editor panel runs it in PIE for preview and tuning with
 debug draw; a headless host runs it as fast as the fixed step allows, sharded with
-`-Batch= -Start= -Count=`. Which headless host (commandlet ticking its own world vs a
-`-game -NullRHI` run) is decided by the Phase 1 throughput spike and recorded here.
+`-Batch= -Start= -Count=`.
+
+**Headless host: a commandlet stepping its own world** (decided 2026-10-12 by the Phase 1
+spike). `UnrealEditor-Cmd -run=<ImpactBatch>` creates one bare game world and steps it
+synchronously, one `GFrameCounter` per fixed step, as fast as the CPU allows. Proven inside the
+same `UnrealEditor-Cmd -NullRHI` environment the automation suite runs in; no `-game` map, game
+mode or render loop is needed, and nothing waits on wall-clock frame pacing.
+
+**Measured throughput** (`KimodoDatasetCapture.Impact.Spike.ThroughputProbe`, 20 clips of 3 s
+at 60 Hz, UEFN mannequin, 88 bones, one process):
+
+| Stage | Cost |
+|-------|------|
+| Physics + control step | 1.31 ms/step — 12.8× real time |
+| Bake (`IAnimationDataController`) | 13.7 ms/clip |
+| Save `.uasset` | 15.3 ms/clip |
+| End to end | 264 ms/clip → ~13,600 clips/hour/process |
+| Disk | ~1.6 MB/clip, raw keys, uncompressed |
+
+Throughput is not the constraint; **disk is**: ~16 GB per 10,000 clips. The batch disk estimate
+(FR NFR "Disk") is therefore a real guard, not a formality. Shards run as parallel processes.
 
 **Physics Control spike findings (2026-10-12).** Proven headless by
 `KimodoDatasetCapture.Impact.Spike.PhysicsControlProbe` on the GameAnimationSample UEFN
