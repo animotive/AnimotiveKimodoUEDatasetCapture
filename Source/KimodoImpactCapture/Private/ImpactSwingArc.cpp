@@ -2,9 +2,11 @@
 
 #include "ImpactSwingArc.h"
 
-// Red: stub returning a neutral value so the tests compile and fail.
-
 FVector FImpactSwingArc::Evaluate(const FVector& From, const FVector& To, float Phase, float LiftCm)
 {
-	return FVector::ZeroVector;
+	const float Clamped = FMath::Clamp(Phase, 0.0f, 1.0f);
+	const float Progress = FMath::SmoothStep(0.0f, 1.0f, Clamped);
+	FVector Position = FMath::Lerp(From, To, double(Progress));
+	Position.Z += LiftCm * FMath::Sin(PI * Clamped);
+	return Position;
 }

@@ -22,19 +22,22 @@ bool FImpactSwingArcTest::RunTest(const FString& Parameters)
 	// Peak lift at mid-swing, above the blended ground height.
 	const FVector Mid = FImpactSwingArc::Evaluate(From, To, 0.5f, Lift);
 	TestEqual(TEXT("Mid-swing height is the blended ends plus the lift"), float(Mid.Z), 12.0f + Lift, 1e-3f);
+	// On level ground the highest point is exactly mid-swing. (Between different heights the rising
+	// ground shifts the overall peak; the lift term itself still peaks at mid-swing, checked above.)
+	const FVector LevelTo(To.X, To.Y, From.Z);
 	float Highest = -1e9f;
 	float HighestPhase = 0.0f;
 	for (int32 Step = 0; Step <= 100; ++Step)
 	{
 		const float Phase = Step / 100.0f;
-		const float Actual = float(FImpactSwingArc::Evaluate(From, To, Phase, Lift).Z);
+		const float Actual = float(FImpactSwingArc::Evaluate(From, LevelTo, Phase, Lift).Z);
 		if (Actual > Highest)
 		{
 			Highest = Actual;
 			HighestPhase = Phase;
 		}
 	}
-	TestEqual(TEXT("Highest point is at mid-swing"), HighestPhase, 0.5f, 0.02f);
+	TestEqual(TEXT("On level ground the highest point is at mid-swing"), HighestPhase, 0.5f, 0.02f);
 
 	// Horizontal progress toward To never goes backwards.
 	const FVector Direction = (To - From).GetSafeNormal2D();
