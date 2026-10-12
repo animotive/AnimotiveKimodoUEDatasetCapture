@@ -16,7 +16,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Spike **(exempt)** — measure headless fixed-step throughput (commandlet world tick vs `-game -NullRHI` run) and per-clip bake time/size; record numbers and chosen host in `tech-stack.md` (b1342ce)
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Foundations, Docs and Feasibility Spike' (Protocol in workflow.md) (dfcc722)
 
-## Phase 2: Batch Definition and Deterministic Parameter Sampling
+## Phase 2: Batch Definition and Deterministic Parameter Sampling [checkpoint: 60e7f9d]
 
 - [x] Task: Write tests for the deterministic RNG stream — `(seed, clipIndex)` yields identical streams across runs, different indices diverge, independent of evaluation order (Red) (c485d52)
 - [x] Task: Implement per-clip RNG derivation (Green) (53ec1ec)
@@ -34,7 +34,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement deterministic clip IDs (Green) (c36a4fa)
 - [x] Task: Implement `UImpactBatchDefinition` data asset (source anim set, character setup, distributions, timing, seed, output root, grid/count mode) and write tests for source anim resolution — folder + skeleton filter, empty set reported as a named failure (Red → Green) (dfd3054)
 - [x] Task: Add editor buttons that fill a catalog with the starter archetypes and a region table with the UEFN entries, appending only what is missing (Red → Green) (e1fd0a9)
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Batch Definition and Deterministic Parameter Sampling' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Batch Definition and Deterministic Parameter Sampling' (Protocol in workflow.md) (60e7f9d)
 
 ## Phase 3: Reaction Character, Impact Delivery and Outcome Detection
 
