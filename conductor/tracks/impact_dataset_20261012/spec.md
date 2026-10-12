@@ -75,6 +75,15 @@ Each clip then samples:
   polygon, and control-blend state: `flinch` | `stagger` | `knockdown` | `ragdoll`.
 - Recoverable hits blend control strength back to the animation. Balance lost → full ragdoll
   until settled (velocity threshold held for N frames).
+- **High-impact hits go to full ragdoll** (added 2026-10-12): above a recoverable threshold
+  (impulse relative to body mass and the struck body's mass) controls release completely and the
+  body ragdolls until settled, with no recovery.
+- **Tripping** (added 2026-10-12): a hit to a leg of a moving character (e.g. a shot to the foot
+  while sprinting) disrupts that leg's stride; when the body's momentum carries it past a support
+  the feet can no longer catch, the character falls (forward for a trip) and ragdolls. Moving
+  characters get the same capture-point balance check as standing ones, so a runner can stumble,
+  recover, or fall. The outcome records the trip, and the caption says so ("…is shot in the foot
+  while sprinting and trips, falling forwards").
 - Clip window = pre-roll + reaction + settle/recover, capped by a max-reaction ceiling;
   hitting the ceiling is recorded, not silent.
 
