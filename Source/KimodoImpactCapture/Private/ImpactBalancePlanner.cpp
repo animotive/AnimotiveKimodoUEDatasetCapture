@@ -6,12 +6,21 @@
 
 bool FImpactFallRules::IsOverwhelming(float ReactionImpulseKgCmPerSecond, float BodyMassKg, float StruckBodyMassKg) const
 {
-	return false; // Red
+	if (!(BodyMassKg > 0.0f))
+	{
+		return false;
+	}
+	if (ReactionImpulseKgCmPerSecond / BodyMassKg >= OverwhelmBodyDeltaVCmPerSecond)
+	{
+		return true;
+	}
+	return StruckBodyMassKg > 0.0f && ReactionImpulseKgCmPerSecond / StruckBodyMassKg >= OverwhelmStruckBodyDeltaVCmPerSecond;
 }
 
 void FImpactBalancePlanner::ReleaseImmediately()
 {
-	// Red
+	bFell = true;
+	bPendingJustFell = true;
 }
 
 FImpactBalancePlanner::FImpactBalancePlanner(const FImpactBalanceConfig& InConfig)
@@ -31,6 +40,11 @@ FImpactBalanceOutput FImpactBalancePlanner::Step(const FImpactBalanceInput& Inpu
 {
 	FImpactBalanceOutput Out;
 	const int32 Now = Frame++;
+	if (bPendingJustFell)
+	{
+		Out.bJustFell = true;
+		bPendingJustFell = false;
+	}
 
 	if (!bFell)
 	{
@@ -65,6 +79,49 @@ FImpactBalanceOutput FImpactBalancePlanner::Step(const FImpactBalanceInput& Inpu
 		}
 		Offset.Z = 0.0;
 		LastCapturePoint = CapturePoint(Input.Com, SmoothedExcess, Config.GravityCmPerSecondSquared);
+
+		if (Input.bMovingSource && !bFell)
+		{
+			if (Now == 0 && (Input.StruckLegSide == 0 || Input.StruckLegSide == 1))
+			{
+				// A leg hit on a moving character: that foot is caught where the hit stopped it.
+				bTrip = true;
+				TripSide = Input.StruckLegSide;
+				TripFoot = Input.FootPosition[TripSide];
+			}
+
+			if (bTrip && Now < Config.TripHoldFrames)
+			{
+				Feet[TripSide].bPinned = true;
+				Feet[TripSide].Planted = TripFoot;
+				Feet[TripSide].Current = TripFoot;
+				// The caught foot no longer moves with the run, so the body's whole ground-relative
+				// momentum must be caught by it, not just the excess over the source. Decided at the end
+				// of the hold, so the clip shows the body pitching over the caught foot before it goes
+				// down (decided on the hit frame it read as an instant ragdoll, not a trip).
+				LastCapturePoint = CapturePoint(Input.Com, Input.ComVelocity, Config.GravityCmPerSecondSquared);
+				const bool bHoldEnding = Now == Config.TripHoldFrames - 1;
+				if (bHoldEnding && FVector::Dist2D(LastCapturePoint, TripFoot) > Config.MovingFallReachCm)
+				{
+					bFell = true;
+					Out.bJustFell = true;
+				}
+			}
+			else
+			{
+				if (bTrip)
+				{
+					Feet[TripSide].bPinned = false;
+				}
+				// Excess momentum a running stride cannot absorb within a leg's reach is a fall.
+				const float Lean = float(SmoothedExcess.Size2D()) * FMath::Sqrt(FMath::Max(float(Input.Com.Z), 10.0f) / FMath::Max(Config.GravityCmPerSecondSquared, 1.0f));
+				if (Lean > Config.MovingFallReachCm)
+				{
+					bFell = true;
+					Out.bJustFell = true;
+				}
+			}
+		}
 	}
 
 	if (!bFell && !Input.bMovingSource)
@@ -171,6 +228,7 @@ FImpactBalanceOutput FImpactBalancePlanner::Step(const FImpactBalanceInput& Inpu
 	Out.Steps = Steps;
 	Out.bFell = bFell;
 	Out.bSettling = SettleStart != INDEX_NONE;
+	Out.bTrip = bTrip;
 	const float SettleAlpha = SettleStart == INDEX_NONE
 		? 0.0f
 		: FMath::SmoothStep(0.0f, 1.0f, float(Now - SettleStart) / float(FMath::Max(1, Config.SettleBlendFrames)));
