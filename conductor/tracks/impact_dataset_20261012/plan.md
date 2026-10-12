@@ -26,7 +26,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement `FImpactParams` and the sampler over distribution structs (Green) (b739d84)
 - [x] Task: Write tests for delivery-mode sampling — instant / burst (2–N hits, spacing in range, ordered frames) / sustained (duration > 0) / projectile (shape, mass, velocity within bounds) (Red) (dfe1948)
 - [x] Task: Implement delivery-mode sampling and the hit schedule (Green) (66133ba)
-- [ ] Task: Write tests for the body region table — every region resolves to ≥1 physics body for the UE5 mannequin physics asset; unknown body names fail with a stated reason (Red)
+- [x] Task: Write tests for the body region table — every region resolves to ≥1 physics body for the UEFN mannequin physics asset (the GASP bake skeleton); unknown body names fail with a stated reason (Red) (747a353)
 - [ ] Task: Implement the per-skeleton region → body mapping as data (Green)
 - [ ] Task: Write tests for contact-size distribution — impulse split across bodies within radius sums to the sampled impulse; point contact hits exactly one body (Red)
 - [ ] Task: Implement size-based impulse distribution (Green)
