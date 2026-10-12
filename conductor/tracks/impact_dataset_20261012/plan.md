@@ -41,7 +41,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Write tests for the outcome classifier — synthetic pelvis-height / CoM-vs-support / control-blend traces classify as flinch, stagger, knockdown, ragdoll; boundary thresholds deterministic (Red) (d35b834)
 - [x] Task: Implement the outcome classifier as pure logic over per-frame state (Green) (8330c80)
 - [x] Task: Write tests for the clip window state machine — pre-roll → hit(s) → reaction → settle/recover → end; settle requires velocity under threshold for N frames; max-reaction ceiling ends clip and records reason (Red) (db747fe)
-- [ ] Task: Implement the clip window state machine (Green)
+- [x] Task: Implement the clip window state machine (Green) (1dfd2ed)
 - [ ] Task: Write tests for control strength profile — sampled profile within bounds; per-body release by body-tree distance from contact (strongest at contact, joint release only within 2 links); impact phase (upper body near-zero for the impact frames, then blend); legs follow the hips' impact curve on moving sources; recover blend returns to full strength; ragdoll transition zeroes strength; no strength changes in a single frame (Red)
 - [ ] Task: Implement the strength profile and blend logic, matching the approved spike values in `tech-stack.md` (Green)
 - [ ] Task: Write tests for the balance planner as pure logic — capture point from CoM, excess velocity and height; low-pass on excess velocity; step trigger threshold; landing at capture point with stance width; reach clamp; feet alternate; minimum stance frames; step budget; fall on repeated short steps or low CoM; settle detection; target frame ends centred over new footing (Red)
