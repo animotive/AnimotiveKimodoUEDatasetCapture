@@ -25,7 +25,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Write tests for `FImpactParams` sampling — every field within configured distribution bounds; reaction impulse = physical momentum × the archetype's reaction gain, both recorded (a real bullet carries ≤380 kg·cm/s, far below the 15k–50k the approved reactions need; people react to being shot, not to its momentum); derived intensity bucket matches impulse at bucket boundaries; direction samples are unit vectors covering all octants over N samples (Red) (875bb21)
 - [x] Task: Implement `FImpactParams` and the sampler over distribution structs (Green) (b739d84)
 - [x] Task: Write tests for delivery-mode sampling — instant / burst (2–N hits, spacing in range, ordered frames) / sustained (duration > 0) / projectile (shape, mass, velocity within bounds) (Red) (dfe1948)
-- [ ] Task: Implement delivery-mode sampling and the hit schedule (Green)
+- [x] Task: Implement delivery-mode sampling and the hit schedule (Green) (66133ba)
 - [ ] Task: Write tests for the body region table — every region resolves to ≥1 physics body for the UE5 mannequin physics asset; unknown body names fail with a stated reason (Red)
 - [ ] Task: Implement the per-skeleton region → body mapping as data (Green)
 - [ ] Task: Write tests for contact-size distribution — impulse split across bodies within radius sums to the sampled impulse; point contact hits exactly one body (Red)
