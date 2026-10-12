@@ -33,6 +33,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Write tests for clip ID hashing — stable for identical params, changes when any param changes (Red) (50e3288)
 - [x] Task: Implement deterministic clip IDs (Green) (c36a4fa)
 - [x] Task: Implement `UImpactBatchDefinition` data asset (source anim set, character setup, distributions, timing, seed, output root, grid/count mode) and write tests for source anim resolution — folder + skeleton filter, empty set reported as a named failure (Red → Green) (dfd3054)
+- [x] Task: Add editor buttons that fill a catalog with the starter archetypes and a region table with the UEFN entries, appending only what is missing (Red → Green) (e1fd0a9)
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Batch Definition and Deterministic Parameter Sampling' (Protocol in workflow.md)
 
 ## Phase 3: Reaction Character, Impact Delivery and Outcome Detection
