@@ -13,11 +13,19 @@ generic mocap. Those labelled clips fine-tune the Kimodo model and feed motion-m
 datasets in-engine, so a prompt like "a person walks up a small staircase" resolves to
 animation that already looks like the client's game.
 
+A second, unattended source sits beside player capture (added 2026-10-12): **synthetic impact
+generation**. Some motion is impractical to perform at a pad thousands of times — being hit,
+staggered, knocked down. For that, the plugin plays the game's own animations on a
+physics-controlled character, strikes it in every way a batch describes, and bakes each
+reaction to a labelled clip with no operator in the loop. Same dataset contract, different
+producer.
+
 ## Users
 
 | Who | Role | What they need |
 |-----|------|----------------|
 | **Client teams** (game/animation devs, capture operators) | Produce the data | Record a 10-second clip without leaving the pad, see what was captured, label it, move on. No C++, no pipeline knowledge, no per-project engineering. |
+| **Animotive dataset engineers** (added 2026-10-12) | Run synthetic batches | Describe a batch of impacts once, start it, walk away, come back to thousands of valid clips and a report of what the batch actually contains. |
 | **Animotive ML + animation teams** | Consume the data | Bespoke, well-labelled datasets: motion aligned frame-for-frame with the inputs that caused it, in a format a training pipeline can ingest without hand-repair. |
 
 The plugin's operators and its beneficiaries are different people in different companies.
@@ -37,6 +45,8 @@ will never see the client's project.
    labelling is a first-class step in the UI, not an afterthought spreadsheet.
 5. **Take Recorder is the host, not a rival.** The panel extends the Take Recorder workflow
    clients already know, and lets Unreal own the animation recording it is good at.
+   Synthetic impact generation is the one deliberate exception (2026-10-12): it bakes poses
+   directly, because a Take per clip cannot reach the volume that work exists for.
 
 ## Core Features
 
@@ -99,6 +109,26 @@ The panel keeps the session's clips in a list with label status, so an operator 
   portable interchange bundle — motion (BVH/FBX) plus a JSON manifest — consumable by a
   training pipeline with no Unreal project attached.
 
+### 7. Synthetic impact generation (added 2026-10-12)
+
+Hands-off generation of hit-reaction clips at a volume no operator could record.
+
+- **Batch asset.** One data asset describes a batch: which source animations to play, which
+  character and physics setup, and the distributions every impact is drawn from — body region,
+  intensity, contact size, direction, timing in the source motion, and delivery (single hit,
+  burst, sustained push, or a real projectile).
+- **Emergent reactions.** A Physics Control driven character follows the animation until hit;
+  the outcome — flinch, stagger, knockdown, full ragdoll — comes from the physics, and
+  recoverable hits blend back to the animation. The detected outcome is recorded.
+- **Direct bake.** Each clip is sampled at a fixed step and baked straight to an
+  `AnimSequence`, with a sidecar that records every parameter of every hit.
+- **Automatic labels.** Captions and tags are generated from the clip's parameters and
+  outcome ("a person jogging is struck hard in the chest from the left and falls backwards"),
+  so the "no clip without a caption" rule holds with no human in the loop.
+- **Unattended runs.** The panel previews a batch in PIE for tuning; the same batch runs
+  headless, sharded and resumable, and ends with a distribution report.
+- **Reproducible.** Any clip regenerates from its batch seed and index.
+
 ## Non-Goals
 
 - **Scene and environment context capture.** World-space geometry the character touched
@@ -115,3 +145,5 @@ The panel keeps the session's clips in a list with label status, so an operator 
 - A captured clip's input stream and animation frames line up exactly, verifiable by replay.
 - A client project with an unmodified character controller yields usable required-layer data.
 - An exported bundle ingests into an Animotive training pipeline with no manual repair.
+- A synthetic impact batch of a thousand clips or more runs to completion unattended, survives
+  being killed and resumed, and reports its outcome distribution.
