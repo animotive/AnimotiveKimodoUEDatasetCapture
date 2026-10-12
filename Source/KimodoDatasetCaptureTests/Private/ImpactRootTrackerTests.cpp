@@ -28,7 +28,7 @@ namespace ImpactRootTrackerTests
 	{
 		// Root faces the mesh's forward (+Y) at zero; measure its forward's heading.
 		const FVector Forward = Root.GetRotation().RotateVector(MeshForward);
-		return FMath::RadiansToDegrees(FMath::Atan2(float(Forward.Y), float(Forward.X))) - 90.0f;
+		return FMath::UnwindDegrees(FMath::RadiansToDegrees(FMath::Atan2(float(Forward.Y), float(Forward.X))) - 90.0f);
 	}
 }
 
@@ -97,6 +97,7 @@ bool FImpactRootBlendTest::RunTest(const FString& Parameters)
 	// Facing takes the short way round across +-180.
 	FImpactRootTrackerConfig Smooth;
 	Smooth.YawSmoothing = 0.5f;
+	Smooth.BlendFrames = 1; // measure smoothing alone, not the release blend from the source root
 	FImpactRootTracker Wrap(ReferencePelvis, MeshForward, 0.0f, Smooth);
 	Wrap.Step(FTransform::Identity, TurnedPelvis(170.0f, FVector::ZeroVector), true);
 	const float Next = YawOf(Wrap.Step(FTransform::Identity, TurnedPelvis(-170.0f, FVector::ZeroVector), true));
