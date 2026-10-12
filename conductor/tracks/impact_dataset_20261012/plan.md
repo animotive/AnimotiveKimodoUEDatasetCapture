@@ -49,7 +49,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Write tests for the balance planner as pure logic — capture point from CoM, excess velocity and height; low-pass on excess velocity; step trigger threshold; landing at capture point with stance width; reach clamp; feet alternate; minimum stance frames; step budget; fall on repeated short steps or low CoM; settle detection; target frame ends centred over new footing (Red) (c0af2d2)
 - [x] Task: Implement `FImpactBalancePlanner` (Green) (36304d4)
 - [x] Task: Write tests for fall decisions as pure logic — high-impact threshold (impulse vs body and struck-body mass) releases to full ragdoll with no recovery; trip: a leg hit on a moving source disrupts that leg's stride and, when momentum carries the CoM past a support the feet cannot catch, falls forward; moving sources run the capture-point balance check (stumble, recover or fall); outcome records the trip (Red) (b761fe9)
-- [ ] Task: Implement fall and trip decisions in the balance planner (Green)
+- [x] Task: Implement fall and trip decisions in the balance planner (Green) (930cce6)
 - [ ] Task: Write tests for the source clock — moving/standing classified once from unwarped root speed; time warp drop proportional to momentum removed along travel, clamped, recovering over the configured frames; root motion carried across loops (Red)
 - [ ] Task: Implement the source pose sampler and source clock (Green)
 - [ ] Task: Implement `AImpactReactionCharacter` — skeletal mesh with no anim instance (posed only by physics), named per-body controls and body modifiers (`W_`/`P_`/`M_`), targets from the source pose sampler in a fixed reference frame carrying root motion **(exempt)**
