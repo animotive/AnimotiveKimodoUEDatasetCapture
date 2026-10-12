@@ -38,7 +38,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 
 ## Phase 3: Reaction Character, Impact Delivery and Outcome Detection
 
-- [ ] Task: Write tests for the outcome classifier — synthetic pelvis-height / CoM-vs-support / control-blend traces classify as flinch, stagger, knockdown, ragdoll; boundary thresholds deterministic (Red)
+- [x] Task: Write tests for the outcome classifier — synthetic pelvis-height / CoM-vs-support / control-blend traces classify as flinch, stagger, knockdown, ragdoll; boundary thresholds deterministic (Red) (d35b834)
 - [ ] Task: Implement the outcome classifier as pure logic over per-frame state (Green)
 - [ ] Task: Write tests for the clip window state machine — pre-roll → hit(s) → reaction → settle/recover → end; settle requires velocity under threshold for N frames; max-reaction ceiling ends clip and records reason (Red)
 - [ ] Task: Implement the clip window state machine (Green)
@@ -52,7 +52,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [ ] Task: Implement the swing arc (Green)
 - [ ] Task: Write tests for the source clock — moving/standing classified once from unwarped root speed; time warp drop proportional to momentum removed along travel, clamped, recovering over the configured frames; root motion carried across loops (Red)
 - [ ] Task: Implement the source pose sampler and source clock (Green)
-- [ ] Task: Implement `AImpactReactionCharacter` — skeletal mesh, single-node source anim playback with root motion applied to the actor, `UPhysicsControlComponent` setup from the profile **(exempt)**
+- [ ] Task: Implement `AImpactReactionCharacter` — skeletal mesh with no anim instance (posed only by physics), named per-body controls and body modifiers (`W_`/`P_`/`M_`), targets from the source pose sampler in a fixed reference frame carrying root motion **(exempt)**
 - [ ] Task: Write tests for surface-point delivery — contact point on the struck body's surface along the incoming direction; impulse spread across bodies within the contact radius sums to the sampled impulse; off-centre contact yields torque (Red)
 - [ ] Task: Implement impact delivery — `AddImpulseAtLocation` at the surface point, contact-radius spread, burst, sustained force, spawned projectile actors with collision **(exempt for the physics scene; spread maths covered above)**
 - [ ] Task: Wire the reaction character: kinematic pre-roll, kinematic planted/stepping feet, explicit per-body targets in a fixed reference frame, joint projection, one world per process **(exempt)**
