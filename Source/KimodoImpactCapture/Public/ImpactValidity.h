@@ -7,9 +7,16 @@
 /** Limits beyond which a frame means the simulation has broken. A value on a limit is still valid. */
 struct KIMODOIMPACTCAPTURE_API FImpactValidityThresholds
 {
-	/** 40 m/s: far beyond anything a struck body reaches; above it the solver has exploded. */
-	float MaxBodySpeedCmPerSecond = 4000.0f;
-	float MaxAngularSpeedDegPerSecond = 5000.0f;
+	/**
+	 * 60 m/s. A ragdoll hit by a car legitimately whips a hand past 40 m/s (observed in the Phase 3
+	 * review); solver explosions run to hundreds.
+	 */
+	float MaxBodySpeedCmPerSecond = 6000.0f;
+	/**
+	 * 10,000 deg/s. A ragdolled hand hit by a car spun at 6,700 in the Phase 3 review; solver
+	 * explosions spin in the tens of thousands.
+	 */
+	float MaxAngularSpeedDegPerSecond = 10000.0f;
 	/** How far a body may sink below the floor before the contact is considered broken. */
 	float MaxGroundPenetrationCm = 15.0f;
 	/** Raw joint separation; the worst legitimate clip after the Phase 1 fixes measured 20 cm. */
