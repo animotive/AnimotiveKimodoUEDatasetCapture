@@ -1,0 +1,131 @@
+// Copyright Animotive. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Engine/DataAsset.h"
+#include "Math/Interval.h"
+
+#include "ImpactorCatalog.generated.h"
+
+struct FImpactRandom;
+
+/**
+ * How an impact is delivered. Serialised by name in sidecars: enumerators may be added but
+ * never renamed or reordered.
+ */
+UENUM()
+enum class EImpactDeliveryMode : uint8
+{
+	/** One instantaneous impulse. */
+	Instant,
+	/** Several impulses in quick succession (a shotgun blast, a flurry of punches). */
+	Burst,
+	/** A force applied over a duration (wind, water, a crowd push). */
+	Sustained,
+	/** A physical object spawned and thrown so that it really collides. */
+	Projectile,
+};
+
+/** Shape of the impacting object, for projectile spawning and caption wording. */
+UENUM()
+enum class EImpactorShape : uint8
+{
+	Sphere,
+	Capsule,
+	Box,
+	/** No single object: a broad contact area such as a vehicle front or a gust. */
+	Area,
+};
+
+/**
+ * What hit the character. Everything a caption needs to name the impactor, and the physical
+ * ranges its impulse is derived from. Impulse is never an independent parameter: it is always
+ * mass x speed, so a bullet and a car can never share an impulse by accident.
+ */
+USTRUCT()
+struct KIMODOIMPACTCAPTURE_API FImpactorArchetype
+{
+	GENERATED_BODY()
+
+	/** Stable identifier, written to sidecars and tags. */
+	UPROPERTY(EditAnywhere, Category = "Impactor")
+	FName Id;
+
+	/** Noun phrase used in captions, with its article: "a small bullet", "a car". */
+	UPROPERTY(EditAnywhere, Category = "Impactor")
+	FString NounPhrase;
+
+	/** One plain-language line describing the impactor, written to the sidecar. */
+	UPROPERTY(EditAnywhere, Category = "Impactor")
+	FString Description;
+
+	/** Verbs a caption may use for this impactor: "shot", "hit", "rammed". */
+	UPROPERTY(EditAnywhere, Category = "Impactor")
+	TArray<FString> Verbs;
+
+	UPROPERTY(EditAnywhere, Category = "Impactor")
+	EImpactorShape Shape = EImpactorShape::Sphere;
+
+	/** Characteristic size of the object in centimetres (diameter, length or width). */
+	UPROPERTY(EditAnywhere, Category = "Impactor", meta = (ClampMin = "0"))
+	float SizeCm = 1.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Impactor")
+	FFloatInterval MassKg = FFloatInterval(1.0f, 1.0f);
+
+	UPROPERTY(EditAnywhere, Category = "Impactor")
+	FFloatInterval SpeedMetresPerSecond = FFloatInterval(1.0f, 1.0f);
+
+	/** Contact radius on the body, in centimetres: point-like for a bullet, wide for a car. */
+	UPROPERTY(EditAnywhere, Category = "Impactor")
+	FFloatInterval ContactRadiusCm = FFloatInterval(1.0f, 1.0f);
+
+	UPROPERTY(EditAnywhere, Category = "Impactor")
+	EImpactDeliveryMode DefaultDelivery = EImpactDeliveryMode::Instant;
+
+	/** Relative sampling weight within a catalog. Zero excludes the archetype. */
+	UPROPERTY(EditAnywhere, Category = "Impactor", meta = (ClampMin = "0"))
+	float Weight = 1.0f;
+};
+
+/** One concrete impactor drawn from an archetype. */
+struct KIMODOIMPACTCAPTURE_API FImpactorSample
+{
+	const FImpactorArchetype* Archetype = nullptr;
+	float MassKg = 0.0f;
+	float SpeedMetresPerSecond = 0.0f;
+	float ContactRadiusCm = 0.0f;
+
+	/** Momentum carried by the impactor, in engine units (kg x cm/s). Always mass x speed. */
+	float ImpulseKgCmPerSecond() const;
+};
+
+/**
+ * The set of things that can hit the character. A data asset, so a project can extend it
+ * without a rebuild; the plugin supplies a starter set.
+ */
+UCLASS(BlueprintType)
+class KIMODOIMPACTCAPTURE_API UImpactorCatalog : public UDataAsset
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, Category = "Impactors")
+	TArray<FImpactorArchetype> Archetypes;
+
+	/** The plugin's starter archetypes, from a small bullet to a wrecking ball. */
+	static TArray<FImpactorArchetype> MakeStarterArchetypes();
+
+	/**
+	 * True when the catalog can be sampled. On failure, OutReason states what is wrong in
+	 * terms the dataset engineer can act on.
+	 */
+	bool Validate(FText& OutReason) const;
+
+	/** Weighted choice of archetype. Null when the catalog is empty or every weight is zero. */
+	const FImpactorArchetype* SampleArchetype(FImpactRandom& Random) const;
+
+	/** Draws mass, speed and contact radius within the archetype's ranges. */
+	static FImpactorSample SampleInstance(const FImpactorArchetype& Archetype, FImpactRandom& Random);
+};
