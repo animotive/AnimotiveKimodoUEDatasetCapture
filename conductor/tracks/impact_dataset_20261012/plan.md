@@ -11,7 +11,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 
 - [x] Task: Update `product.md` with a "Synthetic impact generation" feature section and the vision note from the spec (c67c8ed)
 - [x] Task: Update `tech-stack.md` — new `KimodoImpactCapture` module (`UncookedOnly`), `PhysicsControl` plugin dependency, direct pose bake path, schema v3, headless runner; dated note (7f29c5f)
-- [ ] Task: Add `PhysicsControl` to `.uplugin` dependencies and create `KimodoImpactCapture` module (`Build.cs` with `IncludeOrderVersion = Latest`, log category); verify editor → capture dependency direction holds
+- [x] Task: Add `PhysicsControl` to `.uplugin` dependencies and create `KimodoImpactCapture` module (`Build.cs` with `IncludeOrderVersion = Latest`, log category); verify editor → capture dependency direction holds (14e90b4)
 - [ ] Task: Spike **(exempt)** — in GameAnimationSample PIE, spawn a mannequin with `UPhysicsControlComponent` playing a GASP jog, apply one impulse to the chest, confirm partial reaction and full ragdoll both work; record findings (API surface, body names, substep settings) in `tech-stack.md`
 - [ ] Task: Spike **(exempt)** — measure headless fixed-step throughput (commandlet world tick vs `-game -NullRHI` run) and per-clip bake time/size; record numbers and chosen host in `tech-stack.md`
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundations, Docs and Feasibility Spike' (Protocol in workflow.md)
@@ -20,7 +20,9 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 
 - [ ] Task: Write tests for the deterministic RNG stream — `(seed, clipIndex)` yields identical streams across runs, different indices diverge, independent of evaluation order (Red)
 - [ ] Task: Implement per-clip RNG derivation (Green)
-- [ ] Task: Write tests for `FImpactParams` sampling — every field within configured distribution bounds; intensity buckets map to their impulse ranges at boundaries; direction samples are unit vectors covering all octants over N samples (Red)
+- [ ] Task: Write tests for the impactor archetype catalog — loaded as data; every archetype has noun phrase, description, size, mass/speed/radius ranges and verbs; impulse derived from sampled mass × speed stays within the archetype's implied range; catalog weights respected over N samples; empty or malformed catalog fails with a stated reason (Red)
+- [ ] Task: Implement `UImpactorCatalog` data asset with the starter catalog (small bullet … wrecking ball) and archetype sampling (Green)
+- [ ] Task: Write tests for `FImpactParams` sampling — every field within configured distribution bounds; derived intensity bucket matches impulse at bucket boundaries; direction samples are unit vectors covering all octants over N samples (Red)
 - [ ] Task: Implement `FImpactParams` and the sampler over distribution structs (Green)
 - [ ] Task: Write tests for delivery-mode sampling — instant / burst (2–N hits, spacing in range, ordered frames) / sustained (duration > 0) / projectile (shape, mass, velocity within bounds) (Red)
 - [ ] Task: Implement delivery-mode sampling and the hit schedule (Green)
@@ -55,8 +57,8 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [ ] Task: Implement the bake via `IAnimationDataController` and save under `<OutputRoot>/<Batch>/<ClipId>` (Green)
 - [ ] Task: Write tests for sidecar schema v3 — `clipSource`, absent input layers, `impact` block with all hits and outcome; v2 files still read; v3 round-trips (Red)
 - [ ] Task: Implement schema v3 structs and serializer changes; regenerate `SidecarSchemaSample.json` (Green)
-- [ ] Task: Write tests for caption + tag generation — templates fill motion type, intensity word, region, direction, outcome; every outcome × mode combination produces a non-empty caption; tag set matches params (Red)
-- [ ] Task: Implement template-based caption and tag generation (Green)
+- [ ] Task: Write tests for the human-language description — names subject, source motion, impactor noun with its verb, region, direction and outcome; every archetype × region × outcome combination yields a non-empty sentence with no unfilled slot; multiple phrasings selected deterministically from the clip seed; source-motion phrase from the per-animation table with name-derived fallback; tag set matches params (Red)
+- [ ] Task: Implement template-based description and tag generation, plus the per-animation source-motion description table as data (Green)
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Pose Recording, Bake and Sidecar v3' (Protocol in workflow.md)
 
 ## Phase 5: Batch Runner, Resume and Headless Host
