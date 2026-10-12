@@ -4,6 +4,16 @@
 
 #include "ImpactSwingArc.h"
 
+bool FImpactFallRules::IsOverwhelming(float ReactionImpulseKgCmPerSecond, float BodyMassKg, float StruckBodyMassKg) const
+{
+	return false; // Red
+}
+
+void FImpactBalancePlanner::ReleaseImmediately()
+{
+	// Red
+}
+
 FImpactBalancePlanner::FImpactBalancePlanner(const FImpactBalanceConfig& InConfig)
 	: Config(InConfig)
 {

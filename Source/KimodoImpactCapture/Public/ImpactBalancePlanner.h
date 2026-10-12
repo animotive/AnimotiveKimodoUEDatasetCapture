@@ -36,6 +36,22 @@ struct KIMODOIMPACTCAPTURE_API FImpactBalanceConfig
 	/** Per-frame pull of the target frame toward the new footing once the character has stepped. */
 	float FootingPull = 0.08f;
 	float GravityCmPerSecondSquared = 980.0f;
+	/** Frames a tripped foot stays caught where the hit stopped it. */
+	int32 TripHoldFrames = 12;
+	/** A moving character falls when its excess momentum carries the capture point beyond this. */
+	float MovingFallReachCm = 70.0f;
+};
+
+/** Thresholds above which a hit overwhelms the character outright: full ragdoll, no recovery. */
+struct KIMODOIMPACTCAPTURE_API FImpactFallRules
+{
+	/** Whole-body speed change, cm/s. 5.5 m/s: a car or a tackle, not a rifle round. */
+	float OverwhelmBodyDeltaVCmPerSecond = 550.0f;
+	/** Struck-body speed change, cm/s: a violent blow to one light body part. */
+	float OverwhelmStruckBodyDeltaVCmPerSecond = 9000.0f;
+
+	/** True when the reaction impulse overwhelms the body or the struck body (bounds count). */
+	bool IsOverwhelming(float ReactionImpulseKgCmPerSecond, float BodyMassKg, float StruckBodyMassKg) const;
 };
 
 /** One frame of measured state, after the hit. */
@@ -51,6 +67,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactBalanceInput
 	FVector FootPosition[2] = { FVector::ZeroVector, FVector::ZeroVector };
 	/** The source travels (a run), as classified once per clip. */
 	bool bMovingSource = false;
+	/** Leg the hit struck (0 left, 1 right), or INDEX_NONE when it struck no leg. */
+	int32 StruckLegSide = INDEX_NONE;
 };
 
 struct KIMODOIMPACTCAPTURE_API FImpactFootTarget
@@ -75,6 +93,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactBalanceOutput
 	/** True only on the frame balance was lost. */
 	bool bJustFell = false;
 	bool bSettling = false;
+	/** A leg hit broke a moving character's stride. */
+	bool bTrip = false;
 };
 
 /**
@@ -89,6 +109,9 @@ public:
 
 	/** Consumes one frame after the hit. After a fall, keeps reporting the fall and changes nothing. */
 	FImpactBalanceOutput Step(const FImpactBalanceInput& Input);
+
+	/** Overwhelming hit: release every control from the next frame, with no attempt to balance. */
+	void ReleaseImmediately();
 
 	/** Capture point for a centre of mass and horizontal excess velocity. */
 	static FVector CapturePoint(const FVector& Com, const FVector& ExcessVelocity, float GravityCmPerSecondSquared);
@@ -119,4 +142,8 @@ private:
 	int32 CalmFrames = 0;
 	int32 SettleStart = INDEX_NONE;
 	bool bFell = false;
+	bool bPendingJustFell = false;
+	bool bTrip = false;
+	int32 TripSide = INDEX_NONE;
+	FVector TripFoot = FVector::ZeroVector;
 };
