@@ -13,7 +13,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Update `tech-stack.md` — new `KimodoImpactCapture` module (`UncookedOnly`), `PhysicsControl` plugin dependency, direct pose bake path, schema v3, headless runner; dated note (7f29c5f)
 - [x] Task: Add `PhysicsControl` to `.uplugin` dependencies and create `KimodoImpactCapture` module (`Build.cs` with `IncludeOrderVersion = Latest`, log category); verify editor → capture dependency direction holds (14e90b4)
 - [x] Task: Spike **(exempt)** — in GameAnimationSample PIE, spawn a mannequin with `UPhysicsControlComponent` playing a GASP jog, apply one impulse to the chest, confirm partial reaction and full ragdoll both work; record findings (API surface, body names, substep settings) in `tech-stack.md` (c8ec4b6)
-- [ ] Task: Spike **(exempt)** — measure headless fixed-step throughput (commandlet world tick vs `-game -NullRHI` run) and per-clip bake time/size; record numbers and chosen host in `tech-stack.md`
+- [x] Task: Spike **(exempt)** — measure headless fixed-step throughput (commandlet world tick vs `-game -NullRHI` run) and per-clip bake time/size; record numbers and chosen host in `tech-stack.md` (b1342ce)
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundations, Docs and Feasibility Spike' (Protocol in workflow.md)
 
 ## Phase 2: Batch Definition and Deterministic Parameter Sampling
