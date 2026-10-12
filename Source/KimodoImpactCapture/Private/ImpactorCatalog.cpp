@@ -97,6 +97,23 @@ TArray<FImpactorArchetype> UImpactorCatalog::MakeStarterArchetypes()
 	return Starter;
 }
 
+int32 UImpactorCatalog::FillWithStarterArchetypes()
+{
+	// Undoable in the editor; a no-op outside a transaction.
+	Modify();
+	int32 Added = 0;
+	for (FImpactorArchetype& Starter : MakeStarterArchetypes())
+	{
+		const bool bPresent = Archetypes.ContainsByPredicate([&Starter](const FImpactorArchetype& A) { return A.Id == Starter.Id; });
+		if (!bPresent)
+		{
+			Archetypes.Add(MoveTemp(Starter));
+			++Added;
+		}
+	}
+	return Added;
+}
+
 bool UImpactorCatalog::Validate(FText& OutReason) const
 {
 	if (Archetypes.IsEmpty())

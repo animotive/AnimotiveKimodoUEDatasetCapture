@@ -32,6 +32,23 @@ TArray<FImpactRegionBodies> UImpactRegionTable::MakeUEFNMannequinEntries()
 	};
 }
 
+int32 UImpactRegionTable::FillWithUEFNMannequinEntries()
+{
+	// Undoable in the editor; a no-op outside a transaction.
+	Modify();
+	int32 Added = 0;
+	for (FImpactRegionBodies& Entry : MakeUEFNMannequinEntries())
+	{
+		const bool bMapped = Entries.ContainsByPredicate([&Entry](const FImpactRegionBodies& E) { return E.Region == Entry.Region; });
+		if (!bMapped)
+		{
+			Entries.Add(MoveTemp(Entry));
+			++Added;
+		}
+	}
+	return Added;
+}
+
 bool UImpactRegionTable::Validate(const UPhysicsAsset& PhysicsAsset, FText& OutReason) const
 {
 	if (Entries.IsEmpty())

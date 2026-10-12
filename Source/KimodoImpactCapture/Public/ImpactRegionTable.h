@@ -37,6 +37,13 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Regions")
 	TArray<FImpactRegionBodies> Entries;
 
+	/**
+	 * Adds a UEFN mannequin entry for every region the table does not already map. Never replaces
+	 * an existing mapping. Shown as a button on the asset's Details panel. Returns how many were added.
+	 */
+	UFUNCTION(CallInEditor, Category = "Regions")
+	int32 FillWithUEFNMannequinEntries();
+
 	/** Table for the UEFN mannequin, which GameAnimationSample's animations are authored on. */
 	static TArray<FImpactRegionBodies> MakeUEFNMannequinEntries();
 

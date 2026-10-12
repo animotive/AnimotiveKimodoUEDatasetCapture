@@ -122,6 +122,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Impactors")
 	TArray<FImpactorArchetype> Archetypes;
 
+	/**
+	 * Adds every starter archetype whose id the catalog does not already have. Never replaces or
+	 * removes an entry, so a project's own impactors and edits survive. Shown as a button on the
+	 * asset's Details panel. Returns how many were added.
+	 */
+	UFUNCTION(CallInEditor, Category = "Impactors")
+	int32 FillWithStarterArchetypes();
+
 	/** The plugin's starter archetypes, from a small bullet to a wrecking ball. */
 	static TArray<FImpactorArchetype> MakeStarterArchetypes();
 
