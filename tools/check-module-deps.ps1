@@ -1,6 +1,7 @@
 # Copyright Animotive. All Rights Reserved.
 #
-# Fails if the capture module depends on an EDITOR-type module.
+# Fails if an UncookedOnly module of this plugin depends on an EDITOR-type module, or if the
+# capture module depends on the impact module.
 #
 # The capture module is UncookedOnly so that capture code is live during Play In Editor but
 # cannot reach a cooked client build. A dependency on an Editor-type module, or an editor-only
@@ -13,15 +14,20 @@
 # false positive on TakeRecorderSource.h. The rule is about module TYPE, not about names that
 # look editorial.
 #
+# Modules checked (2026-10-12): KimodoDatasetCapture and KimodoImpactCapture, both UncookedOnly.
+# The impact module depends on the capture module for the sidecar schema; the reverse would
+# make player capture carry Physics Control and the whole synthetic pipeline with it.
+#
 # Usage:  pwsh -File tools/check-module-deps.ps1
 
 $ErrorActionPreference = 'Stop'
 
 $PluginRoot = Split-Path -Parent $PSScriptRoot
-$CaptureModuleDir = Join-Path $PluginRoot 'Source/KimodoDatasetCapture'
 
-if (-not (Test-Path $CaptureModuleDir)) {
-    Write-Error "Capture module directory not found: $CaptureModuleDir"
+# Module name -> names forbidden for that module in addition to the shared editor-only list.
+$CheckedModules = [ordered]@{
+    'KimodoDatasetCapture' = @('KimodoImpactCapture')
+    'KimodoImpactCapture'  = @()
 }
 
 # Editor-only modules and headers the capture module must never name.
@@ -46,42 +52,53 @@ $ForbiddenNames = @(
 
 $Violations = @()
 
-# 1. Build rules: no forbidden module in any dependency list.
-$BuildFile = Join-Path $CaptureModuleDir 'KimodoDatasetCapture.Build.cs'
-$BuildLines = Get-Content $BuildFile
-for ($i = 0; $i -lt $BuildLines.Count; $i++) {
-    $Line = $BuildLines[$i]
-    if ($Line -match '^\s*//') { continue }
-    foreach ($Name in $ForbiddenNames) {
-        if ($Line -match ('"' + [regex]::Escape($Name) + '"')) {
-            $Violations += "KimodoDatasetCapture.Build.cs:$($i + 1): names editor-only module '$Name'"
-        }
+foreach ($ModuleName in $CheckedModules.Keys) {
+    $ModuleDir = Join-Path $PluginRoot "Source/$ModuleName"
+    if (-not (Test-Path $ModuleDir)) {
+        Write-Error "Module directory not found: $ModuleDir"
     }
-}
+    $ModuleForbidden = $ForbiddenNames + $CheckedModules[$ModuleName]
 
-# 2. Sources: no include from an editor-only module.
-$SourceFiles = Get-ChildItem -Path $CaptureModuleDir -Recurse -Include *.h, *.cpp -File
-foreach ($File in $SourceFiles) {
-    $Lines = Get-Content $File.FullName
-    for ($i = 0; $i -lt $Lines.Count; $i++) {
-        $Line = $Lines[$i]
-        if ($Line -notmatch '^\s*#include') { continue }
-        # Specific editor headers. Deliberately excludes 'TakeRecorder', which matches the
-        # UncookedOnly TakesCore header this module legitimately includes.
-        foreach ($Name in @('Editor.h', 'UnrealEd', 'Slate/', 'SlateCore', 'ISequencer', 'MovieSceneTools', 'ToolMenus')) {
-            if ($Line -match [regex]::Escape($Name)) {
-                $Rel = $File.FullName.Substring($PluginRoot.Length + 1)
-                $Violations += "${Rel}:$($i + 1): includes editor-only header matching '$Name'"
+    # 1. Build rules: no forbidden module in any dependency list.
+    $BuildFile = Join-Path $ModuleDir "$ModuleName.Build.cs"
+    $BuildLines = Get-Content $BuildFile
+    for ($i = 0; $i -lt $BuildLines.Count; $i++) {
+        $Line = $BuildLines[$i]
+        if ($Line -match '^\s*//') { continue }
+        foreach ($Name in $ModuleForbidden) {
+            if ($Line -match ('"' + [regex]::Escape($Name) + '"')) {
+                $Violations += "${ModuleName}.Build.cs:$($i + 1): names forbidden module '$Name'"
             }
         }
     }
+
+    # 2. Sources: no include from an editor-only module, nor from a forbidden sibling module.
+    $HeaderPatterns = @('Editor.h', 'UnrealEd', 'Slate/', 'SlateCore', 'ISequencer', 'MovieSceneTools', 'ToolMenus')
+    if ($CheckedModules[$ModuleName] -contains 'KimodoImpactCapture') { $HeaderPatterns += 'KimodoImpactCapture' }
+    $SourceFiles = Get-ChildItem -Path $ModuleDir -Recurse -Include *.h, *.cpp -File
+    foreach ($File in $SourceFiles) {
+        $Lines = Get-Content $File.FullName
+        for ($i = 0; $i -lt $Lines.Count; $i++) {
+            $Line = $Lines[$i]
+            if ($Line -notmatch '^\s*#include') { continue }
+            # Specific editor headers. Deliberately excludes 'TakeRecorder', which matches the
+            # UncookedOnly TakesCore header this module legitimately includes.
+            foreach ($Name in $HeaderPatterns) {
+                if ($Line -match [regex]::Escape($Name)) {
+                    $Rel = $File.FullName.Substring($PluginRoot.Length + 1)
+                    $Violations += "${Rel}:$($i + 1): includes editor-only header matching '$Name'"
+                }
+            }
+        }
+    }
+
 }
 
 if ($Violations.Count -gt 0) {
-    Write-Host 'FAIL: capture module depends on editor-only code.' -ForegroundColor Red
+    Write-Host 'FAIL: an UncookedOnly module has a forbidden dependency.' -ForegroundColor Red
     $Violations | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
     exit 1
 }
 
-Write-Host 'PASS: capture module has no editor-only dependencies.' -ForegroundColor Green
+Write-Host 'PASS: capture and impact modules have no forbidden dependencies.' -ForegroundColor Green
 exit 0

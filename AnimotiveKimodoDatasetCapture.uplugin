@@ -25,6 +25,14 @@
 			]
 		},
 		{
+			"Name": "KimodoImpactCapture",
+			"Type": "UncookedOnly",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [
+				"Win64"
+			]
+		},
+		{
 			"Name": "KimodoDatasetCaptureEditor",
 			"Type": "Editor",
 			"LoadingPhase": "PostEngineInit",
@@ -48,6 +56,10 @@
 		},
 		{
 			"Name": "EnhancedInput",
+			"Enabled": true
+		},
+		{
+			"Name": "PhysicsControl",
 			"Enabled": true
 		}
 	]

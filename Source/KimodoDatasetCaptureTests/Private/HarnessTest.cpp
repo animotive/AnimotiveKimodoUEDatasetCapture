@@ -34,5 +34,12 @@ bool FKimodoDatasetCaptureHarnessTest::RunTest(const FString& Parameters)
 		TEXT("Editor module is loaded"),
 		FModuleManager::Get().IsModuleLoaded(TEXT("KimodoDatasetCaptureEditor")));
 
+	// Synthetic impact generation lives in its own UncookedOnly module. Queried by name for
+	// the same reason as the editor module: this proves it loads without the harness itself
+	// having to link it.
+	TestTrue(
+		TEXT("Impact capture module is loaded"),
+		FModuleManager::Get().IsModuleLoaded(TEXT("KimodoImpactCapture")));
+
 	return true;
 }
