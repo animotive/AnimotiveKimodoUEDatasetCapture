@@ -84,6 +84,14 @@ struct KIMODOIMPACTCAPTURE_API FImpactorArchetype
 	UPROPERTY(EditAnywhere, Category = "Impactor")
 	EImpactDeliveryMode DefaultDelivery = EImpactDeliveryMode::Instant;
 
+	/**
+	 * Multiplier from transferred momentum to the reaction impulse the simulation applies. A real
+	 * bullet transfers almost no momentum; people react to being shot through pain and injury,
+	 * not momentum. Recorded with every clip, so physical and reactive impulse stay separable.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Impactor", meta = (ClampMin = "0"))
+	float ReactionGain = 1.0f;
+
 	/** Relative sampling weight within a catalog. Zero excludes the archetype. */
 	UPROPERTY(EditAnywhere, Category = "Impactor", meta = (ClampMin = "0"))
 	float Weight = 1.0f;
