@@ -216,9 +216,12 @@ bool FImpactBalanceSettleTest::RunTest(const FString& Parameters)
 		{
 			Out = Planner.Step(Pushed(100.0f));
 		}
+		// The body that stepped back now stands over its new feet, at rest.
+		const FVector NewFooting = (Out.Feet[0].Position + Out.Feet[1].Position) * 0.5;
+		const FVector RestedCom(NewFooting.X, NewFooting.Y, StandingCom.Z);
 		for (int32 Index = 0; Index < 300; ++Index)
 		{
-			Out = Planner.Step(Pushed(0.0f));
+			Out = Planner.Step(Pushed(0.0f, RestedCom));
 		}
 		const FVector Before = (LeftFoot + RightFoot) * 0.5;
 		const FVector After = (Out.Feet[0].Position + Out.Feet[1].Position) * 0.5;
