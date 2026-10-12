@@ -2,6 +2,25 @@
 
 #include "ImpactContactSpread.h"
 
+#include "ImpactRandom.h"
+
+// Red: stubs returning neutral values so the tests compile and fail.
+
+FVector FImpactSurfaceContact::AimOffset(const FVector& Direction, float RadiusCm, float AimFraction, FImpactRandom& Random)
+{
+	return FVector(1, 1, 1) * RadiusCm * 10.0f;
+}
+
+FVector FImpactSurfaceContact::Contact(const FVector& Center, float RadiusCm, const FVector& Direction, const FVector& Offset)
+{
+	return FVector::ZeroVector;
+}
+
+FVector FImpactSurfaceContact::Torque(const FVector& Point, const FVector& CenterOfMass, const FVector& Impulse)
+{
+	return FVector::ZeroVector;
+}
+
 TArray<FImpactBodyShare> FImpactContactSpread::Distribute(
 	TConstArrayView<FImpactBodyProxy> Bodies, int32 StruckIndex, const FVector& ContactPoint,
 	float ContactRadiusCm, float TotalImpulseKgCmPerSecond)

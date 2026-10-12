@@ -4,6 +4,31 @@
 
 #include "CoreMinimal.h"
 
+struct FImpactRandom;
+
+/**
+ * Where an impactor meets the struck body. An impactor travels along a direction, aimed at a point
+ * off the body's centre; it lands where that line meets the body's surface on the side facing it.
+ * An off-centre contact twists the body as well as pushing it.
+ */
+struct KIMODOIMPACTCAPTURE_API FImpactSurfaceContact
+{
+	/**
+	 * Random aim offset perpendicular to Direction, uniform over a disc of AimFraction x Radius.
+	 * Deterministic for a given random stream.
+	 */
+	static FVector AimOffset(const FVector& Direction, float RadiusCm, float AimFraction, FImpactRandom& Random);
+
+	/**
+	 * Contact point on a sphere (Center, RadiusCm) for an impactor travelling along Direction
+	 * aimed at Center + Offset. An offset beyond the radius is clamped to graze the surface.
+	 */
+	static FVector Contact(const FVector& Center, float RadiusCm, const FVector& Direction, const FVector& Offset);
+
+	/** Torque an impulse applied at Point produces about CenterOfMass. */
+	static FVector Torque(const FVector& Point, const FVector& CenterOfMass, const FVector& Impulse);
+};
+
 /** A physics body approximated as a sphere, for contact-area tests. */
 struct KIMODOIMPACTCAPTURE_API FImpactBodyProxy
 {
