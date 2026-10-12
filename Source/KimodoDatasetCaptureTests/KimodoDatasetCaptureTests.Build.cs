@@ -25,6 +25,9 @@ public class KimodoDatasetCaptureTests : ModuleRules
 				"KimodoDatasetCapture",
 				"MovieScene",
 				"MovieSceneTracks",
+				// The Physics Control feasibility probe drives UPhysicsControlComponent directly.
+				"PhysicsControl",
+				"PhysicsCore",
 			});
 	}
 }

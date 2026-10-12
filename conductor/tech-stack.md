@@ -174,6 +174,47 @@ debug draw; a headless host runs it as fast as the fixed step allows, sharded wi
 `-Batch= -Start= -Count=`. Which headless host (commandlet ticking its own world vs a
 `-game -NullRHI` run) is decided by the Phase 1 throughput spike and recorded here.
 
+**Physics Control spike findings (2026-10-12).** Proven headless by
+`KimodoDatasetCapture.Impact.Spike.PhysicsControlProbe` on the GameAnimationSample UEFN
+mannequin (`SKM_UEFN_Mannequin` + `PA_UEFN_Mannequin`, 22 bodies; GASP animations are authored
+on the UEFN skeleton, so that is the bake skeleton). Each item is load-bearing for the runner:
+
+- **One step per engine frame.** The tick task manager runs a tick function at most once per
+  `GFrameCounter`. Stepping a world N times inside one frame ran actors, components and the
+  Chaos solver exactly once and froze (solver frame stayed at 1). Each step increments
+  `GFrameCounter` (or is a real engine frame).
+- **Bare worlds need `WorldSettings->NotifyBeginPlay()`.** No game mode means `BeginPlay` never
+  reaches actors, and components never register their ticks.
+- **One world per process; actors respawned per clip.** Creating a world per run crashed the
+  Water world subsystem on the seventh world. Teardown order is `EndPlay` → `BeginTearingDown`
+  → destroy context → `DestroyWorld` → GC.
+- **Explicit targets, not `bUseSkeletalAnimation`.** Physics Control's own animation-target path
+  did not hold the character up headless (stronger controls collapsed it further). The runner
+  samples the source sequence itself (`UAnimSequence::GetBoneTransform` per mesh bone, composed
+  to component space) and sets every control target by hand. No anim graph, deterministic.
+- **Controls created per physics body, named.** `W_<bone>` world-space, `P_<bone>` parent-space
+  (parent = nearest ancestor with a body), `M_<bone>` body modifier. 43 controls for 22 bodies.
+- **Targets live in a fixed reference frame** (spawn transform × sampled root motion). The mesh
+  component follows its simulated root body, so targets built from the live component
+  transform chase the body and the character drifts away (it floated up at ~4 m/s).
+- **Root motion carried across loops** by re-basing each loop on where the last ended; a 2.5 s
+  run loop travels 12.5 m with no discontinuity.
+- **Pre-roll is kinematic on the exact source pose**; bodies switch to simulated at the reaction.
+  The impulse lands one frame after the switch — on the switch frame the body is still
+  kinematic and the impulse is dropped.
+- **A strength profile is required, not optional.** At full world-space strength (8) the controls
+  cancelled a 30000 kg·cm/s chest hit within one frame. Dropping world-space strength to zero at
+  the hit and smooth-stepping back over 60 frames, with parent-space strength held, produced:
+  idle — chest displaced 86 cm, pelvis dipped to 80 cm, recovered to 6 cm; run — chest displaced
+  89 cm, stumbled and kept running, recovered to 13 cm. Releasing all controls collapsed the
+  character (pelvis 15 cm).
+- **Deterministic.** Repeated runs produced bit-identical numbers in one process.
+- **Headless runs terminate.** Every probe run exited by itself in 40–60 s; the test runner
+  still enforces a post-completion kill and a hard timeout.
+
+Tuning baseline: world strength 8, parent strength 16, critically damped, 60 Hz fixed step.
+UEFN mannequin faces +Y.
+
 **Logic stays out of the actor.** Sampling, classification, clip-window state, strength
 blending, root projection, invalid detection, manifest and report are plain types tested
 headless; the actor and the physics scene are the exempt layer.
