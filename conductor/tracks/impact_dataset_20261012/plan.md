@@ -51,7 +51,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Write tests for fall decisions as pure logic — high-impact threshold (impulse vs body and struck-body mass) releases to full ragdoll with no recovery; trip: a leg hit on a moving source disrupts that leg's stride and, when momentum carries the CoM past a support the feet cannot catch, falls forward; moving sources run the capture-point balance check (stumble, recover or fall); outcome records the trip (Red) (b761fe9)
 - [x] Task: Implement fall and trip decisions in the balance planner (Green) (930cce6)
 - [x] Task: Write tests for the source clock — moving/standing classified once from unwarped root speed; time warp drop proportional to momentum removed along travel, clamped, recovering over the configured frames; root motion carried across loops (Red) (69ddd35)
-- [ ] Task: Implement the source pose sampler and source clock (Green)
+- [x] Task: Implement the source pose sampler and source clock (Green) (25d86c7)
 - [ ] Task: Implement `AImpactReactionCharacter` — skeletal mesh with no anim instance (posed only by physics), named per-body controls and body modifiers (`W_`/`P_`/`M_`), targets from the source pose sampler in a fixed reference frame carrying root motion **(exempt)**
 - [ ] Task: Write tests for surface-point delivery — contact point on the struck body's surface along the incoming direction; impulse spread across bodies within the contact radius sums to the sampled impulse; off-centre contact yields torque (Red)
 - [ ] Task: Implement impact delivery — `AddImpulseAtLocation` at the surface point, contact-radius spread, burst, sustained force, spawned projectile actors with collision **(exempt for the physics scene; spread maths covered above)**
