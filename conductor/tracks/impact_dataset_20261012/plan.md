@@ -19,7 +19,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 ## Phase 2: Batch Definition and Deterministic Parameter Sampling
 
 - [x] Task: Write tests for the deterministic RNG stream — `(seed, clipIndex)` yields identical streams across runs, different indices diverge, independent of evaluation order (Red) (c485d52)
-- [ ] Task: Implement per-clip RNG derivation (Green)
+- [x] Task: Implement per-clip RNG derivation (Green) (53ec1ec)
 - [ ] Task: Write tests for the impactor archetype catalog — loaded as data; every archetype has noun phrase, description, size, mass/speed/radius ranges and verbs; impulse derived from sampled mass × speed stays within the archetype's implied range; catalog weights respected over N samples; empty or malformed catalog fails with a stated reason (Red)
 - [ ] Task: Implement `UImpactorCatalog` data asset with the starter catalog (small bullet … wrecking ball) and archetype sampling (Green)
 - [ ] Task: Write tests for `FImpactParams` sampling — every field within configured distribution bounds; derived intensity bucket matches impulse at bucket boundaries; direction samples are unit vectors covering all octants over N samples (Red)
