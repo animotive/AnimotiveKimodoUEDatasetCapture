@@ -94,9 +94,11 @@ bool FImpactClipBaker::Save(UAnimSequence* Sequence, const FString& Filename, FT
 	FSavePackageArgs Args;
 	Args.TopLevelFlags = RF_Public | RF_Standalone;
 	Args.SaveFlags = SAVE_NoError;
-	if (!UPackage::SavePackage(Sequence->GetPackage(), Sequence, *Filename, Args))
+	const FSavePackageResultStruct Result = UPackage::Save(Sequence->GetPackage(), Sequence, *Filename, Args);
+	if (Result.Result != ESavePackageResult::Success)
 	{
-		OutReason = FText::Format(LOCTEXT("SaveFailed", "The clip could not be saved to {0}."), FText::FromString(Filename));
+		OutReason = FText::Format(LOCTEXT("SaveFailed", "The clip could not be saved to {0} (save result {1})."), FText::FromString(Filename),
+			FText::AsNumber(int32(Result.Result)));
 		return false;
 	}
 	return true;

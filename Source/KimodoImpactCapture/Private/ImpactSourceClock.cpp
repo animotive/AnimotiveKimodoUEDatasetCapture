@@ -124,6 +124,12 @@ void FImpactPoseSampler::SampleLoop(double InTime, TArray<FTransform>& OutCompon
 
 void FImpactPoseSampler::Sample(double InTime, TArray<FTransform>& OutComponentSpace) const
 {
+	if (bPlayOnce)
+	{
+		// Past its end a play-once source holds its last frame: a jump must not wrap to its take-off.
+		SampleLoop(InTime, OutComponentSpace);
+		return;
+	}
 	const int32 Loops = FImpactSourceClock::LoopIndex(InTime, Length);
 	SampleLoop(FImpactSourceClock::LoopLocalTime(InTime, Length), OutComponentSpace);
 	const FTransform Offset = FImpactSourceClock::LoopOffset(LoopDelta, Loops);

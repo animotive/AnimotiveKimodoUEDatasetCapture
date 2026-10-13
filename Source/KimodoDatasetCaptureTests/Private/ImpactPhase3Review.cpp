@@ -4,6 +4,7 @@
 #include "Animation/AnimSequence.h"
 #include "Engine/SkeletalMesh.h"
 #include "HAL/FileManager.h"
+#include "ImpactBatchRunner.h"
 #include "ImpactClipBaker.h"
 #include "DatasetSidecarSerializer.h"
 #include "ImpactClipId.h"
@@ -29,9 +30,7 @@
 
 /**
  * Phase 3 review: runs the production clip simulator on hand-picked scenarios and bakes each clip
- * for a person to watch. The recording-to-bones step here is the spike's approved recorder (body
- * rotations, positions rebuilt from bone lengths, leg IK); Phase 4 moves it into the module with
- * its own tests.
+ * for a person to watch, through the same poser, baker and sidecar builder a batch run uses.
  */
 namespace ImpactPhase3Review
 {
@@ -47,46 +46,6 @@ namespace ImpactPhase3Review
 		FVector Direction;
 		float Phase;
 	};
-
-	TArray<FTransform> ToComponent(const FReferenceSkeleton& Ref, const FImpactClipRecording& Recording, int32 FrameIndex, bool bMoving)
-	{
-		const FImpactRecordedFrame& Frame = Recording.Frames[FrameIndex];
-		const TArrayView<const FTransform> Bodies = Recording.BodyPoses.GetFrame(FrameIndex);
-		const TArrayView<const FTransform> Source = Recording.SourcePoses.GetFrame(FrameIndex);
-		const int32 Bones = Ref.GetNum();
-		TArray<FTransform> BodyComponent;
-		for (const FTransform& Body : Bodies)
-		{
-			BodyComponent.Add(Body.GetRelativeTransform(Recording.Reference));
-		}
-		TArray<FTransform> Component;
-		Component.SetNum(Bones);
-		FImpactPoseRebuild(Ref, Recording.BodyBoneIndices).Rebuild(BodyComponent, Source, Frame.Root, Component);
-
-		// Leg IK: planner-placed feet land exactly; on a moving source, feet the source has on the
-		// ground go to its ground height.
-		for (int32 Side = 0; Side < 2; ++Side)
-		{
-			const TCHAR* Suffix = Side == 0 ? TEXT("_l") : TEXT("_r");
-			FImpactLegChain Leg;
-			Leg.Thigh = Ref.FindBoneIndex(*(FString(TEXT("thigh")) + Suffix));
-			Leg.Calf = Ref.FindBoneIndex(*(FString(TEXT("calf")) + Suffix));
-			Leg.Foot = Ref.FindBoneIndex(*(FString(TEXT("foot")) + Suffix));
-			if (!Leg.IsValid())
-			{
-				continue;
-			}
-			const TOptional<FVector> Effector = FImpactLegIK::ChooseEffector(Frame.bReleased, Frame.bFootPlaced[Side],
-				Recording.Reference.InverseTransformPosition(Frame.FootTarget[Side]), bMoving, Source[Leg.Foot].GetLocation(),
-				Component[Leg.Foot].GetLocation());
-			if (Effector.IsSet())
-			{
-				FImpactLegIK::Solve(Ref, Leg, Effector.GetValue(), FVector(0.0, 1.0, 0.0), Source, Component);
-			}
-		}
-
-		return Component;
-	}
 
 	bool Bake(USkeletalMesh* Mesh, const FImpactPoseBuffer& Poses, const FString& Name)
 	{
@@ -199,16 +158,7 @@ bool FImpactPhase3Review::RunTest(const FString& Parameters)
 		}
 
 		FImpactPoseBuffer Poses;
-		Poses.Reserve(Recording.Frames.Num(), Mesh->GetRefSkeleton().GetNum());
-		for (int32 FrameIndex = 0; FrameIndex < Recording.Frames.Num(); ++FrameIndex)
-		{
-			const TArray<FTransform> Component = ToComponent(Mesh->GetRefSkeleton(), Recording, FrameIndex, Recording.bMovingSource);
-			TArrayView<FTransform> Frame = Poses.AddFrame();
-			for (int32 Bone = 0; Bone < Frame.Num(); ++Bone)
-			{
-				Frame[Bone] = Component[Bone];
-			}
-		}
+		FImpactClipPoser::Build(Mesh->GetRefSkeleton(), Recording, Setup.MeshForward, Poses);
 		TestTrue(*FString::Printf(TEXT("%s baked"), Scenario.Name), Bake(Mesh, Poses, FString::Printf(TEXT("P3_%s"), Scenario.Name)));
 
 		// The clip's sidecar, beside the baked review clip, as a batch run would write it.

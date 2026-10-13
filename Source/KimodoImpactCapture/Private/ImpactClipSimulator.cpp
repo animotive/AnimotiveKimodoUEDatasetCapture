@@ -140,7 +140,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	const TArray<AImpactReactionCharacter::FBody>& Bodies = Character->GetBodies();
 
 	// --- Source --------------------------------------------------------------------------------
-	const FImpactPoseSampler Sampler(*Setup.Mesh, *Setup.Source);
+	const FImpactPoseSampler Sampler(*Setup.Mesh, *Setup.Source, Setup.bSourcePlaysOnce);
 	Character->OpenLimitsToHold(Sampler, 1.0 / 30.0, Setup.SourceLimitMarginDeg);
 	FImpactSourceClock Clock(Sampler.GetLength(), Sampler.GetLoopDelta().GetLocation(), Setup.Clock);
 	const double StartTime = double(Setup.Params.SourcePhase) * Sampler.GetLength();

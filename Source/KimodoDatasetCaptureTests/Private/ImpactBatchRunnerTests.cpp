@@ -284,6 +284,7 @@ bool FImpactBatchRunnerTest::RunTest(const FString& Parameters)
 		while (Runner.Step(Reason))
 		{
 		}
+		TestTrue(*FString::Printf(TEXT("The resumed run ends without an error: %s"), *Reason.ToString()), Reason.IsEmpty());
 		TestEqual(TEXT("It is made"), Runner.GetStats().Done, 1);
 		FImpactBatchManifest Resumed;
 		FImpactBatchManifest::LoadAll(Folder, Resumed, Reason);
@@ -303,6 +304,7 @@ bool FImpactBatchRunnerTest::RunTest(const FString& Parameters)
 		while (Runner.Step(Reason))
 		{
 		}
+		TestTrue(*FString::Printf(TEXT("The shard ends without an error: %s"), *Reason.ToString()), Reason.IsEmpty());
 		TestTrue(TEXT("The shard writes its own manifest"), IFileManager::Get().FileExists(*FImpactSharding::ManifestFilename(Folder, { 1, 1 })));
 		FImpactBatchManifest Shards;
 		FImpactBatchManifest::LoadAll(Folder, Shards, Reason);
@@ -310,5 +312,7 @@ bool FImpactBatchRunnerTest::RunTest(const FString& Parameters)
 	}
 
 	DeleteBatchOutput(Folder);
+	// The output root itself, now empty.
+	IFileManager::Get().DeleteDirectory(*FPaths::GetPath(Folder), false, false);
 	return true;
 }
