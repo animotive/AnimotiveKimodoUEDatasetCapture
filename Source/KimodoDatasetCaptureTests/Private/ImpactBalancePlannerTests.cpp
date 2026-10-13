@@ -274,3 +274,33 @@ bool FImpactBalanceMovingTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Same inputs, same plan"), OutA.Feet[0].Position.Equals(OutB.Feet[0].Position, 0.0) && OutA.Offset.Equals(OutB.Offset, 0.0) && OutA.Steps == OutB.Steps);
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactBalanceFallHeightTest,
+	"KimodoDatasetCapture.Impact.Balance.FallHeightFollowsSource",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactBalanceFallHeightTest::RunTest(const FString& Parameters)
+{
+	using namespace ImpactBalanceTests;
+	auto FallsAt = [](float ComHeight, float SourcePelvisHeight)
+	{
+		FImpactBalancePlanner Planner(Unsmoothed());
+		FImpactBalanceInput Input = Pushed(0.0f, FVector(0, 0, ComHeight));
+		Input.SourcePelvisHeightCm = SourcePelvisHeight;
+		return Planner.Step(Input).bJustFell;
+	};
+	// Standing: the centre of mass at 50 cm is going down, as before.
+	TestTrue(TEXT("Standing source, centre of mass at 50 cm: falling"), FallsAt(50.0f, 95.0f));
+	TestFalse(TEXT("Standing source, centre of mass at 70 cm: not falling"), FallsAt(70.0f, 95.0f));
+	// A crouch carries its centre of mass low already.
+	TestFalse(TEXT("Crouching source (pelvis 60 cm), centre of mass at 50 cm: not falling"), FallsAt(50.0f, 60.0f));
+	TestTrue(TEXT("Crouching source, centre of mass at 30 cm: falling"), FallsAt(30.0f, 60.0f));
+	// A jump in the air carries it high: the same fraction holds.
+	TestTrue(TEXT("Source in the air (pelvis 150 cm), centre of mass at 70 cm: falling"), FallsAt(70.0f, 150.0f));
+	// No source height given: the fixed height applies.
+	TestTrue(TEXT("Unknown source height, 50 cm: falling"), FallsAt(50.0f, 0.0f));
+	TestFalse(TEXT("Unknown source height, 60 cm: not falling"), FallsAt(60.0f, 0.0f));
+	return true;
+}
+

@@ -21,8 +21,14 @@ struct KIMODOIMPACTCAPTURE_API FImpactBalanceConfig
 	int32 MaxSteps = 5;
 	/** Consecutive steps that fall short of the capture point before balance counts as lost. */
 	int32 MaxUncaughtSteps = 3;
-	/** Centre of mass below this height means the character is going down. */
+	/** Centre of mass below this height means the character is going down, when the source's height is unknown. */
 	float FallComHeightCm = 55.0f;
+	/**
+	 * Centre of mass below this fraction of the source's pelvis height means the character is
+	 * going down. 55 cm for a standing pelvis near 95 cm; a crouch sits at 55 cm already, and with
+	 * the fixed height every crouch fell on the first frame after a hit.
+	 */
+	float FallComPelvisFraction = 0.58f;
 	/** Calm frames needed before the feet start blending back onto the source pose. */
 	int32 SettleHoldFrames = 20;
 	/** Frames over which the feet blend back onto the source pose once settled. */
@@ -74,6 +80,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactBalanceInput
 	bool bMovingSource = false;
 	/** Leg the hit struck (0 left, 1 right), or INDEX_NONE when it struck no leg. */
 	int32 StruckLegSide = INDEX_NONE;
+	/** The source's pelvis height above the ground this frame; 0 when unknown. */
+	float SourcePelvisHeightCm = 0.0f;
 };
 
 struct KIMODOIMPACTCAPTURE_API FImpactFootTarget
