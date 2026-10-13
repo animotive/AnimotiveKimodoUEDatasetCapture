@@ -63,7 +63,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Write tests for whole-body impact transfer (verification feedback: the car and foot-shot ragdolls still bent intensely) — a wide contact shares impulse by mass so no neighbour is flung faster than the struck body; each impactor has a contact time and an instant hit is pushed over it (car at least 0.1 s, bullets and punches one frame); a falling body braces its trunk and neck harder than its limbs (Red) (1d9b192)
 - [x] Task: Implement whole-body impact transfer — mass-weighted spread, contact-time delivery and a braced core in the ragdoll (Green) (f20aa53)
 - [x] Task: Write tests for natural ragdoll hip ranges (verification feedback: legs went into the splits in the car and trip clips) — a range relative to the standing pose fits inside the asset's symmetric limit as a centre and half-width; turning the parent frame to the centre measures swing1 from there (Red) (031cc8c)
-- [ ] Task: Implement natural ragdoll hip ranges — on release the hips are held to 70 degrees of flexion, 15 of extension and 20 sideways and twisting (Green)
+- [x] Task: Implement natural ragdoll hip ranges — on release the hips are held to 70 degrees of flexion, 15 of extension and 20 sideways and twisting (Green) (860e5cd)
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Reaction Character, Impact Delivery and Outcome Detection' (Protocol in workflow.md)
 
 ## Phase 4: Pose Recording, Bake and Sidecar v3
