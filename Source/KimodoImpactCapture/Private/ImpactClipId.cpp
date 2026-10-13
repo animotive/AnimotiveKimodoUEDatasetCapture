@@ -80,18 +80,85 @@ FString FImpactClipId::Make(FName SourceAnimation, const FImpactParams& Params, 
 	return FString::Printf(TEXT("imp_%016llx"), Hash);
 }
 
+namespace
+{
+	/** Letters and digits only: safe in package, object and file names. */
+	FString PathSafe(const FString& Part)
+	{
+		FString Safe;
+		for (const TCHAR Char : Part)
+		{
+			if (FChar::IsAlnum(Char))
+			{
+				Safe.AppendChar(Char);
+			}
+		}
+		return Safe;
+	}
+
+	FString Capitalised(const FString& Word)
+	{
+		const FString Safe = PathSafe(Word);
+		return Safe.IsEmpty() ? Safe : FString::Chr(FChar::ToUpper(Safe[0])) + Safe.Mid(1);
+	}
+
+	/** S1, L4, C1: a take or seed suffix, not part of the motion. */
+	bool IsTakeSuffix(const FString& Token)
+	{
+		return Token.Len() >= 2 && FChar::IsAlpha(Token[0])
+			&& Token.Mid(1).ToUpper() == Token.Mid(1) && Token.Mid(1).IsNumeric();
+	}
+}
+
 FString FImpactClipName::Make(int32 Index, const FString& SourceLabel, const FString& Impactor, const FString& Region, const FString& Outcome)
 {
-	return FString();
+	FString Name = IndexPrefix(Index);
+	Name.LeftChopInline(1);
+	for (const FString* Part : { &SourceLabel, &Impactor, &Region, &Outcome })
+	{
+		const FString Safe = PathSafe(*Part);
+		if (!Safe.IsEmpty())
+		{
+			Name += TEXT("_") + Safe;
+		}
+	}
+	return Name;
 }
 
 FString FImpactClipName::IndexPrefix(int32 Index)
 {
-	return FString();
+	return FString::Printf(TEXT("IMP_%06d_"), Index);
 }
 
 FString FImpactClipName::SourceLabel(const FString& AssetName)
 {
-	return FString();
-}
+	FString Name = AssetName;
+	const int32 Retargeted = Name.Find(TEXT("_KimodoRetargeted"), ESearchCase::IgnoreCase);
+	if (Retargeted != INDEX_NONE)
+	{
+		Name.LeftInline(Retargeted);
+	}
+	TArray<FString> Tokens;
+	Name.ParseIntoArray(Tokens, TEXT("_"));
 
+	FString Label;
+	for (int32 Index = 0; Index < Tokens.Num(); ++Index)
+	{
+		const FString& Token = Tokens[Index];
+		const bool bPrefix = Index == 0 && Token.Equals(TEXT("M"), ESearchCase::IgnoreCase);
+		const bool bBoilerplate = Token.Equals(TEXT("Kimodo"), ESearchCase::IgnoreCase) || Token.Equals(TEXT("Loop"), ESearchCase::IgnoreCase)
+			|| Token.Equals(TEXT("F"), ESearchCase::IgnoreCase);
+		if (!bPrefix && !bBoilerplate && !IsTakeSuffix(Token))
+		{
+			Label += Capitalised(Token);
+		}
+	}
+	if (Label.IsEmpty())
+	{
+		for (const FString& Token : Tokens)
+		{
+			Label += Capitalised(Token);
+		}
+	}
+	return Label;
+}

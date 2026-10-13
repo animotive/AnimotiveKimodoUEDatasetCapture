@@ -58,6 +58,21 @@ namespace
 		Package->MarkAsGarbage();
 	}
 
+	/**
+	 * Removes whatever a run that stopped before recording clip Index left of it. Its name may
+	 * differ (the outcome is part of it), but it always starts with the clip's index prefix; a new
+	 * package will not save over a file it was not loaded from.
+	 */
+	void DeleteLeftovers(const FString& Folder, int32 Index)
+	{
+		TArray<FString> Files;
+		IFileManager::Get().FindFiles(Files, *(Folder / FImpactClipName::IndexPrefix(Index) + TEXT("*")), true, false);
+		for (const FString& File : Files)
+		{
+			IFileManager::Get().Delete(*(Folder / File), false, true);
+		}
+	}
+
 	int64 FileSize(const FString& Filename)
 	{
 		return FMath::Max<int64>(0, IFileManager::Get().FileSize(*Filename));
@@ -309,13 +324,20 @@ bool FImpactBatchRunner::Step(FText& OutReason)
 		Entry.bValid = Recording.End != EImpactClipEnd::Invalidated;
 		Entry.InvalidReason = Entry.bValid ? FString() : Recording.InvalidReason.ToString();
 
+		// Readable files, IMP_<index>_<Source>_<Impactor>_<Region>_<Outcome>; the hash id stays the
+		// clip's identity in its sidecar and the manifest.
+		const FString FileName = FImpactClipName::Make(ClipIndex, FImpactClipName::SourceLabel(Setup.Source->GetName()),
+			Entry.ImpactorId, Entry.Region, Entry.Outcome);
+		Entry.FileName = FileName;
+		DeleteLeftovers(BatchFolder, ClipIndex);
+
 		FString AnimSequencePath;
 		if (Entry.bValid || !Def.bDiscardInvalid)
 		{
 			FImpactPoseBuffer Poses;
 			FImpactClipPoser::Build(Setup.Mesh->GetRefSkeleton(), Recording, Setup.MeshForward, Poses);
 
-			const FString PackageName = FImpactClipBaker::PackageName(Def.OutputRoot, Def.GetName(), ClipId);
+			const FString PackageName = FImpactClipBaker::PackageName(Def.OutputRoot, Def.GetName(), FileName);
 			if (UPackage* Stale = FindPackage(nullptr, *PackageName))
 			{
 				// A clip made again in the same process (or loaded by an editor): a dead package
@@ -323,14 +345,8 @@ bool FImpactBatchRunner::Step(FText& OutReason)
 				ReleasePackageName(Stale);
 			}
 			const FString Filename = FPackageName::LongPackageNameToFilename(PackageName, FPackageName::GetAssetPackageExtension());
-			if (IFileManager::Get().FileExists(*Filename))
-			{
-				// Left by a run that stopped before recording this clip; a new package will not
-				// save over a file it was not loaded from.
-				IFileManager::Get().Delete(*Filename, false, true);
-			}
 			UPackage* Package = CreatePackage(*PackageName);
-			UAnimSequence* Sequence = FImpactClipBaker::Bake(Package, FName(*ClipId), Setup.Mesh->GetSkeleton(),
+			UAnimSequence* Sequence = FImpactClipBaker::Bake(Package, FName(*FileName), Setup.Mesh->GetSkeleton(),
 				Setup.Mesh->GetRefSkeleton(), Poses, Setup.FrameRate, OutReason);
 			const bool bSaved = Sequence && FImpactClipBaker::Save(Sequence, Filename, OutReason);
 			if (Sequence)
@@ -342,7 +358,7 @@ bool FImpactBatchRunner::Step(FText& OutReason)
 			{
 				return false;
 			}
-			AnimSequencePath = PackageName + TEXT(".") + ClipId;
+			AnimSequencePath = PackageName + TEXT(".") + FileName;
 			Entry.AnimSequencePath = AnimSequencePath;
 			Entry.Bytes += FileSize(Filename);
 		}
@@ -351,7 +367,7 @@ bool FImpactBatchRunner::Step(FText& OutReason)
 		Context.ClipId = ClipId;
 		Context.AnimSequencePath = AnimSequencePath;
 		Context.Motion = FImpactCaption::ResolveMotion(Assets.MotionTable.Get(), Setup.Source->GetFName());
-		const FString SidecarFile = BatchFolder / ClipId + TEXT(".json");
+		const FString SidecarFile = BatchFolder / FileName + TEXT(".json");
 		if (!FDatasetSidecarSerializer::SaveToFile(FImpactSidecarBuilder::Build(Setup, Recording, Context), SidecarFile, OutReason))
 		{
 			return false;

@@ -7,6 +7,7 @@
 #include "HAL/FileManager.h"
 #include "ImpactBatchDefinition.h"
 #include "ImpactBatchRunner.h"
+#include "ImpactClipId.h"
 #include "ImpactClipSimulator.h"
 #include "ImpactRegionTable.h"
 #include "ImpactSourceClock.h"
@@ -241,7 +242,9 @@ bool FImpactBatchRunnerTest::RunTest(const FString& Parameters)
 		TestTrue(*FString::Printf(TEXT("Clip %d has frames"), Entry.ClipIndex), Entry.Frames > 0);
 		TestFalse(TEXT("Every entry names its source"), Entry.SourceAnimation.IsEmpty());
 		TestFalse(TEXT("Every entry names its outcome"), Entry.Outcome.IsEmpty());
-		const FString Sidecar = Folder / Entry.ClipId + TEXT(".json");
+		TestTrue(*FString::Printf(TEXT("Clip %d has a readable name: %s"), Entry.ClipIndex, *Entry.FileName),
+			Entry.FileName.StartsWith(FImpactClipName::IndexPrefix(Entry.ClipIndex)) && Entry.FileName.Contains(TEXT("_Run_")) != Entry.FileName.Contains(TEXT("_StandIdle_")));
+		const FString Sidecar = Folder / Entry.FileName + TEXT(".json");
 		FDatasetSidecar Read;
 		if (TestTrue(*FString::Printf(TEXT("Clip %d's sidecar loads"), Entry.ClipIndex), FDatasetSidecarSerializer::LoadFromFile(Sidecar, Read, Reason)))
 		{
@@ -252,7 +255,8 @@ bool FImpactBatchRunnerTest::RunTest(const FString& Parameters)
 		}
 		if (Entry.bValid)
 		{
-			TestTrue(*FString::Printf(TEXT("Clip %d's animation is on disk"), Entry.ClipIndex), IFileManager::Get().FileExists(*(Folder / Entry.ClipId + FPackageName::GetAssetPackageExtension())));
+			TestTrue(*FString::Printf(TEXT("Clip %d's animation is on disk"), Entry.ClipIndex), IFileManager::Get().FileExists(*(Folder / Entry.FileName + FPackageName::GetAssetPackageExtension())));
+			TestTrue(TEXT("The asset is named like its file"), Entry.AnimSequencePath.EndsWith(TEXT(".") + Entry.FileName));
 			TestTrue(TEXT("The entry records the bytes it took"), Entry.Bytes > 0);
 		}
 	}

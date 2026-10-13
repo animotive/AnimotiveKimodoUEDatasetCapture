@@ -18,6 +18,10 @@ struct KIMODOIMPACTCAPTURE_API FImpactManifestEntry
 	UPROPERTY()
 	FString ClipId;
 
+	/** The clip's readable file name (FImpactClipName), shared by its asset and sidecar. */
+	UPROPERTY()
+	FString FileName;
+
 	/** Object path of the baked clip; empty when an invalid clip was discarded. */
 	UPROPERTY()
 	FString AnimSequencePath;
