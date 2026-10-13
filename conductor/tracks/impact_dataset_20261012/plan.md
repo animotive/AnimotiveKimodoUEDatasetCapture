@@ -106,7 +106,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement readable names in the runner: asset and sidecar named alike, manifest records the name, a resumed clip's leftovers found by its index prefix (Green) (a068ea2)
 - [x] Task: Write tests for plausible impactors — added at Phase 5 verification (IMP_000008: a car hit the thigh "from below", pushing 72% upward; a car to the neck; user chose elevation + regions): each archetype carries a travel-elevation range (intersected with the batch's) and the body regions it can strike (empty = any); archetypes no batch region suits are never drawn (Red) (68f9155)
 - [x] Task: Implement per-impactor elevation and regions, with starter values (Green) (d604e81)
-- [ ] Task: Write tests for the play-once start window — IMP_000005 played only the jump's landing tail: a play-once source starts so its first hit lands between the source's start and 0.5 s before its end (Red)
+- [x] Task: Write tests for the play-once start window — IMP_000005 played only the jump's landing tail: a play-once source starts so its first hit lands between the source's start and 0.5 s before its end (Red) (fde91d6)
 - [ ] Task: Implement the play-once start window in the simulator and sidecar (Green)
 - [ ] Task: Write tests for mid-air hits — IMP_000008 was hit, followed the jump's own landing, then fell (user chose "release if hit in the air"): the source is airborne when both feet are over 12 cm above their reference height; a Heavy-or-stronger hit while airborne releases the body (Red)
 - [ ] Task: Implement mid-air release in the simulator (Green)
