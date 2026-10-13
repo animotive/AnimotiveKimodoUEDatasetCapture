@@ -46,6 +46,14 @@ struct KIMODOIMPACTCAPTURE_API FImpactJointLimit
 	 */
 	float ExcessBeyondAny(const FImpactJointAngles& Angles, TConstArrayView<FImpactJointAngles> Allowed) const;
 
+	/**
+	 * This limit opened just enough to hold every angle in Source, plus MarginDeg: each locked or
+	 * limited axis a source angle exceeds is opened to the largest such angle plus the margin, and
+	 * a cone is then scaled until every source angle is inside it. Axes the source keeps within,
+	 * and free axes, are unchanged. Limits stay symmetric, as physics limits are.
+	 */
+	FImpactJointLimit OpenedToHold(TConstArrayView<FImpactJointAngles> Source, float MarginDeg) const;
+
 	/** One swing limited, the other swing and the twist locked: a knee or an elbow. */
 	bool IsHinge() const;
 };

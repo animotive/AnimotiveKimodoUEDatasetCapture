@@ -117,3 +117,8 @@ float FImpactJointLimit::ExcessBeyondAny(const FImpactJointAngles& Angles, TCons
 	}
 	return Least;
 }
+
+FImpactJointLimit FImpactJointLimit::OpenedToHold(TConstArrayView<FImpactJointAngles> Source, float MarginDeg) const
+{
+	return *this;
+}

@@ -240,3 +240,69 @@ bool FImpactJointLimitExcessBeyondAnyTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("No targets: the plain excess"), Elbow.ExcessBeyondAny(Angles(0, 80, 0), TConstArrayView<FImpactJointAngles>()), 10.0f, 1e-4f);
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactJointLimitOpenedTest,
+	"KimodoDatasetCapture.Impact.JointLimits.OpenedToHoldSource",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactJointLimitOpenedTest::RunTest(const FString& Parameters)
+{
+	auto Angles = [](float Twist, float Swing1, float Swing2)
+	{
+		FImpactJointAngles A;
+		A.TwistDeg = Twist;
+		A.Swing1Deg = Swing1;
+		A.Swing2Deg = Swing2;
+		return A;
+	};
+	FImpactJointLimit Elbow;
+	Elbow.TwistDeg = 0.0f;
+	Elbow.Swing1Deg = 70.0f;
+	Elbow.Swing2Deg = 0.0f;
+
+	// A Kimodo forearm: rolls 41 degrees, bends 27 sideways, flexes within the hinge.
+	const TArray<FImpactJointAngles> Kimodo = { Angles(-22, 6, -26), Angles(41, -48, 10), Angles(-10, -60, 27) };
+	const FImpactJointLimit Opened = Elbow.OpenedToHold(Kimodo, 5.0f);
+	TestEqual(TEXT("Twist opens to the source's largest roll plus the margin"), Opened.TwistDeg, 46.0f, 1e-3f);
+	// With both swings limited the swing limit is an elliptical cone (as in Chaos), so holding a
+	// 60-degree flex bent 27 sideways scales the hinge axis a little too, and no further.
+	TestTrue(TEXT("The hinge is never narrowed"), Opened.Swing1Deg >= 70.0f);
+	TestTrue(TEXT("The hinge opens only as far as the cone needs"), Opened.Swing1Deg < 90.0f);
+	TestTrue(TEXT("Sideways is at least the source's bend plus the margin"), Opened.Swing2Deg >= 32.0f - 1e-3f);
+	for (const FImpactJointAngles& Source : Kimodo)
+	{
+		TestEqual(TEXT("Every source angle is inside the opened limit"), Opened.Excess(Source), 0.0f, 1e-3f);
+	}
+	TestTrue(TEXT("A real fold past the opened limit still shows"), Opened.Excess(Angles(0, -95, 0)) > 5.0f);
+
+	// A source that stays inside changes nothing (Epic's elbows).
+	const TArray<FImpactJointAngles> Epic = { Angles(0, -40, 0), Angles(0, 10, 0) };
+	const FImpactJointLimit Same = Elbow.OpenedToHold(Epic, 5.0f);
+	TestEqual(TEXT("Inside: twist unchanged"), Same.TwistDeg, 0.0f);
+	TestEqual(TEXT("Inside: swing1 unchanged"), Same.Swing1Deg, 70.0f);
+	TestEqual(TEXT("Inside: swing2 unchanged"), Same.Swing2Deg, 0.0f);
+	TestEqual(TEXT("No source: unchanged"), Elbow.OpenedToHold(TConstArrayView<FImpactJointAngles>(), 5.0f).TwistDeg, 0.0f);
+
+	// A free axis stays free.
+	FImpactJointLimit Free;
+	Free.TwistDeg = 180.0f;
+	Free.Swing1Deg = 40.0f;
+	Free.Swing2Deg = 40.0f;
+	TestEqual(TEXT("A free twist stays free"), Free.OpenedToHold(Kimodo, 5.0f).TwistDeg, 180.0f);
+
+	// A cone: every source angle inside afterwards, even one off both axes.
+	FImpactJointLimit Shoulder;
+	Shoulder.TwistDeg = 30.0f;
+	Shoulder.Swing1Deg = 40.0f;
+	Shoulder.Swing2Deg = 30.0f;
+	const TArray<FImpactJointAngles> Arms = { Angles(0, 38, 28), Angles(0, 0, 45), Angles(10, 30, 0) };
+	const FImpactJointLimit Cone = Shoulder.OpenedToHold(Arms, 0.0f);
+	for (const FImpactJointAngles& Arm : Arms)
+	{
+		TestEqual(TEXT("Every arm angle is inside the opened cone"), Cone.Excess(Arm), 0.0f, 1e-3f);
+	}
+	TestTrue(TEXT("The cone is still a cone"), Cone.Swing1Deg < 180.0f && Cone.Swing2Deg < 180.0f);
+	TestEqual(TEXT("The twist the arms stay within is unchanged"), Cone.TwistDeg, 30.0f);
+	return true;
+}
