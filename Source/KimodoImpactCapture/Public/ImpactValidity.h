@@ -33,6 +33,12 @@ struct KIMODOIMPACTCAPTURE_API FImpactValidityThresholds
 	 * beyond this the joint has broken.
 	 */
 	float MaxJointLimitExcessDeg = 35.0f;
+	/**
+	 * Frames of recent targets a joint is measured against. A held joint trails its target: on the
+	 * one-cycle Kimodo run an elbow sat 20-26 degrees past this frame's target while matching one
+	 * a few frames old. 6 frames is 0.1 s at 60 Hz.
+	 */
+	int32 TargetWindowFrames = 6;
 };
 
 /** One body on one frame, as measured from the physics scene. */

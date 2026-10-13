@@ -314,8 +314,11 @@ float AImpactReactionCharacter::BodyRadius(int32 Body) const
 	return float(Bodies[Body].Instance->GetBodyBounds().GetExtent().GetMin());
 }
 
-void AImpactReactionCharacter::CollectSamples(const TArray<FTransform>& PoseComponentSpace, TArray<FImpactBodySample>& OutSamples) const
+void AImpactReactionCharacter::CollectSamples(const TArray<FTransform>& PoseComponentSpace, TConstArrayView<const TArray<FTransform>*> RecentTargets,
+	TArray<FImpactBodySample>& OutSamples) const
 {
+	const TArray<FTransform>* PoseOnly[] = { &PoseComponentSpace };
+	const TConstArrayView<const TArray<FTransform>*> Targets = RecentTargets.IsEmpty() ? TConstArrayView<const TArray<FTransform>*>(PoseOnly) : RecentTargets;
 	OutSamples.Reset(Bodies.Num());
 	for (const FBody& Body : Bodies)
 	{
@@ -340,14 +343,18 @@ void AImpactReactionCharacter::CollectSamples(const TArray<FTransform>& PoseComp
 				const FQuat ChildFrame = TM.GetRotation() * Body.Constraint->GetRefFrame(EConstraintFrame::Frame1).GetRotation();
 				const FQuat ParentFrame = Bodies[Body.ConstraintParentBody].Instance->GetUnrealWorldTransform().GetRotation()
 					* Body.Constraint->GetRefFrame(EConstraintFrame::Frame2).GetRotation();
-				// The same joint in the source pose. Authored motion can sit outside the asset's limits
-				// (Kimodo's arms do, by up to 34 degrees); that is the motion asked for, so only what
-				// the physics adds beyond it counts as a fold.
-				const FQuat SourceChild = PoseComponentSpace[Body.BoneIndex].GetRotation() * Body.Constraint->GetRefFrame(EConstraintFrame::Frame1).GetRotation();
-				const FQuat SourceParent = PoseComponentSpace[Bodies[Body.ConstraintParentBody].BoneIndex].GetRotation()
-					* Body.Constraint->GetRefFrame(EConstraintFrame::Frame2).GetRotation();
-				Sample.JointLimitExcessDeg = Body.Limit.ExcessBeyond(FImpactJointAngles::FromRelative(ParentFrame.Inverse() * ChildFrame),
-					FImpactJointAngles::FromRelative(SourceParent.Inverse() * SourceChild));
+				// The same joint in the poses it was driven toward. Authored motion can sit outside the
+				// asset's limits (Kimodo's arms do, by up to 34 degrees), and a held joint trails its
+				// target by a few frames; only what the physics adds beyond them counts as a fold.
+				TArray<FImpactJointAngles, TInlineAllocator<8>> Allowed;
+				for (const TArray<FTransform>* Target : Targets)
+				{
+					const FQuat TargetChild = (*Target)[Body.BoneIndex].GetRotation() * Body.Constraint->GetRefFrame(EConstraintFrame::Frame1).GetRotation();
+					const FQuat TargetParent = (*Target)[Bodies[Body.ConstraintParentBody].BoneIndex].GetRotation()
+						* Body.Constraint->GetRefFrame(EConstraintFrame::Frame2).GetRotation();
+					Allowed.Add(FImpactJointAngles::FromRelative(TargetParent.Inverse() * TargetChild));
+				}
+				Sample.JointLimitExcessDeg = Body.Limit.ExcessBeyondAny(FImpactJointAngles::FromRelative(ParentFrame.Inverse() * ChildFrame), Allowed);
 				Sample.bHingeJoint = Body.Limit.IsHinge();
 			}
 		}

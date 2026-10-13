@@ -105,9 +105,11 @@ public:
 
 	/**
 	 * Validity samples for every body, with joint gaps measured against the pose's bone offsets
-	 * and joint angles against the physics asset's limits.
+	 * and joint angles against the physics asset's limits, widened to hold the recent targets
+	 * (component-space poses the joints were driven toward; the pose alone when none are given).
 	 */
-	void CollectSamples(const TArray<FTransform>& PoseComponentSpace, TArray<FImpactBodySample>& OutSamples) const;
+	void CollectSamples(const TArray<FTransform>& PoseComponentSpace, TConstArrayView<const TArray<FTransform>*> RecentTargets,
+		TArray<FImpactBodySample>& OutSamples) const;
 
 	/** Applies spread impulse shares along DirectionWorld, each at its own point. */
 	void ApplyShares(TConstArrayView<FImpactBodyShare> Shares, const FVector& DirectionWorld, float Scale = 1.0f);

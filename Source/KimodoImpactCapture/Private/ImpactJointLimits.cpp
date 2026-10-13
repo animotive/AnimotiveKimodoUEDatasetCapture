@@ -106,5 +106,14 @@ float FImpactJointLimit::ExcessBeyond(const FImpactJointAngles& Angles, const FI
 
 float FImpactJointLimit::ExcessBeyondAny(const FImpactJointAngles& Angles, TConstArrayView<FImpactJointAngles> Allowed) const
 {
-	return 0.0f;
+	if (Allowed.IsEmpty())
+	{
+		return Excess(Angles);
+	}
+	float Least = TNumericLimits<float>::Max();
+	for (const FImpactJointAngles& Target : Allowed)
+	{
+		Least = FMath::Min(Least, ExcessBeyond(Angles, Target));
+	}
+	return Least;
 }

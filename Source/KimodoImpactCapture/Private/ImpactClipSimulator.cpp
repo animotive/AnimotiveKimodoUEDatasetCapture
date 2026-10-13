@@ -224,6 +224,17 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	// --- Run -----------------------------------------------------------------------------------
 	TArray<FTransform> Pose, NextPose;
 	Sampler.Sample(StartTime, Pose);
+	// The last few targets, pre-sized so recording them never allocates: joints are judged against
+	// these, since a held joint trails its target.
+	const int32 TargetWindow = FMath::Max(1, Setup.Validity.TargetWindowFrames);
+	TArray<TArray<FTransform>> RecentTargets;
+	RecentTargets.SetNum(TargetWindow);
+	for (TArray<FTransform>& Target : RecentTargets)
+	{
+		Target = Pose;
+	}
+	TArray<const TArray<FTransform>*, TInlineAllocator<8>> RecentTargetViews;
+	RecentTargetViews.Reserve(TargetWindow);
 	Character->TeleportToPose(Pose, Reference);
 
 	TArray<FImpactFrameState> OutcomeFrames;
@@ -345,7 +356,9 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			Character->SetStrength(Index, WorldScale, Strength.Joint, WorldAngular, Damping, Strength.JointDamping);
 		}
 
-		Character->SetTargets(bReleased ? ReleasePose : Pose, Reference, Balance.Offset, Overrides, Dt);
+		const TArray<FTransform>& Target = bReleased ? ReleasePose : Pose;
+		Character->SetTargets(Target, Reference, Balance.Offset, Overrides, Dt);
+		RecentTargets[Frame % TargetWindow] = Target;
 
 		// Delivery.
 		if (SinceHit >= 0)
@@ -411,7 +424,12 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		SimWorld.Step(Dt);
 
 		// Measure and record.
-		Character->CollectSamples(Pose, Samples);
+		RecentTargetViews.Reset();
+		for (int32 Back = 0; Back < FMath::Min(Frame + 1, TargetWindow); ++Back)
+		{
+			RecentTargetViews.Add(&RecentTargets[(Frame - Back) % TargetWindow]);
+		}
+		Character->CollectSamples(Pose, RecentTargetViews, Samples);
 		for (const FImpactBodySample& Sample : Samples)
 		{
 			if (Sample.JointLimitExcessDeg > Out.MaxJointLimitExcessDeg)
