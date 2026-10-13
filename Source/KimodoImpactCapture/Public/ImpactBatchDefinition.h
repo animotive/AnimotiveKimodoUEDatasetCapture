@@ -7,11 +7,13 @@
 #include "Engine/EngineTypes.h"
 #include "ImpactParams.h"
 #include "ImpactSchedule.h"
+#include "ImpactStrengthProfile.h"
 
 #include "ImpactBatchDefinition.generated.h"
 
 class UAnimSequence;
 class UImpactRegionTable;
+class UImpactSourceMotionTable;
 class UImpactorCatalog;
 class UPhysicsAsset;
 class USkeletalMesh;
@@ -50,6 +52,17 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Source")
 	TArray<FString> NameExcludes;
 
+	/**
+	 * A source whose name contains any of these plays once and holds its last frame rather than
+	 * looping (case-insensitive). A jump wrapped back to its take-off mid-reaction.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Source")
+	TArray<FString> PlayOnceNames = { TEXT("Jump") };
+
+	/** How each source's motion is worded in captions; unlisted sources are worded from their names. */
+	UPROPERTY(EditAnywhere, Category = "Source")
+	TSoftObjectPtr<UImpactSourceMotionTable> MotionTable;
+
 	// --- Character -------------------------------------------------------------------------------
 
 	UPROPERTY(EditAnywhere, Category = "Character")
@@ -64,6 +77,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Character")
 	TSoftObjectPtr<UImpactorCatalog> Catalog;
 
+	/** The struck person's mass, for the momentum an impactor transfers. */
+	UPROPERTY(EditAnywhere, Category = "Character", meta = (ClampMin = "1"))
+	float CharacterMassKg = 75.0f;
+
 	// --- Sampling --------------------------------------------------------------------------------
 
 	UPROPERTY(EditAnywhere, Category = "Sampling")
@@ -71,6 +88,9 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Sampling")
 	FImpactDeliveryDistributions Delivery;
+
+	UPROPERTY(EditAnywhere, Category = "Sampling")
+	FImpactStrengthDistribution Strength;
 
 	// --- Timing ----------------------------------------------------------------------------------
 
@@ -100,6 +120,10 @@ public:
 	/** Content path the baked clips are written under, one folder per batch. */
 	UPROPERTY(EditAnywhere, Category = "Run")
 	FString OutputRoot = TEXT("/Game/KimodoImpactDataset");
+
+	/** Invalid clips are always recorded in the manifest with their reason; discarded ones are not baked. */
+	UPROPERTY(EditAnywhere, Category = "Run")
+	bool bDiscardInvalid = false;
 
 	/**
 	 * True when the batch can run. Checks settings only; asset contents are validated by their

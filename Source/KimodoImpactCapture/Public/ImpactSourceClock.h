@@ -78,7 +78,8 @@ private:
 class KIMODOIMPACTCAPTURE_API FImpactPoseSampler
 {
 public:
-	FImpactPoseSampler(const USkeletalMesh& Mesh, const UAnimSequence& Sequence);
+	/** bPlayOnce: past its end the sequence holds its last frame rather than looping. */
+	FImpactPoseSampler(const USkeletalMesh& Mesh, const UAnimSequence& Sequence, bool bPlayOnce = false);
 
 	double GetLength() const { return Length; }
 	const FTransform& GetLoopDelta() const { return LoopDelta; }
@@ -86,7 +87,7 @@ public:
 	/** Component-space pose within one loop, Time clamped to [0, Length]. */
 	void SampleLoop(double InTime, TArray<FTransform>& OutComponentSpace) const;
 
-	/** Component-space pose at any Time, root motion accumulated across loops. */
+	/** Component-space pose at any Time: root motion accumulated across loops, or held at the end when playing once. */
 	void Sample(double InTime, TArray<FTransform>& OutComponentSpace) const;
 
 private:
@@ -95,4 +96,5 @@ private:
 	TArray<int32> SkeletonIndex;
 	double Length = 0.0;
 	FTransform LoopDelta = FTransform::Identity;
+	bool bPlayOnce = false;
 };

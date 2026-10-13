@@ -27,6 +27,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipSetup
 	USkeletalMesh* Mesh = nullptr;
 	UPhysicsAsset* PhysicsAsset = nullptr;
 	UAnimSequence* Source = nullptr;
+	/** The source plays once and holds its last frame (a jump) rather than looping. */
+	bool bSourcePlaysOnce = false;
 	const UImpactRegionTable* RegionTable = nullptr;
 
 	FImpactParams Params;

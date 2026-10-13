@@ -86,10 +86,11 @@ FTransform FImpactSourceClock::LoopOffset(const FTransform& InLoopDelta, int32 L
 	return Offset;
 }
 
-FImpactPoseSampler::FImpactPoseSampler(const USkeletalMesh& Mesh, const UAnimSequence& InSequence)
+FImpactPoseSampler::FImpactPoseSampler(const USkeletalMesh& Mesh, const UAnimSequence& InSequence, bool bInPlayOnce)
 	: MeshRef(&Mesh.GetRefSkeleton())
 	, Sequence(&InSequence)
 	, Length(InSequence.GetPlayLength())
+	, bPlayOnce(bInPlayOnce)
 {
 	const FReferenceSkeleton& SkeletonRef = InSequence.GetSkeleton()->GetReferenceSkeleton();
 	for (int32 Bone = 0; Bone < MeshRef->GetNum(); ++Bone)
