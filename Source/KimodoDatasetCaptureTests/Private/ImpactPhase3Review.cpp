@@ -6,6 +6,7 @@
 #include "HAL/FileManager.h"
 #include "ImpactClipSimulator.h"
 #include "ImpactParams.h"
+#include "ImpactPoseRebuild.h"
 #include "ImpactRandom.h"
 #include "ImpactRegionTable.h"
 #include "ImpactSchedule.h"
@@ -49,39 +50,14 @@ namespace ImpactPhase3Review
 		const TArrayView<const FTransform> Bodies = Recording.BodyPoses.GetFrame(FrameIndex);
 		const TArrayView<const FTransform> Source = Recording.SourcePoses.GetFrame(FrameIndex);
 		const int32 Bones = Ref.GetNum();
-		TArray<int32> BodyOf;
-		BodyOf.Init(INDEX_NONE, Bones);
-		for (int32 Body = 0; Body < Recording.BodyBoneIndices.Num(); ++Body)
+		TArray<FTransform> BodyComponent;
+		for (const FTransform& Body : Bodies)
 		{
-			BodyOf[Recording.BodyBoneIndices[Body]] = Body;
+			BodyComponent.Add(Body.GetRelativeTransform(Recording.Reference));
 		}
-
 		TArray<FTransform> Component;
 		Component.SetNum(Bones);
-		for (int32 Bone = 0; Bone < Bones; ++Bone)
-		{
-			const int32 Parent = Ref.GetParentIndex(Bone);
-			if (Parent == INDEX_NONE)
-			{
-				Component[Bone] = Frame.Root;
-				continue;
-			}
-			const FTransform SourceLocal = Source[Bone].GetRelativeTransform(Source[Parent]);
-			if (BodyOf[Bone] != INDEX_NONE)
-			{
-				const FTransform Physical = Bodies[BodyOf[Bone]].GetRelativeTransform(Recording.Reference);
-				const bool bParentBody = BodyOf[Parent] != INDEX_NONE;
-				// Rotation from physics; position from the bone's length below its parent, except the
-				// first body under the root, which keeps its simulated position.
-				Component[Bone] = bParentBody
-					? FTransform(Physical.GetRotation(), Component[Parent].TransformPosition(SourceLocal.GetTranslation()))
-					: Physical;
-			}
-			else
-			{
-				Component[Bone] = SourceLocal * Component[Parent];
-			}
-		}
+		FImpactPoseRebuild(Ref, Recording.BodyBoneIndices).Rebuild(BodyComponent, Source, Frame.Root, Component);
 
 		// Leg IK: planner-placed feet land exactly; on a moving source, feet the source has on the
 		// ground go to its ground height.
