@@ -34,8 +34,20 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipId
  */
 struct KIMODOIMPACTCAPTURE_API FImpactClipName
 {
-	/** Name for clip Index. Parts are made path-safe; empty parts are left out. */
-	static FString Make(int32 Index, const FString& SourceLabel, const FString& Impactor, const FString& Region, const FString& Outcome);
+	/**
+	 * Name for clip Index: IMP_<index>_<Source>_<Impactor>_<Region>_<From>_<Intensity>_<Outcome>.
+	 * Parts are made path-safe; empty parts are left out.
+	 */
+	static FString Make(int32 Index, const FString& SourceLabel, const FString& Impactor, const FString& Region,
+		const FString& From, const FString& Intensity, const FString& Outcome);
+
+	/**
+	 * Where a hit travelling along DirectionLocal (character space: X forward, Y right, Z up)
+	 * arrives from: From + one of eight sectors (Front, FrontRight, Right, BackRight, Back,
+	 * BackLeft, Left, FrontLeft), with High or Low when it arrives more than 30 degrees from level.
+	 * A full grid's neighbouring clips differ only by this and their strength.
+	 */
+	static FString DirectionLabel(const FVector& DirectionLocal);
 
 	/** Every name of clip Index starts with this, whatever its other parts. */
 	static FString IndexPrefix(int32 Index);

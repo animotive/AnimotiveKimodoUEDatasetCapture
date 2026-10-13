@@ -110,7 +110,13 @@ namespace
 	}
 }
 
-FString FImpactClipName::Make(int32 Index, const FString& SourceLabel, const FString& Impactor, const FString& Region, const FString& Outcome)
+FString FImpactClipName::DirectionLabel(const FVector& DirectionLocal)
+{
+	return FString();
+}
+
+FString FImpactClipName::Make(int32 Index, const FString& SourceLabel, const FString& Impactor, const FString& Region,
+	const FString& From, const FString& Intensity, const FString& Outcome)
 {
 	FString Name = IndexPrefix(Index);
 	Name.LeftChopInline(1);

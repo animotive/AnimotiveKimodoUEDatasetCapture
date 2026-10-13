@@ -132,22 +132,35 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FImpactClipNameTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("Index, source, impactor, region, outcome"),
-		FImpactClipName::Make(7, TEXT("Sprint"), TEXT("SmallBullet"), TEXT("FootLeft"), TEXT("Knockdown")),
-		FString(TEXT("IMP_000007_Sprint_SmallBullet_FootLeft_Knockdown")));
-	TestEqual(TEXT("Large indices keep their digits"), FImpactClipName::Make(1234567, TEXT("Run"), TEXT("Car"), TEXT("Chest"), TEXT("Ragdoll")),
-		FString(TEXT("IMP_1234567_Run_Car_Chest_Ragdoll")));
-	TestEqual(TEXT("A clip that never ran has no outcome part"), FImpactClipName::Make(3, TEXT("Walk"), TEXT("Punch"), TEXT("Head"), FString()),
-		FString(TEXT("IMP_000003_Walk_Punch_Head")));
-	TestEqual(TEXT("Unsafe characters are dropped"), FImpactClipName::Make(1, TEXT("Run Fast"), TEXT("Bat/Club"), TEXT("Chest."), TEXT("Flinch")),
-		FString(TEXT("IMP_000001_RunFast_BatClub_Chest_Flinch")));
+	TestEqual(TEXT("Index, source, impactor, region, direction, intensity, outcome"),
+		FImpactClipName::Make(7, TEXT("Sprint"), TEXT("SmallBullet"), TEXT("FootLeft"), TEXT("FromFront"), TEXT("Medium"), TEXT("Knockdown")),
+		FString(TEXT("IMP_000007_Sprint_SmallBullet_FootLeft_FromFront_Medium_Knockdown")));
+	TestEqual(TEXT("Large indices keep their digits"), FImpactClipName::Make(1234567, TEXT("Run"), TEXT("Car"), TEXT("Chest"), TEXT("FromLeft"), TEXT("Extreme"), TEXT("Ragdoll")),
+		FString(TEXT("IMP_1234567_Run_Car_Chest_FromLeft_Extreme_Ragdoll")));
+	TestEqual(TEXT("A clip that never ran has no outcome part"), FImpactClipName::Make(3, TEXT("Walk"), TEXT("Punch"), TEXT("Head"), TEXT("FromBack"), TEXT("Light"), FString()),
+		FString(TEXT("IMP_000003_Walk_Punch_Head_FromBack_Light")));
+	TestEqual(TEXT("Unsafe characters are dropped"), FImpactClipName::Make(1, TEXT("Run Fast"), TEXT("Bat/Club"), TEXT("Chest."), TEXT("From Front"), TEXT("Tap"), TEXT("Flinch")),
+		FString(TEXT("IMP_000001_RunFast_BatClub_Chest_FromFront_Tap_Flinch")));
 	TestTrue(TEXT("Every name of a clip starts with its index prefix"),
-		FImpactClipName::Make(42, TEXT("Jog"), TEXT("Shove"), TEXT("Pelvis"), TEXT("Stagger")).StartsWith(FImpactClipName::IndexPrefix(42)));
+		FImpactClipName::Make(42, TEXT("Jog"), TEXT("Shove"), TEXT("Pelvis"), TEXT("FromFront"), TEXT("Light"), TEXT("Stagger")).StartsWith(FImpactClipName::IndexPrefix(42)));
 	TestEqual(TEXT("The prefix ends at the index"), FImpactClipName::IndexPrefix(42), FString(TEXT("IMP_000042_")));
-	TestFalse(TEXT("Clip 4's prefix is not clip 42's"), FImpactClipName::Make(42, TEXT("Jog"), TEXT("Shove"), TEXT("Pelvis"), TEXT("Stagger"))
+	TestFalse(TEXT("Clip 4's prefix is not clip 42's"), FImpactClipName::Make(42, TEXT("Jog"), TEXT("Shove"), TEXT("Pelvis"), TEXT("FromFront"), TEXT("Light"), TEXT("Stagger"))
 		.StartsWith(FImpactClipName::IndexPrefix(4)));
-	TestTrue(TEXT("A readable name is a valid asset name"), FName::IsValidXName(FImpactClipName::Make(9, TEXT("CrouchIdle"), TEXT("Baseball"), TEXT("HandRight"), TEXT("Flinch")),
+	TestTrue(TEXT("A readable name is a valid asset name"), FName::IsValidXName(FImpactClipName::Make(9, TEXT("CrouchIdle"), TEXT("Baseball"), TEXT("HandRight"), TEXT("FromFrontLeftHigh"), TEXT("Tap"), TEXT("Flinch")),
 		INVALID_OBJECTNAME_CHARACTERS INVALID_LONGPACKAGE_CHARACTERS));
+
+	// Where the hit arrives from: the opposite of the way it travels. Character space: X forward, Y right.
+	TestEqual(TEXT("Travelling backwards: from the front"), FImpactClipName::DirectionLabel(FVector(-1, 0, 0)), FString(TEXT("FromFront")));
+	TestEqual(TEXT("Travelling forwards: from the back"), FImpactClipName::DirectionLabel(FVector(1, 0, 0)), FString(TEXT("FromBack")));
+	TestEqual(TEXT("Travelling right: from the left"), FImpactClipName::DirectionLabel(FVector(0, 1, 0)), FString(TEXT("FromLeft")));
+	TestEqual(TEXT("Travelling left: from the right"), FImpactClipName::DirectionLabel(FVector(0, -1, 0)), FString(TEXT("FromRight")));
+	TestEqual(TEXT("Back and to the right: from the front left"), FImpactClipName::DirectionLabel(FVector(-1, 1, 0).GetSafeNormal()), FString(TEXT("FromFrontLeft")));
+	TestEqual(TEXT("Forward and to the left: from the back right"), FImpactClipName::DirectionLabel(FVector(1, -1, 0).GetSafeNormal()), FString(TEXT("FromBackRight")));
+	TestEqual(TEXT("Steeply downwards from the front: high"), FImpactClipName::DirectionLabel(FVector(-1, 0, -1).GetSafeNormal()), FString(TEXT("FromFrontHigh")));
+	TestEqual(TEXT("Steeply upwards from behind: low"), FImpactClipName::DirectionLabel(FVector(1, 0, 1).GetSafeNormal()), FString(TEXT("FromBackLow")));
+	TestEqual(TEXT("Twenty degrees down is still level"), FImpactClipName::DirectionLabel(FVector(-0.94, 0, -0.34).GetSafeNormal()), FString(TEXT("FromFront")));
+	TestEqual(TEXT("Straight down: from above"), FImpactClipName::DirectionLabel(FVector(0, 0, -1)), FString(TEXT("FromAbove")));
+	TestEqual(TEXT("Straight up: from below"), FImpactClipName::DirectionLabel(FVector(0, 0, 1)), FString(TEXT("FromBelow")));
 
 	TestEqual(TEXT("Crouch idle"), FImpactClipName::SourceLabel(TEXT("M_Kimodo_Crouch_Idle_Loop_KimodoRetargeted_SK_UEFN_Mannequin")), FString(TEXT("CrouchIdle")));
 	TestEqual(TEXT("Run, seed suffix dropped"), FImpactClipName::SourceLabel(TEXT("M_Kimodo_Run_Loop_F_S1_KimodoRetargeted_SK_UEFN_Mannequin")), FString(TEXT("Run")));

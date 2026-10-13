@@ -350,7 +350,7 @@ bool FImpactBatchRunner::Step(FText& OutReason)
 		// Readable files, IMP_<index>_<Source>_<Impactor>_<Region>_<Outcome>; the hash id stays the
 		// clip's identity in its sidecar and the manifest.
 		const FString FileName = FImpactClipName::Make(ClipIndex, FImpactClipName::SourceLabel(Setup.Source->GetName()),
-			Entry.ImpactorId, Entry.Region, Entry.Outcome);
+			Entry.ImpactorId, Entry.Region, FString(), FString(), Entry.Outcome);
 		Entry.FileName = FileName;
 		DeleteLeftovers(BatchFolder, ClipIndex);
 
