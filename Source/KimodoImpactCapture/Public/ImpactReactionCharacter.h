@@ -54,6 +54,8 @@ public:
 		int32 ConstraintParentBody = INDEX_NONE;
 		/** The constraint's angular limits, for measuring how far past them the joint sits. */
 		FImpactJointLimit Limit;
+		/** The joint's angles in the mesh's reference pose. */
+		FImpactJointAngles ReferenceAngles;
 	};
 
 	AImpactReactionCharacter();
@@ -89,9 +91,10 @@ public:
 
 	/**
 	 * A ragdoll: world controls off and every body simulated. Joint controls stay on (their tone
-	 * comes from SetStrength) and every joint limit becomes hard at the asset's angles.
+	 * comes from SetStrength), every joint limit becomes hard at the asset's angles, and the hips
+	 * are held to Ranges.
 	 */
-	void Release();
+	void Release(const FImpactRagdollRanges& Ranges);
 
 	float TotalMass() const;
 	FVector CenterOfMass() const;

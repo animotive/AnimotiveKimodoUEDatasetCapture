@@ -276,7 +276,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 				bReleased = true;
 				ReleaseFrame = Frame;
 				ReleasePose = Pose;
-				Character->Release();
+				Character->Release(Setup.Ragdoll);
 				bFeetKinematic[0] = bFeetKinematic[1] = false;
 			}
 

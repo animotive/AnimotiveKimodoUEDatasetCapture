@@ -121,6 +121,13 @@ bool AImpactReactionCharacter::Setup(USkeletalMesh* Mesh, UPhysicsAsset* Physics
 	{
 		Body.ParentBody = Body.ParentBone.IsNone() ? INDEX_NONE : FindBody(Body.ParentBone);
 	}
+	TArray<FTransform> ReferencePose;
+	ReferencePose.SetNum(Ref.GetNum());
+	for (int32 Bone = 0; Bone < Ref.GetNum(); ++Bone)
+	{
+		const int32 Parent = Ref.GetParentIndex(Bone);
+		ReferencePose[Bone] = Parent == INDEX_NONE ? Ref.GetRefBonePose()[Bone] : Ref.GetRefBonePose()[Bone] * ReferencePose[Parent];
+	}
 	for (FConstraintInstance* Constraint : MeshComponent->Constraints)
 	{
 		const int32 Child = Constraint ? FindBody(Constraint->GetChildBoneName()) : INDEX_NONE;
@@ -132,6 +139,13 @@ bool AImpactReactionCharacter::Setup(USkeletalMesh* Mesh, UPhysicsAsset* Physics
 			Body.Limit.TwistDeg = LimitDegrees(Constraint->GetAngularTwistMotion(), Constraint->GetAngularTwistLimit());
 			Body.Limit.Swing1Deg = LimitDegrees(Constraint->GetAngularSwing1Motion(), Constraint->GetAngularSwing1Limit());
 			Body.Limit.Swing2Deg = LimitDegrees(Constraint->GetAngularSwing2Motion(), Constraint->GetAngularSwing2Limit());
+			const int32 ParentBone = Ref.FindBoneIndex(Constraint->GetParentBoneName());
+			if (ParentBone != INDEX_NONE)
+			{
+				const FQuat ChildFrame = ReferencePose[Body.BoneIndex].GetRotation() * Constraint->GetRefFrame(EConstraintFrame::Frame1).GetRotation();
+				const FQuat ParentFrame = ReferencePose[ParentBone].GetRotation() * Constraint->GetRefFrame(EConstraintFrame::Frame2).GetRotation();
+				Body.ReferenceAngles = FImpactJointAngles::FromRelative(ParentFrame.Inverse() * ChildFrame);
+			}
 		}
 	}
 	return true;
@@ -210,14 +224,31 @@ void AImpactReactionCharacter::SetStrength(int32 Body, float World, float Joint,
 	}
 }
 
-void AImpactReactionCharacter::Release()
+void AImpactReactionCharacter::Release(const FImpactRagdollRanges& Ranges)
 {
 	Control->SetControlsInSetEnabled(WorldSet, false);
 	SetAllSimulated();
-	for (const FBody& Body : Bodies)
+	for (FBody& Body : Bodies)
 	{
 		if (FConstraintInstance* Constraint = Body.Constraint)
 		{
+			if (Body.bLeg && Body.Bone.ToString().StartsWith(TEXT("thigh")) && Body.Limit.Swing1Deg < 180.0f)
+			{
+				// A natural hip: the frame turned to the range's centre, limited to its half-width.
+				float Centre = 0.0f, Half = 0.0f;
+				if (Ranges.HipSwing1.Fit(Body.Limit.Swing1Deg, Body.ReferenceAngles.Swing1Deg, Centre, Half))
+				{
+					FTransform Frame = Constraint->GetRefFrame(EConstraintFrame::Frame2);
+					Frame.SetRotation(FImpactJointRange::TurnSwing1(Frame.GetRotation(), Centre));
+					Constraint->SetRefFrame(EConstraintFrame::Frame2, Frame);
+					Constraint->SetAngularSwing1Limit(ACM_Limited, Half);
+					Body.Limit.Swing1Deg = Half;
+				}
+				Body.Limit.Swing2Deg = FMath::Min(Body.Limit.Swing2Deg, Ranges.HipSwing2Deg);
+				Body.Limit.TwistDeg = FMath::Min(Body.Limit.TwistDeg, Ranges.HipTwistDeg);
+				Constraint->SetAngularSwing2Limit(ACM_Limited, Body.Limit.Swing2Deg);
+				Constraint->SetAngularTwistLimit(ACM_Limited, Body.Limit.TwistDeg);
+			}
 			// Same angles, no give: the asset's soft limits (stiffness 50) let a limp limb fold far past them.
 			Constraint->SetSoftSwingLimitParams(false, Constraint->GetSoftSwingLimitStiffness(), Constraint->GetSoftSwingLimitDamping(), 0.0f,
 				Constraint->GetSoftSwingLimitContactDistance());

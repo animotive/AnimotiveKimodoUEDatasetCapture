@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "ImpactBalancePlanner.h"
 #include "ImpactClipWindow.h"
+#include "ImpactJointLimits.h"
 #include "ImpactOutcome.h"
 #include "ImpactParams.h"
 #include "ImpactRootTracker.h"
@@ -59,6 +60,7 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipSetup
 	FImpactOutcomeThresholds Outcome;
 	FImpactValidityThresholds Validity;
 	FImpactRootTrackerConfig Root;
+	FImpactRagdollRanges Ragdoll;
 };
 
 /** One simulated frame, raw: Phase 4 turns these into bones. */

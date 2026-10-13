@@ -34,12 +34,22 @@ bool FImpactJointLimit::IsHinge() const
 
 bool FImpactJointRange::Fit(float AssetLimitDeg, float ReferenceDeg, float& OutCentreDeg, float& OutHalfDeg) const
 {
-	return false;
+	const float Low = FMath::Max(ReferenceDeg + MinDeg, -AssetLimitDeg);
+	const float High = FMath::Min(ReferenceDeg + MaxDeg, AssetLimitDeg);
+	if (Low > High)
+	{
+		return false;
+	}
+	OutCentreDeg = 0.5f * (Low + High);
+	OutHalfDeg = 0.5f * (High - Low);
+	return true;
 }
 
 FQuat FImpactJointRange::TurnSwing1(const FQuat& ParentFrame, float CentreDeg)
 {
-	return ParentFrame;
+	// Measured swing1 is the child's turn about Z relative to this frame; turning the frame by the
+	// centre measures from there.
+	return ParentFrame * FQuat(FVector::ZAxisVector, FMath::DegreesToRadians(CentreDeg));
 }
 
 float FImpactJointLimit::Excess(const FImpactJointAngles& Angles) const
