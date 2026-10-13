@@ -89,7 +89,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 
 - [x] Task: Write tests for the batch manifest — completed IDs persisted after each clip; reload skips completed; partially written clip (no manifest entry) is regenerated; atomic write survives truncation (Red) (f8334d8)
 - [x] Task: Implement the resumable batch manifest (Green) (04a4e6c)
-- [ ] Task: Write tests for sharding — `-Start/-Count` ranges partition indices with no overlap or gap; shards merge into one manifest (Red)
+- [x] Task: Write tests for sharding — `-Start/-Count` ranges partition indices with no overlap or gap; shards merge into one manifest (Red) (d2d6daf)
 - [ ] Task: Implement sharding and manifest merge (Green)
 - [ ] Task: Write tests for the distribution report — counts per region / intensity / mode / outcome / source anim match the manifest (Red)
 - [ ] Task: Implement the distribution report (Green)
