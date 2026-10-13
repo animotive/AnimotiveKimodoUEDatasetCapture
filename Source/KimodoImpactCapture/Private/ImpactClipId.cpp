@@ -79,3 +79,19 @@ FString FImpactClipId::Make(FName SourceAnimation, const FImpactParams& Params, 
 	const uint64 Hash = Fnv1a64(TConstArrayView<uint8>(reinterpret_cast<const uint8*>(Utf8.Get()), Utf8.Length()));
 	return FString::Printf(TEXT("imp_%016llx"), Hash);
 }
+
+FString FImpactClipName::Make(int32 Index, const FString& SourceLabel, const FString& Impactor, const FString& Region, const FString& Outcome)
+{
+	return FString();
+}
+
+FString FImpactClipName::IndexPrefix(int32 Index)
+{
+	return FString();
+}
+
+FString FImpactClipName::SourceLabel(const FString& AssetName)
+{
+	return FString();
+}
+

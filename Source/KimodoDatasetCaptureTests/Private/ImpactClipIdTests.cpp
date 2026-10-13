@@ -124,3 +124,40 @@ bool FImpactClipIdSensitivityTest::RunTest(const FString& Parameters)
 	}
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactClipNameTest,
+	"KimodoDatasetCapture.Impact.ClipId.ReadableName",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactClipNameTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("Index, source, impactor, region, outcome"),
+		FImpactClipName::Make(7, TEXT("Sprint"), TEXT("SmallBullet"), TEXT("FootLeft"), TEXT("Knockdown")),
+		FString(TEXT("IMP_000007_Sprint_SmallBullet_FootLeft_Knockdown")));
+	TestEqual(TEXT("Large indices keep their digits"), FImpactClipName::Make(1234567, TEXT("Run"), TEXT("Car"), TEXT("Chest"), TEXT("Ragdoll")),
+		FString(TEXT("IMP_1234567_Run_Car_Chest_Ragdoll")));
+	TestEqual(TEXT("A clip that never ran has no outcome part"), FImpactClipName::Make(3, TEXT("Walk"), TEXT("Punch"), TEXT("Head"), FString()),
+		FString(TEXT("IMP_000003_Walk_Punch_Head")));
+	TestEqual(TEXT("Unsafe characters are dropped"), FImpactClipName::Make(1, TEXT("Run Fast"), TEXT("Bat/Club"), TEXT("Chest."), TEXT("Flinch")),
+		FString(TEXT("IMP_000001_RunFast_BatClub_Chest_Flinch")));
+	TestTrue(TEXT("Every name of a clip starts with its index prefix"),
+		FImpactClipName::Make(42, TEXT("Jog"), TEXT("Shove"), TEXT("Pelvis"), TEXT("Stagger")).StartsWith(FImpactClipName::IndexPrefix(42)));
+	TestEqual(TEXT("The prefix ends at the index"), FImpactClipName::IndexPrefix(42), FString(TEXT("IMP_000042_")));
+	TestFalse(TEXT("Clip 4's prefix is not clip 42's"), FImpactClipName::Make(42, TEXT("Jog"), TEXT("Shove"), TEXT("Pelvis"), TEXT("Stagger"))
+		.StartsWith(FImpactClipName::IndexPrefix(4)));
+	TestTrue(TEXT("A readable name is a valid asset name"), FName::IsValidXName(FImpactClipName::Make(9, TEXT("CrouchIdle"), TEXT("Baseball"), TEXT("HandRight"), TEXT("Flinch")),
+		INVALID_OBJECTNAME_CHARACTERS INVALID_LONGPACKAGE_CHARACTERS));
+
+	TestEqual(TEXT("Crouch idle"), FImpactClipName::SourceLabel(TEXT("M_Kimodo_Crouch_Idle_Loop_KimodoRetargeted_SK_UEFN_Mannequin")), FString(TEXT("CrouchIdle")));
+	TestEqual(TEXT("Run, seed suffix dropped"), FImpactClipName::SourceLabel(TEXT("M_Kimodo_Run_Loop_F_S1_KimodoRetargeted_SK_UEFN_Mannequin")), FString(TEXT("Run")));
+	TestEqual(TEXT("Sprint, take suffix dropped"), FImpactClipName::SourceLabel(TEXT("M_Kimodo_Sprint_Loop_F_L4_KimodoRetargeted_SK_UEFN_Mannequin")), FString(TEXT("Sprint")));
+	TestEqual(TEXT("Stand idle"), FImpactClipName::SourceLabel(TEXT("M_Kimodo_Stand_Idle_Loop_KimodoRetargeted_SK_UEFN_Mannequin")), FString(TEXT("StandIdle")));
+	TestEqual(TEXT("Crouch walk"), FImpactClipName::SourceLabel(TEXT("M_Kimodo_Crouch_Walk_Loop_F_KimodoRetargeted_SK_UEFN_Mannequin")), FString(TEXT("CrouchWalk")));
+	TestEqual(TEXT("Jump in place"), FImpactClipName::SourceLabel(TEXT("M_Kimodo_Jump_In_Place_KimodoRetargeted_SK_UEFN_Mannequin")), FString(TEXT("JumpInPlace")));
+	TestEqual(TEXT("An Epic clip"), FImpactClipName::SourceLabel(TEXT("M_Neutral_Run_Loop_F")), FString(TEXT("NeutralRun")));
+	TestEqual(TEXT("Lowercase words are capitalised"), FImpactClipName::SourceLabel(TEXT("walk_slow")), FString(TEXT("WalkSlow")));
+	TestEqual(TEXT("A name that is all boilerplate falls back to the asset name"), FImpactClipName::SourceLabel(TEXT("M_Loop_F")), FString(TEXT("MLoopF")));
+	return true;
+}
+
