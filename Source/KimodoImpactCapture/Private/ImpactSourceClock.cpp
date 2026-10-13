@@ -148,3 +148,14 @@ void FImpactPoseSampler::Sample(double InTime, TArray<FTransform>& OutComponentS
 		Transform = Transform * Offset;
 	}
 }
+
+bool FImpactSourceFlight::IsInFlight(TConstArrayView<float> LeftClearanceCm, TConstArrayView<float> RightClearanceCm, float ThresholdCm)
+{
+	return false;
+}
+
+bool FImpactSourceFlight::IsInFlight(const FImpactPoseSampler& Sampler, const FReferenceSkeleton& Ref, int32 LeftFoot, int32 RightFoot, double Time,
+	double WindowSeconds, float ThresholdCm)
+{
+	return false;
+}

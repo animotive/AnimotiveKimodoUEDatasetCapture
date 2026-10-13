@@ -61,6 +61,12 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipSetup
 	 */
 	float SourceLimitMarginDeg = 5.0f;
 
+	/**
+	 * A hit at least this strong while the source is in the air (FImpactSourceFlight) releases the
+	 * body at once: a person in the air cannot resist it. Weaker hits ride the source to its landing.
+	 */
+	EImpactIntensity MidAirReleaseIntensity = EImpactIntensity::Heavy;
+
 	/** Direction the mesh faces in component space (+Y for the UEFN mannequin). */
 	FVector MeshForward = FVector(0.0, 1.0, 0.0);
 

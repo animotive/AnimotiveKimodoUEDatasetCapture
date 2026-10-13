@@ -107,3 +107,22 @@ private:
 	FTransform LoopDelta = FTransform::Identity;
 	bool bPlayOnce = false;
 };
+
+/**
+ * Whether the source is in the air: both feet clear of their reference height for a sustained
+ * stretch. A person in the air cannot resist a push, so a hard hit mid-jump releases the body
+ * rather than letting it follow the jump's own landing. Sustained, because a running stride has
+ * a moment with both feet up too.
+ */
+struct KIMODOIMPACTCAPTURE_API FImpactSourceFlight
+{
+	/** True when every sample of both feet is more than ThresholdCm clear. False with no samples. */
+	static bool IsInFlight(TConstArrayView<float> LeftClearanceCm, TConstArrayView<float> RightClearanceCm, float ThresholdCm);
+
+	/**
+	 * True when the source has both feet more than ThresholdCm above their reference-pose height
+	 * from Time for WindowSeconds, sampled at 60 Hz. The 12 cm default is the jump R&D's flight rule.
+	 */
+	static bool IsInFlight(const FImpactPoseSampler& Sampler, const FReferenceSkeleton& Ref, int32 LeftFoot, int32 RightFoot, double Time,
+		double WindowSeconds = 0.15, float ThresholdCm = 12.0f);
+};
