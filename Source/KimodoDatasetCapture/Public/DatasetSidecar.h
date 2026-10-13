@@ -158,6 +158,180 @@ struct KIMODODATASETCAPTURE_API FDatasetSidecarSkeleton
 	bool operator!=(const FDatasetSidecarSkeleton& Other) const { return !(*this == Other); }
 };
 
+/** Where a clip came from: a recorded take, or the synthetic impact generator. */
+namespace DatasetClipSource
+{
+	inline const TCHAR* TakeRecorder = TEXT("take_recorder");
+	inline const TCHAR* SyntheticImpact = TEXT("synthetic_impact");
+}
+
+/**
+ * One hit of a synthetic impact clip. Plain strings and numbers: the capture module does not
+ * know the impact generator's types, only what it records.
+ */
+USTRUCT()
+struct KIMODODATASETCAPTURE_API FDatasetSidecarImpactHit
+{
+	GENERATED_BODY()
+
+	/** Frame of the clip on which the hit lands (for a projectile, the frame it is launched). */
+	UPROPERTY()
+	int32 Frame = 0;
+
+	/** Frames the push lasts: 1 for an instant hit, more for a contact time or a sustained push. */
+	UPROPERTY()
+	int32 DurationFrames = 1;
+
+	/** Impactor archetype id, noun phrase with its article, and one-line description. */
+	UPROPERTY()
+	FString ImpactorId;
+
+	UPROPERTY()
+	FString ImpactorNoun;
+
+	UPROPERTY()
+	FString ImpactorDescription;
+
+	/** What the impactor is: its characteristic size, mass and speed. */
+	UPROPERTY()
+	float ImpactorSizeCm = 0.0f;
+
+	UPROPERTY()
+	float ImpactorMassKg = 0.0f;
+
+	UPROPERTY()
+	float ImpactorSpeedMetresPerSecond = 0.0f;
+
+	/** Body region struck (e.g. "FootLeft") and the physics body the contact landed on. */
+	UPROPERTY()
+	FString Region;
+
+	UPROPERTY()
+	FString Body;
+
+	/** Travel direction of the impactor: world space, and the character's (X forward, Y right, Z up). */
+	UPROPERTY()
+	FVector DirectionWorld = FVector::ZeroVector;
+
+	UPROPERTY()
+	FVector DirectionLocal = FVector::ZeroVector;
+
+	/** Impulse this hit delivers, kg cm/s, and the contact radius it is spread over. */
+	UPROPERTY()
+	float ImpulseKgCmPerSecond = 0.0f;
+
+	UPROPERTY()
+	float ContactRadiusCm = 0.0f;
+
+	/** Delivery mode name: Instant, Burst, Sustained or Projectile. */
+	UPROPERTY()
+	FString DeliveryMode;
+
+	/** Set for a physical projectile: its shape name and launch distance. */
+	UPROPERTY()
+	bool bProjectile = false;
+
+	UPROPERTY()
+	FString ProjectileShape;
+
+	UPROPERTY()
+	float ProjectileLaunchDistanceCm = 0.0f;
+
+	bool operator==(const FDatasetSidecarImpactHit& Other) const;
+	bool operator!=(const FDatasetSidecarImpactHit& Other) const { return !(*this == Other); }
+};
+
+/** How hard the simulated character held its animation and how it fell. */
+USTRUCT()
+struct KIMODODATASETCAPTURE_API FDatasetSidecarImpactControl
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	float WorldStrength = 0.0f;
+
+	UPROPERTY()
+	float ParentStrength = 0.0f;
+
+	UPROPERTY()
+	float ReleasedToneStart = 0.0f;
+
+	UPROPERTY()
+	float ReleasedToneEnd = 0.0f;
+
+	bool operator==(const FDatasetSidecarImpactControl& Other) const;
+	bool operator!=(const FDatasetSidecarImpactControl& Other) const { return !(*this == Other); }
+};
+
+/** Everything that defines and describes a synthetic impact clip. */
+USTRUCT()
+struct KIMODODATASETCAPTURE_API FDatasetSidecarImpact
+{
+	GENERATED_BODY()
+
+	/** Deterministic clip id ("imp_" + hash of the clip's parameters). */
+	UPROPERTY()
+	FString ClipId;
+
+	/** Batch seed and clip index: with the batch, these regenerate the clip exactly. */
+	UPROPERTY()
+	int32 BatchSeed = 0;
+
+	UPROPERTY()
+	int32 ClipIndex = 0;
+
+	/** Source animation package path and where in it the clip starts, in seconds. */
+	UPROPERTY()
+	FString SourceAnimation;
+
+	UPROPERTY()
+	float SourceStartSeconds = 0.0f;
+
+	/** Source motion phrase used in the caption ("while running"). */
+	UPROPERTY()
+	FString SourceMotion;
+
+	/** Intensity bucket name, momentum actually transferred, and the reaction gain applied to it. */
+	UPROPERTY()
+	FString Intensity;
+
+	UPROPERTY()
+	float TransferredImpulseKgCmPerSecond = 0.0f;
+
+	UPROPERTY()
+	float ReactionGain = 1.0f;
+
+	UPROPERTY()
+	TArray<FDatasetSidecarImpactHit> Hits;
+
+	UPROPERTY()
+	FDatasetSidecarImpactControl Control;
+
+	/** Detected outcome name (Flinch, Stagger, Knockdown, Ragdoll) and the frame it was decided. */
+	UPROPERTY()
+	FString Outcome;
+
+	UPROPERTY()
+	int32 OutcomeFrame = 0;
+
+	UPROPERTY()
+	int32 Steps = 0;
+
+	UPROPERTY()
+	bool bTrip = false;
+
+	/** The hit was too strong to stand against: the character went straight to ragdoll. */
+	UPROPERTY()
+	bool bOverwhelmed = false;
+
+	/** How the clip ended: Settled, Ceiling or Invalidated. */
+	UPROPERTY()
+	FString End;
+
+	bool operator==(const FDatasetSidecarImpact& Other) const;
+	bool operator!=(const FDatasetSidecarImpact& Other) const { return !(*this == Other); }
+};
+
 /** Operator-supplied labels, plus the trim range and validity of the clip. */
 USTRUCT()
 struct KIMODODATASETCAPTURE_API FDatasetSidecarLabels
@@ -206,6 +380,10 @@ struct KIMODODATASETCAPTURE_API FDatasetSidecar
 	UPROPERTY()
 	int32 SchemaVersion = KDatasetSidecarSchemaVersion;
 
+	/** DatasetClipSource: a recorded take or a synthetic impact clip. */
+	UPROPERTY()
+	FString ClipSource = DatasetClipSource::TakeRecorder;
+
 	UPROPERTY()
 	FDatasetSidecarIdentity Identity;
 
@@ -218,9 +396,16 @@ struct KIMODODATASETCAPTURE_API FDatasetSidecar
 	UPROPERTY()
 	FDatasetSidecarLabels Labels;
 
-	/** Capture layers present in this clip. RawInput is always present in a valid clip. */
+	/** Capture layers present in this clip. RawInput is always present in a valid take. */
 	UPROPERTY()
 	TArray<EDatasetCaptureLayer> Layers;
+
+	/** The synthetic impact block; written only for a synthetic impact clip. */
+	UPROPERTY()
+	FDatasetSidecarImpact Impact;
+
+	/** True for a clip from the synthetic impact generator. */
+	bool IsSyntheticImpact() const;
 
 	/** Number of samples in the raw input stream. */
 	int32 GetSampleCount() const;

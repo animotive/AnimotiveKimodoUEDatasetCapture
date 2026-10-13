@@ -142,3 +142,23 @@ bool FDatasetSidecar::operator==(const FDatasetSidecar& Other) const
 		&& Labels == Other.Labels
 		&& Layers == Other.Layers;
 }
+
+bool FDatasetSidecarImpactHit::operator==(const FDatasetSidecarImpactHit& Other) const
+{
+	return true;
+}
+
+bool FDatasetSidecarImpactControl::operator==(const FDatasetSidecarImpactControl& Other) const
+{
+	return true;
+}
+
+bool FDatasetSidecarImpact::operator==(const FDatasetSidecarImpact& Other) const
+{
+	return true;
+}
+
+bool FDatasetSidecar::IsSyntheticImpact() const
+{
+	return false;
+}

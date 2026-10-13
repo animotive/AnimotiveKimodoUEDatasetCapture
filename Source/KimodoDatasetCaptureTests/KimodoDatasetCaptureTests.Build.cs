@@ -22,6 +22,8 @@ public class KimodoDatasetCaptureTests : ModuleRules
 				// EKeys is referenced directly by the input sampler tests, which assert the
 				// key-to-bit table rather than trusting it.
 				"InputCore",
+				// The sidecar v3 tests inspect the written JSON's fields directly.
+				"Json",
 				"KimodoDatasetCapture",
 				"KimodoImpactCapture",
 				"MovieScene",
