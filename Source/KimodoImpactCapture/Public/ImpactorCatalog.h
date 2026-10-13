@@ -14,6 +14,32 @@ struct FImpactRandom;
  * How an impact is delivered. Serialised by name in sidecars: enumerators may be added but
  * never renamed or reordered.
  */
+/**
+ * Where on the body a hit lands. Serialised by name in sidecars and captions: enumerators may be
+ * added but never renamed or reordered. Mapped to physics bodies per skeleton by a region table.
+ */
+UENUM()
+enum class EImpactBodyRegion : uint8
+{
+	Head,
+	Neck,
+	Chest,
+	Abdomen,
+	Pelvis,
+	UpperArmLeft,
+	UpperArmRight,
+	LowerArmLeft,
+	LowerArmRight,
+	HandLeft,
+	HandRight,
+	ThighLeft,
+	ThighRight,
+	ShinLeft,
+	ShinRight,
+	FootLeft,
+	FootRight,
+};
+
 UENUM()
 enum class EImpactDeliveryMode : uint8
 {
@@ -102,6 +128,24 @@ struct KIMODOIMPACTCAPTURE_API FImpactorArchetype
 
 	/** Frames an instant hit is pushed over at FrameRate: ContactSeconds rounded up, at least one. */
 	int32 ContactFrames(int32 FrameRate) const;
+
+	/**
+	 * Elevation of the impactor's direction of travel, in degrees: positive travels upward (arrives
+	 * from below). Intersected with the batch's range. A car bumper travels level; drawn over the
+	 * whole sphere, one hit a thigh from below and launched the body.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Impactor")
+	FFloatInterval ElevationDegrees = FFloatInterval(-90.0f, 90.0f);
+
+	/**
+	 * Body regions this impactor can plausibly strike; empty means any. The batch's region weights
+	 * still apply within these. A car reaches the hips and legs, not the neck.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Impactor")
+	TArray<EImpactBodyRegion> Regions;
+
+	/** True when the impactor can strike Region. */
+	bool CanStrike(EImpactBodyRegion Region) const;
 
 	/** Relative sampling weight within a catalog. Zero excludes the archetype. */
 	UPROPERTY(EditAnywhere, Category = "Impactor", meta = (ClampMin = "0"))

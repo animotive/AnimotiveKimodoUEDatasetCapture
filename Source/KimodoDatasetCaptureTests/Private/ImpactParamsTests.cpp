@@ -238,3 +238,108 @@ bool FImpactParamsInvalidTest::RunTest(const FString& Parameters)
 	Rejects(TEXT("Phase outside 0..1"), *Catalog, BadPhase, BodyMassKg);
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactParamsPlausibleImpactorTest,
+	"KimodoDatasetCapture.Impact.Params.PlausibleImpactors",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactParamsPlausibleImpactorTest::RunTest(const FString& Parameters)
+{
+	using namespace ImpactParamsTests;
+	UImpactorCatalog* Starter = MakeStarterCatalog();
+	const FImpactorArchetype& Car = Find(*Starter, TEXT("CarBumper"));
+	const FImpactorArchetype& Bullet = Find(*Starter, TEXT("SmallBullet"));
+	const FImpactorArchetype& Punch = Find(*Starter, TEXT("Punch"));
+
+	// Starter values: a car travels level and reaches the hips and legs; a bullet can strike anywhere.
+	TestTrue(TEXT("A car travels close to level"), Car.ElevationDegrees.Min >= -10.0f && Car.ElevationDegrees.Max <= 15.0f);
+	TestFalse(TEXT("A car does not strike the neck"), Car.CanStrike(EImpactBodyRegion::Neck));
+	TestFalse(TEXT("or the head"), Car.CanStrike(EImpactBodyRegion::Head));
+	TestTrue(TEXT("A car strikes the thigh"), Car.CanStrike(EImpactBodyRegion::ThighRight));
+	TestTrue(TEXT("and the hips"), Car.CanStrike(EImpactBodyRegion::Pelvis));
+	TestFalse(TEXT("A punch does not land on the shin"), Punch.CanStrike(EImpactBodyRegion::ShinLeft));
+	TestTrue(TEXT("A punch lands on the head"), Punch.CanStrike(EImpactBodyRegion::Head));
+	TestTrue(TEXT("A bullet can strike a foot"), Bullet.CanStrike(EImpactBodyRegion::FootLeft));
+	TestTrue(TEXT("Every starter elevation range is valid"), !Starter->Archetypes.ContainsByPredicate([](const FImpactorArchetype& A)
+	{
+		return A.ElevationDegrees.Min > A.ElevationDegrees.Max || A.ElevationDegrees.Min < -90.0f || A.ElevationDegrees.Max > 90.0f;
+	}));
+
+	// Every region allowed by the batch, directions over the whole sphere.
+	FImpactDistributions Everywhere;
+	const UEnum* RegionEnum = StaticEnum<EImpactBodyRegion>();
+	for (int32 Index = 0; Index < RegionEnum->NumEnums() - 1; ++Index)
+	{
+		Everywhere.Regions.Add({ EImpactBodyRegion(RegionEnum->GetValueByIndex(Index)), 1.0f });
+	}
+	Everywhere.ElevationDegrees = FFloatInterval(-90.0f, 90.0f);
+
+	int32 Cars = 0;
+	int32 Bullets = 0;
+	float BulletLowest = 90.0f;
+	for (int32 Clip = 0; Clip < 2000; ++Clip)
+	{
+		FImpactParams Params;
+		FText Reason;
+		if (!FImpactParamsSampler::Sample(*Starter, Everywhere, BodyMassKg, 4, Clip, Params, Reason))
+		{
+			AddError(FString::Printf(TEXT("Clip %d: %s"), Clip, *Reason.ToString()));
+			break;
+		}
+		const FImpactorArchetype& Drawn = *Params.Impactor.Archetype;
+		const float Elevation = FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(float(Params.DirectionLocal.Z), -1.0f, 1.0f)));
+		if (Elevation < Drawn.ElevationDegrees.Min - 0.01f || Elevation > Drawn.ElevationDegrees.Max + 0.01f)
+		{
+			AddError(FString::Printf(TEXT("Clip %d: %s travels at %.1f deg, outside its %.0f to %.0f"), Clip, *Drawn.Id.ToString(),
+				Elevation, Drawn.ElevationDegrees.Min, Drawn.ElevationDegrees.Max));
+		}
+		if (!Drawn.CanStrike(Params.Region))
+		{
+			AddError(FString::Printf(TEXT("Clip %d: %s struck %s"), Clip, *Drawn.Id.ToString(), *RegionEnum->GetNameStringByValue(int64(Params.Region))));
+		}
+		Cars += Drawn.Id == TEXT("CarBumper") ? 1 : 0;
+		if (Drawn.Id == TEXT("SmallBullet"))
+		{
+			++Bullets;
+			BulletLowest = FMath::Min(BulletLowest, Elevation);
+		}
+	}
+	TestTrue(TEXT("Cars are still drawn"), Cars > 0);
+	TestTrue(TEXT("Bullets still come from well above"), Bullets > 0 && BulletLowest < -30.0f);
+
+	// A batch that only allows the head never draws a car, and still samples.
+	FImpactDistributions HeadOnly = Everywhere;
+	HeadOnly.Regions = { { EImpactBodyRegion::Head, 1.0f } };
+	for (int32 Clip = 0; Clip < 300; ++Clip)
+	{
+		FImpactParams Params;
+		FText Reason;
+		if (!TestTrue(TEXT("A head-only batch samples"), FImpactParamsSampler::Sample(*Starter, HeadOnly, BodyMassKg, 4, Clip, Params, Reason)))
+		{
+			break;
+		}
+		if (Params.Impactor.Archetype->Id == TEXT("CarBumper"))
+		{
+			AddError(TEXT("A head-only batch drew a car"));
+			break;
+		}
+	}
+
+	// A catalog of only cars cannot serve a head-only batch: refused with a reason, not a bad clip.
+	UImpactorCatalog* CarsOnly = NewObject<UImpactorCatalog>();
+	CarsOnly->Archetypes = { Car };
+	FImpactParams Params;
+	FText Reason;
+	TestFalse(TEXT("No impactor can strike the batch's regions: refused"), FImpactParamsSampler::Sample(*CarsOnly, HeadOnly, BodyMassKg, 4, 0, Params, Reason));
+	TestFalse(TEXT("with a reason"), Reason.IsEmpty());
+
+	// Nor can it serve a batch whose elevation range misses the car's.
+	FImpactDistributions FromAbove = Everywhere;
+	FromAbove.ElevationDegrees = FFloatInterval(-90.0f, -45.0f);
+	Reason = FText::GetEmpty();
+	TestFalse(TEXT("No impactor travels at the batch's elevations: refused"), FImpactParamsSampler::Sample(*CarsOnly, FromAbove, BodyMassKg, 4, 0, Params, Reason));
+	TestFalse(TEXT("with a reason"), Reason.IsEmpty());
+	return true;
+}
+

@@ -10,32 +10,6 @@
 
 class UImpactorCatalog;
 
-/**
- * Where on the body a hit lands. Serialised by name in sidecars and captions: enumerators may be
- * added but never renamed or reordered. Mapped to physics bodies per skeleton by a region table.
- */
-UENUM()
-enum class EImpactBodyRegion : uint8
-{
-	Head,
-	Neck,
-	Chest,
-	Abdomen,
-	Pelvis,
-	UpperArmLeft,
-	UpperArmRight,
-	LowerArmLeft,
-	LowerArmRight,
-	HandLeft,
-	HandRight,
-	ThighLeft,
-	ThighRight,
-	ShinLeft,
-	ShinRight,
-	FootLeft,
-	FootRight,
-};
-
 /** Descriptive strength of a hit, derived from its reaction impulse; used in captions and reports. */
 UENUM()
 enum class EImpactIntensity : uint8

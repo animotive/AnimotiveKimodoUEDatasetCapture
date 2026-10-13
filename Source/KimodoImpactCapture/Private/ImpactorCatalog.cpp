@@ -41,6 +41,11 @@ namespace
 	}
 }
 
+bool FImpactorArchetype::CanStrike(EImpactBodyRegion Region) const
+{
+	return true;
+}
+
 int32 FImpactorArchetype::ContactFrames(int32 FrameRate) const
 {
 	// Tolerance so a contact time that is a whole number of frames does not round up by float error.
