@@ -32,6 +32,16 @@ bool FImpactJointLimit::IsHinge() const
 	return (bSwing1Only || bSwing2Only) && TwistDeg == 0.0f;
 }
 
+bool FImpactJointRange::Fit(float AssetLimitDeg, float ReferenceDeg, float& OutCentreDeg, float& OutHalfDeg) const
+{
+	return false;
+}
+
+FQuat FImpactJointRange::TurnSwing1(const FQuat& ParentFrame, float CentreDeg)
+{
+	return ParentFrame;
+}
+
 float FImpactJointLimit::Excess(const FImpactJointAngles& Angles) const
 {
 	const float Twist = FMath::Abs(Angles.TwistDeg) - TwistDeg;

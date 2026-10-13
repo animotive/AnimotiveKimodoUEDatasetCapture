@@ -54,6 +54,50 @@ bool FImpactJointAnglesTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactJointRangeTest,
+	"KimodoDatasetCapture.Impact.JointLimits.Range",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactJointRangeTest::RunTest(const FString& Parameters)
+{
+	using namespace ImpactJointLimitTests;
+	// The UEFN hip: limited 80 either side of its frame, standing at 45. A ragdoll's hip bends
+	// 90 one way and 15 the other from standing.
+	FImpactJointRange Hip;
+	Hip.MinDeg = -90.0f;
+	Hip.MaxDeg = 15.0f;
+	float Centre = 0.0f, Half = 0.0f;
+	TestTrue(TEXT("The hip range fits the asset"), Hip.Fit(80.0f, 45.0f, Centre, Half));
+	TestEqual(TEXT("Centre of -45..60"), Centre, 7.5f, 1e-4f);
+	TestEqual(TEXT("Half-width of -45..60"), Half, 52.5f, 1e-4f);
+
+	// Never wider than the asset.
+	FImpactJointRange Wide;
+	Wide.MinDeg = -150.0f;
+	Wide.MaxDeg = 50.0f;
+	TestTrue(TEXT("A wide range fits"), Wide.Fit(80.0f, 45.0f, Centre, Half));
+	TestEqual(TEXT("Clipped to the asset: centre"), Centre, 0.0f, 1e-4f);
+	TestEqual(TEXT("Clipped to the asset: half-width"), Half, 80.0f, 1e-4f);
+
+	// No overlap: nothing to fit.
+	FImpactJointRange Outside;
+	Outside.MinDeg = 50.0f;
+	Outside.MaxDeg = 60.0f;
+	TestFalse(TEXT("A range wholly outside the asset does not fit"), Outside.Fit(80.0f, 45.0f, Centre, Half));
+
+	// Turning the parent frame moves the measured swing1 by the centre.
+	const FQuat Parent = About(FVector::YAxisVector, 20.0f) * About(FVector::XAxisVector, 35.0f);
+	const FQuat Child = Parent * About(FVector::ZAxisVector, 40.0f);
+	const FQuat Turned = FImpactJointRange::TurnSwing1(Parent, 7.5f);
+	const FImpactJointAngles Before = FImpactJointAngles::FromRelative(Parent.Inverse() * Child);
+	const FImpactJointAngles After = FImpactJointAngles::FromRelative(Turned.Inverse() * Child);
+	TestEqual(TEXT("Swing1 before turning"), Before.Swing1Deg, 40.0f, 0.01f);
+	TestEqual(TEXT("Swing1 after turning is measured from the centre"), After.Swing1Deg, 32.5f, 0.01f);
+	TestEqual(TEXT("Turning leaves twist alone"), After.TwistDeg, 0.0f, 0.01f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FImpactJointLimitExcessTest,
 	"KimodoDatasetCapture.Impact.JointLimits.Excess",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

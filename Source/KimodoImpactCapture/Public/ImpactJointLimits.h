@@ -35,3 +35,38 @@ struct KIMODOIMPACTCAPTURE_API FImpactJointLimit
 	/** One swing limited, the other swing and the twist locked: a knee or an elbow. */
 	bool IsHinge() const;
 };
+
+/**
+ * A ragdoll's range on one swing axis, as degrees either side of the joint's angle in the
+ * reference (standing) pose. Physics limits are symmetric about the constraint frame, so an
+ * uneven range (a hip bends far forward, little back) is made by turning the frame to the range's
+ * centre and limiting to its half-width.
+ */
+struct KIMODOIMPACTCAPTURE_API FImpactJointRange
+{
+	float MinDeg = -180.0f;
+	float MaxDeg = 180.0f;
+
+	/**
+	 * The range on an axis whose asset limit is AssetLimitDeg either side of the frame, with the
+	 * reference pose at ReferenceDeg, never wider than the asset allows. OutCentreDeg is where the
+	 * frame turns to, OutHalfDeg the new symmetric limit. False when the two do not overlap.
+	 */
+	bool Fit(float AssetLimitDeg, float ReferenceDeg, float& OutCentreDeg, float& OutHalfDeg) const;
+
+	/** The parent constraint frame turned about its Z (swing1) axis to CentreDeg. */
+	static FQuat TurnSwing1(const FQuat& ParentFrame, float CentreDeg);
+};
+
+/**
+ * Hip ranges a ragdoll is held to, from the standing pose. The physics asset allows a dancer's
+ * range (125 degrees of flexion); limp legs went into the splits in the Phase 3 car and trip
+ * clips, the front leg flexed 104 degrees. On the UEFN mannequin hip flexion is negative swing1.
+ */
+struct KIMODOIMPACTCAPTURE_API FImpactRagdollRanges
+{
+	FImpactJointRange HipSwing1 = { -70.0f, 15.0f };
+	/** Sideways, either way. */
+	float HipSwing2Deg = 20.0f;
+	float HipTwistDeg = 20.0f;
+};
