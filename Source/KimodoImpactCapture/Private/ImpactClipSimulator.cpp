@@ -204,6 +204,19 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		&& FImpactSourceFlight::IsInFlight(Sampler, Ref, Ref.FindBoneIndex(TEXT("foot_l")), Ref.FindBoneIndex(TEXT("foot_r")),
 			StartTime + double(ImpactFrame) * double(Dt));
 
+	// The speed change a push spread over RadiusCm gives the part it lands on, from the bodies'
+	// current places: what decides whether one part is struck violently.
+	auto StruckDeltaV = [&](float ImpulseKgCmPerSecond, float RadiusCm)
+	{
+		TArray<FImpactBodyProxy> Proxies;
+		for (int32 Index = 0; Index < Bodies.Num(); ++Index)
+		{
+			Proxies.Add({ Bodies[Index].Bone, Bodies[Index].Instance ? Bodies[Index].Instance->GetCOMPosition() : FVector::ZeroVector, Character->BodyRadius(Index),
+				Bodies[Index].Instance ? Bodies[Index].Instance->GetBodyMass() : 0.0f });
+		}
+		return FImpactContactSpread::ContactDeltaV(Proxies, Struck, Proxies[Struck].Center, RadiusCm, ImpulseKgCmPerSecond);
+	};
+
 	FImpactBalancePlanner Planner(Setup.Balance);
 	const int32 FootBody[2] = { Character->FindBody(TEXT("foot_l")), Character->FindBody(TEXT("foot_r")) };
 	const bool bHaveFeet = FootBody[0] != INDEX_NONE && FootBody[1] != INDEX_NONE;
@@ -289,7 +302,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		if (SinceHit >= 0)
 		{
 			if (SinceHit == 0 && Setup.FallRules.IsOverwhelming(Setup.Params.ReactionImpulseKgCmPerSecond, Character->TotalMass(),
-				Bodies[Struck].Instance ? Bodies[Struck].Instance->GetBodyMass() : 0.0f))
+				StruckDeltaV(Setup.Params.ReactionImpulseKgCmPerSecond, FMath::Max(Setup.Params.Impactor.ContactRadiusCm, Setup.ReactionSpreadRadiusCm))))
 			{
 				Out.bOverwhelmed = true;
 				Planner.ReleaseImmediately();

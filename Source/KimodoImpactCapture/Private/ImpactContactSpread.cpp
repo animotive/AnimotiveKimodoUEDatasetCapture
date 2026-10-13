@@ -98,7 +98,14 @@ TArray<FImpactBodyShare> FImpactContactSpread::Distribute(
 	return Shares;
 }
 
-float FImpactContactSpread::StruckDeltaV(TConstArrayView<FImpactBodyShare> Shares, TConstArrayView<FImpactBodyProxy> Bodies, int32 StruckIndex)
+float FImpactContactSpread::ContactDeltaV(TConstArrayView<FImpactBodyProxy> Bodies, int32 StruckIndex, const FVector& ContactPoint,
+	float ContactRadiusCm, float TotalImpulseKgCmPerSecond)
 {
-	return 0.0f;
+	float Mass = 0.0f;
+	for (const FImpactBodyShare& Share : Distribute(Bodies, StruckIndex, ContactPoint, ContactRadiusCm, TotalImpulseKgCmPerSecond))
+	{
+		const FImpactBodyProxy* Body = Bodies.FindByPredicate([&Share](const FImpactBodyProxy& Candidate) { return Candidate.Name == Share.Name; });
+		Mass += Body ? FMath::Max(0.0f, Body->MassKg) : 0.0f;
+	}
+	return Mass > 0.0f ? TotalImpulseKgCmPerSecond / Mass : 0.0f;
 }

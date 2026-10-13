@@ -51,12 +51,12 @@ struct KIMODOIMPACTCAPTURE_API FImpactFallRules
 	float OverwhelmStruckBodyDeltaVCmPerSecond = 9000.0f;
 
 	/**
-	 * True when the reaction impulse overwhelms the whole body, or the struck part's speed change
-	 * from its share of the spread push (FImpactContactSpread::StruckDeltaV) does (bounds count).
+	 * True when the reaction impulse overwhelms the whole body, or the speed change it gives the
+	 * part it lands on (FImpactContactSpread::ContactDeltaV) does (bounds count).
 	 * Not the impulse over the bare struck-part mass: a hand is half a kilogram, and a light punch
 	 * read as violent.
 	 */
-	bool IsOverwhelming(float ReactionImpulseKgCmPerSecond, float BodyMassKg, float StruckDeltaVCmPerSecond) const;
+	bool IsOverwhelming(float ReactionImpulseKgCmPerSecond, float BodyMassKg, float ContactDeltaVCmPerSecond) const;
 };
 
 /** One frame of measured state, after the hit. */

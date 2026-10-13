@@ -66,8 +66,11 @@ struct KIMODOIMPACTCAPTURE_API FImpactContactSpread
 		float ContactRadiusCm, float TotalImpulseKgCmPerSecond);
 
 	/**
-	 * Speed change the struck body takes from its share of a spread impact, cm/s: its share over
-	 * its mass. Zero when it has no share or no known mass.
+	 * Speed change an impact gives the part of the body it lands on, cm/s: the impulse over the
+	 * mass of every body Distribute would share it among (the struck body and those within
+	 * ContactRadiusCm). The joints hold a struck hand to its forearm, so a blow to the hand moves
+	 * that mass, not the hand's half kilogram. Zero when that mass is unknown.
 	 */
-	static float StruckDeltaV(TConstArrayView<FImpactBodyShare> Shares, TConstArrayView<FImpactBodyProxy> Bodies, int32 StruckIndex);
+	static float ContactDeltaV(TConstArrayView<FImpactBodyProxy> Bodies, int32 StruckIndex, const FVector& ContactPoint,
+		float ContactRadiusCm, float TotalImpulseKgCmPerSecond);
 };

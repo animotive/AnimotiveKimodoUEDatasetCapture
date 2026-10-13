@@ -4,7 +4,7 @@
 
 #include "ImpactSwingArc.h"
 
-bool FImpactFallRules::IsOverwhelming(float ReactionImpulseKgCmPerSecond, float BodyMassKg, float StruckBodyMassKg) const
+bool FImpactFallRules::IsOverwhelming(float ReactionImpulseKgCmPerSecond, float BodyMassKg, float ContactDeltaVCmPerSecond) const
 {
 	if (!(BodyMassKg > 0.0f))
 	{
@@ -14,7 +14,7 @@ bool FImpactFallRules::IsOverwhelming(float ReactionImpulseKgCmPerSecond, float 
 	{
 		return true;
 	}
-	return StruckBodyMassKg > 0.0f && ReactionImpulseKgCmPerSecond / StruckBodyMassKg >= OverwhelmStruckBodyDeltaVCmPerSecond;
+	return ContactDeltaVCmPerSecond >= OverwhelmStruckBodyDeltaVCmPerSecond;
 }
 
 void FImpactBalancePlanner::ReleaseImmediately()
