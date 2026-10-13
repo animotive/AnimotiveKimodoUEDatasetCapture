@@ -70,7 +70,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 ## Phase 4: Pose Recording, Bake and Sidecar v3
 
 - [x] Task: Write tests for the pose buffer — pre-reserved from max clip frames × bone count at clip start, no reallocation across a full simulated clip, overflow invalidates with reason (Red) (c877c30)
-- [ ] Task: Implement the fixed-step pose recorder (component-space transforms) (Green)
+- [x] Task: Implement the fixed-step pose recorder (component-space transforms) (Green) (241de31)
 - [ ] Task: Write tests for the pose rebuild — body rotations kept, positions rebuilt from source bone lengths (no joint separation for any input), non-body bones from the source, root carries displacement (Red)
 - [ ] Task: Implement the pose rebuild (Green)
 - [ ] Task: Write tests for leg IK in the recorder — planted foot lands exactly on target; source-contact detection for moving sources; knee follows the pole; bones below the foot keep their locals; unreachable targets do not stretch (Red)
