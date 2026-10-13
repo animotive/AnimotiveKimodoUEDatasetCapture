@@ -207,6 +207,8 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	Out = FImpactClipRecording();
 	Out.Reference = Reference;
 	Out.ImpactFrame = ImpactFrame;
+	Out.StruckBody = Bodies[Struck].Bone;
+	Out.CharacterToWorld = CharacterToWorld;
 	Out.bMovingSource = bMoving;
 	for (const AImpactReactionCharacter::FBody& Body : Bodies)
 	{

@@ -5,7 +5,10 @@
 #include "Engine/SkeletalMesh.h"
 #include "HAL/FileManager.h"
 #include "ImpactClipBaker.h"
+#include "DatasetSidecarSerializer.h"
+#include "ImpactClipId.h"
 #include "ImpactClipSimulator.h"
+#include "ImpactSidecarBuilder.h"
 #include "ImpactLegIK.h"
 #include "ImpactParams.h"
 #include "ImpactPoseRebuild.h"
@@ -205,6 +208,16 @@ bool FImpactPhase3Review::RunTest(const FString& Parameters)
 		}
 		TestTrue(*FString::Printf(TEXT("%s baked"), Scenario.Name), Bake(Mesh, Poses, FString::Printf(TEXT("P3_%s"), Scenario.Name)));
 
+		// The clip's sidecar, beside the baked review clip, as a batch run would write it.
+		FImpactSidecarContext Context;
+		Context.ClipId = FImpactClipId::Make(Source->GetFName(), Params, Setup.Schedule);
+		Context.AnimSequencePath = FString::Printf(TEXT("/Game/%s/P3_%s.P3_%s"), Folder, Scenario.Name, Scenario.Name);
+		Context.Motion = FImpactCaption::ResolveMotion(nullptr, Source->GetFName());
+		const FDatasetSidecar Sidecar = FImpactSidecarBuilder::Build(Setup, Recording, Context);
+		FText SidecarReason;
+		TestTrue(*FString::Printf(TEXT("%s sidecar written"), Scenario.Name), FDatasetSidecarSerializer::SaveToFile(Sidecar,
+			FPaths::ProjectSavedDir() / Folder / FString::Printf(TEXT("P3_%s.json"), Scenario.Name), SidecarReason));
+
 		const FString Line = FString::Printf(TEXT("%s: impulse %.0f (%s, %s), outcome %s at +%d, steps %d, trip %d, overwhelmed %d, end %s%s, %d frames, worst joint %.1f deg past limit (%s)"),
 			Scenario.Name, Params.ReactionImpulseKgCmPerSecond,
 			*StaticEnum<EImpactIntensity>()->GetNameStringByValue(int64(Params.Intensity)),
@@ -215,6 +228,7 @@ bool FImpactPhase3Review::RunTest(const FString& Parameters)
 			Recording.InvalidReason.IsEmpty() ? TEXT("") : *(TEXT(" (") + Recording.InvalidReason.ToString() + TEXT(")")),
 			Recording.Frames.Num(), Recording.MaxJointLimitExcessDeg, *Recording.MaxJointLimitExcessBody.ToString());
 		Summary.Add(Line);
+		Summary.Add(FString::Printf(TEXT("  caption: %s"), *Sidecar.Labels.Caption));
 		AddInfo(Line);
 	}
 	FFileHelper::SaveStringToFile(FString::Join(Summary, TEXT("\n")), *(FPaths::ProjectSavedDir() / Folder / TEXT("Summary.txt")));

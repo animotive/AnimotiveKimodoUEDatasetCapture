@@ -201,8 +201,10 @@ FString FImpactCaption::Describe(const FImpactCaptionInput& Input, int32 BatchSe
 		}
 	}
 	const FString Verb = Verbs.IsEmpty() ? FString(TEXT("hit")) : Verbs[Random.RangeInt(0, Verbs.Num() - 1)];
-	// "shot with a small bullet" and "hit with a punch" read well; "rammed with a car" does not.
-	const bool bWithReads = Verb == TEXT("shot") || Verb == TEXT("blasted") || Verb == TEXT("hit") || Verb == TEXT("struck");
+	// "shot with a small bullet" and "hit with a bat" read well; anything with a car does not:
+	// "with" only for something a person could wield or throw.
+	const bool bWithVerb = Verb == TEXT("shot") || Verb == TEXT("blasted") || Verb == TEXT("hit") || Verb == TEXT("struck");
+	const bool bWithReads = bWithVerb && Input.Impactor->SizeCm <= 100.0f;
 	const TCHAR* Preposition = bWithReads && Random.RangeInt(0, 1) == 1 ? TEXT("with") : TEXT("by");
 
 	const FString Motion = Input.Motion.Participle.IsEmpty() ? FString(TEXT("moving")) : Input.Motion.Participle;

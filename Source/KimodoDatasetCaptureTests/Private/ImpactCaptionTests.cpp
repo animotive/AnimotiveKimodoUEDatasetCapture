@@ -145,6 +145,16 @@ bool FImpactCaptionDescribeTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("Never 'punched ... by a punch'"), bNeverRedundant);
 
+	// Nobody is hit "with a car": only things a person could wield or throw take "with".
+	FImpactCaptionInput Car = Punch;
+	Car.Impactor = Find(Archetypes, TEXT("CarBumper"));
+	bool bNeverWithACar = true;
+	for (int32 Clip = 0; Clip < 60; ++Clip)
+	{
+		bNeverWithACar &= !FImpactCaption::Describe(Car, 3, Clip).Contains(TEXT("with a car"));
+	}
+	TestTrue(TEXT("Never 'with a car'"), bNeverWithACar);
+
 	// Every starter impactor x region x outcome x motion reads as a finished sentence.
 	bool bAllWritten = true;
 	FString FirstBad;
