@@ -103,7 +103,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FImpactParamsSamplingTest::RunTest(const FString& Parameters)
 {
 	using namespace ImpactParamsTests;
+	// The batch's own weights and elevation band, measured with impactors that can strike any
+	// region from any direction (PlausibleImpactors covers how impactors narrow both).
 	UImpactorCatalog* Catalog = MakeStarterCatalog();
+	for (FImpactorArchetype& Archetype : Catalog->Archetypes)
+	{
+		Archetype.Regions.Reset();
+		Archetype.ElevationDegrees = FFloatInterval(-90.0f, 90.0f);
+	}
 	const FImpactDistributions Distributions = MakeDistributions();
 
 	constexpr int32 Clips = 4000;

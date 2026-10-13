@@ -84,6 +84,33 @@ namespace
 		return true;
 	}
 
+	/** The batch's region weights, kept only for regions the impactor can strike. */
+	TArray<FImpactRegionWeight> StrikableRegions(const TArray<FImpactRegionWeight>& Regions, const FImpactorArchetype& Archetype)
+	{
+		TArray<FImpactRegionWeight> Strikable;
+		for (const FImpactRegionWeight& Region : Regions)
+		{
+			if (Region.Weight > 0.0f && Archetype.CanStrike(Region.Region))
+			{
+				Strikable.Add(Region);
+			}
+		}
+		return Strikable;
+	}
+
+	/** The batch's elevation range narrowed to the impactor's; empty (Min > Max) when they miss. */
+	FFloatInterval Elevations(const FImpactDistributions& Distributions, const FImpactorArchetype& Archetype)
+	{
+		return FFloatInterval(FMath::Max(Distributions.ElevationDegrees.Min, Archetype.ElevationDegrees.Min),
+			FMath::Min(Distributions.ElevationDegrees.Max, Archetype.ElevationDegrees.Max));
+	}
+
+	bool Suits(const FImpactDistributions& Distributions, const FImpactorArchetype& Archetype)
+	{
+		const FFloatInterval Elevation = Elevations(Distributions, Archetype);
+		return Archetype.Weight > 0.0f && Elevation.Min <= Elevation.Max && !StrikableRegions(Distributions.Regions, Archetype).IsEmpty();
+	}
+
 	EImpactBodyRegion SampleRegion(const TArray<FImpactRegionWeight>& Regions, FImpactRandom& Random)
 	{
 		double Total = 0.0;
@@ -110,12 +137,12 @@ namespace
 		return Last;
 	}
 
-	FVector SampleDirection(const FImpactDistributions& Distributions, FImpactRandom& Random)
+	FVector SampleDirection(const FImpactDistributions& Distributions, const FFloatInterval& Elevation, FImpactRandom& Random)
 	{
 		// Uniform height between the sines of the elevation bounds is area-uniform on that band.
 		const double Z = Random.Range(
-			FMath::Sin(FMath::DegreesToRadians(double(Distributions.ElevationDegrees.Min))),
-			FMath::Sin(FMath::DegreesToRadians(double(Distributions.ElevationDegrees.Max))));
+			FMath::Sin(FMath::DegreesToRadians(double(Elevation.Min))),
+			FMath::Sin(FMath::DegreesToRadians(double(Elevation.Max))));
 		const double Azimuth = FMath::DegreesToRadians(Random.Range(Distributions.AzimuthDegrees.Min, Distributions.AzimuthDegrees.Max));
 		const double Radius = FMath::Sqrt(FMath::Max(0.0, 1.0 - Z * Z));
 		return FVector(Radius * FMath::Cos(Azimuth), Radius * FMath::Sin(Azimuth), Z);
@@ -143,9 +170,35 @@ bool FImpactParamsSampler::Sample(
 	FImpactParams Params;
 
 	// Each family draws from its own stream: changing one never moves another.
+	// Only impactors that can strike one of the batch's regions, from one of its elevations.
+	TArray<const FImpactorArchetype*> Suitable;
+	double TotalWeight = 0.0;
+	for (const FImpactorArchetype& Candidate : Catalog.Archetypes)
+	{
+		if (Suits(Distributions, Candidate))
+		{
+			Suitable.Add(&Candidate);
+			TotalWeight += Candidate.Weight;
+		}
+	}
+	if (Suitable.IsEmpty())
+	{
+		OutReason = LOCTEXT("NoSuitableImpactor", "No impactor in the catalog can strike the batch's regions from its elevations.");
+		return false;
+	}
 	FImpactRandom ImpactorRandom(BatchSeed, ClipIndex, EImpactRandomStream::Impactor);
-	const FImpactorArchetype* Archetype = Catalog.SampleArchetype(ImpactorRandom);
-	check(Archetype); // Validate() guarantees a positive weight.
+	const double Pick = ImpactorRandom.Range(0.0, TotalWeight);
+	const FImpactorArchetype* Archetype = Suitable.Last();
+	double Cumulative = 0.0;
+	for (const FImpactorArchetype* Candidate : Suitable)
+	{
+		Cumulative += Candidate->Weight;
+		if (Pick < Cumulative)
+		{
+			Archetype = Candidate;
+			break;
+		}
+	}
 	Params.Impactor = UImpactorCatalog::SampleInstance(*Archetype, ImpactorRandom);
 	Params.TransferredImpulseKgCmPerSecond = TransferredImpulse(
 		Params.Impactor.MassKg, Params.Impactor.SpeedMetresPerSecond, CharacterMassKg, Distributions.Restitution);
@@ -154,10 +207,10 @@ bool FImpactParamsSampler::Sample(
 	Params.Intensity = Distributions.Intensity.Classify(Params.ReactionImpulseKgCmPerSecond);
 
 	FImpactRandom RegionRandom(BatchSeed, ClipIndex, EImpactRandomStream::BodyRegion);
-	Params.Region = SampleRegion(Distributions.Regions, RegionRandom);
+	Params.Region = SampleRegion(StrikableRegions(Distributions.Regions, *Archetype), RegionRandom);
 
 	FImpactRandom DirectionRandom(BatchSeed, ClipIndex, EImpactRandomStream::Direction);
-	Params.DirectionLocal = SampleDirection(Distributions, DirectionRandom);
+	Params.DirectionLocal = SampleDirection(Distributions, Elevations(Distributions, *Archetype), DirectionRandom);
 
 	FImpactRandom TimingRandom(BatchSeed, ClipIndex, EImpactRandomStream::Timing);
 	Params.SourcePhase = float(TimingRandom.Range(Distributions.SourcePhase.Min, Distributions.SourcePhase.Max));

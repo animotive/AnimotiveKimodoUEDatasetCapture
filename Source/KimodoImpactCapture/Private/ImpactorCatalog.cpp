@@ -43,7 +43,7 @@ namespace
 
 bool FImpactorArchetype::CanStrike(EImpactBodyRegion Region) const
 {
-	return true;
+	return Regions.IsEmpty() || Regions.Contains(Region);
 }
 
 int32 FImpactorArchetype::ContactFrames(int32 FrameRate) const
@@ -105,10 +105,51 @@ TArray<FImpactorArchetype> UImpactorCatalog::MakeStarterArchetypes()
 	const TMap<FName, float> ContactTimes = {
 		{ TEXT("CarBumper"), 0.1f }, { TEXT("WreckingBall"), 0.08f }, { TEXT("SportsTackle"), 0.15f },
 	};
+	// Where each impactor can come from and what it can reach. Elevation is the direction of
+	// travel (positive travels upward); a missing entry is anywhere. A car travels level and
+	// reaches the hips and legs; drawn over the whole sphere it hit a thigh from below.
+	using enum EImpactBodyRegion;
+	const TArray<EImpactBodyRegion> Arms = { UpperArmLeft, UpperArmRight, LowerArmLeft, LowerArmRight };
+	const TArray<EImpactBodyRegion> Legs = { ThighLeft, ThighRight, ShinLeft, ShinRight };
+	auto Join = [](std::initializer_list<TArray<EImpactBodyRegion>> Parts)
+	{
+		TArray<EImpactBodyRegion> All;
+		for (const TArray<EImpactBodyRegion>& Part : Parts)
+		{
+			All.Append(Part);
+		}
+		return All;
+	};
+	struct FReach
+	{
+		FFloatInterval Elevation;
+		TArray<EImpactBodyRegion> Regions;
+	};
+	const TMap<FName, FReach> Reach = {
+		{ TEXT("SmallBullet"), { { -60.0f, 30.0f }, {} } },
+		{ TEXT("RifleRound"), { { -60.0f, 30.0f }, {} } },
+		{ TEXT("ShotgunBlast"), { { -45.0f, 20.0f }, {} } },
+		{ TEXT("ThrownStone"), { { -45.0f, 15.0f }, {} } },
+		{ TEXT("Baseball"), { { -30.0f, 15.0f }, {} } },
+		{ TEXT("Football"), { { -20.0f, 35.0f }, {} } },
+		{ TEXT("Punch"), { { -20.0f, 20.0f }, Join({ { Head, Neck, Chest, Abdomen, HandLeft, HandRight }, Arms }) } },
+		{ TEXT("Kick"), { { -10.0f, 40.0f }, Join({ { Head, Chest, Abdomen, Pelvis }, Legs }) } },
+		{ TEXT("Shove"), { { -10.0f, 10.0f }, { Chest, Abdomen, UpperArmLeft, UpperArmRight } } },
+		{ TEXT("SportsTackle"), { { -15.0f, 15.0f }, { Chest, Abdomen, Pelvis, ThighLeft, ThighRight } } },
+		{ TEXT("SwingingBat"), { { -25.0f, 20.0f }, Join({ { Head, Chest, Abdomen, Pelvis }, Arms, Legs }) } },
+		{ TEXT("CarBumper"), { { -5.0f, 10.0f }, Join({ { Abdomen, Pelvis }, Legs }) } },
+		{ TEXT("WreckingBall"), { { -10.0f, 20.0f }, { Head, Neck, Chest, Abdomen, Pelvis, UpperArmLeft, UpperArmRight } } },
+		{ TEXT("WindPush"), { { -10.0f, 10.0f }, {} } },
+	};
 	for (FImpactorArchetype& Archetype : Starter)
 	{
 		Archetype.ReactionGain = Gains.FindRef(Archetype.Id, 1.0f);
 		Archetype.ContactSeconds = ContactTimes.FindRef(Archetype.Id, 0.0f);
+		if (const FReach* Found = Reach.Find(Archetype.Id))
+		{
+			Archetype.ElevationDegrees = Found->Elevation;
+			Archetype.Regions = Found->Regions;
+		}
 	}
 	return Starter;
 }
