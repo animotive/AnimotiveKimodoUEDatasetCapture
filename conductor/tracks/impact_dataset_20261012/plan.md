@@ -106,6 +106,6 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [ ] Task: Implement the controller with no Slate dependency (Green)
 - [ ] Task: Implement `SImpactBatchPanel` under Window → Tools, `FAppStyle`, `LOCTEXT` **(exempt)**
 - [ ] Task: Implement PIE debug draw — hit points, force arrows, projectile paths, outcome label **(exempt)**
-- [ ] Task: Author a sample `UImpactBatchDefinition` over ≥5 GASP source anims and the arena fixture level **(exempt)**
+- [ ] Task: Author a sample `UImpactBatchDefinition` over ≥5 Kimodo-generated source anims (idle and run exist; generate the rest with `tools/kimodo-impact-sources.py`) and the arena fixture level **(exempt)**
 - [ ] Task: End-to-end — headless run ≥1,000 clips unattended; kill mid-batch and resume with no duplicates; confirm all four outcomes and all four delivery modes in the report; spot-check baked clips and sidecars; record measured throughput in `tech-stack.md`
 - [ ] Task: Conductor - User Manual Verification 'Phase 6: Panel, Preview and End-to-End Run' (Protocol in workflow.md)
