@@ -141,7 +141,10 @@ namespace ImpactPhase3Review
 		const FString PackageName = FString::Printf(TEXT("/Game/%s/%s"), Folder, *Name);
 		if (FPackageName::DoesPackageExist(PackageName))
 		{
-			return true; // a review copy is already in Content; never collide with it
+			// A review copy is already in Content. Never collide with it, and never skip silently:
+			// a skipped bake leaves an old clip looking current. Remove the copy first.
+			UE_LOG(LogTemp, Error, TEXT("%s already exists in Content; delete it to re-bake."), *PackageName);
+			return false;
 		}
 		UPackage* Package = CreatePackage(*PackageName);
 		UAnimSequence* Sequence = NewObject<UAnimSequence>(Package, *Name, RF_Public | RF_Standalone);
