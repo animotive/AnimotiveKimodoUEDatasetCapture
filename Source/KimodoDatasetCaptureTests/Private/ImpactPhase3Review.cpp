@@ -4,6 +4,7 @@
 #include "Animation/AnimSequence.h"
 #include "Engine/SkeletalMesh.h"
 #include "HAL/FileManager.h"
+#include "ImpactClipBaker.h"
 #include "ImpactClipSimulator.h"
 #include "ImpactLegIK.h"
 #include "ImpactParams.h"
@@ -44,7 +45,7 @@ namespace ImpactPhase3Review
 		float Phase;
 	};
 
-	TArray<FTransform> ToLocal(const FReferenceSkeleton& Ref, const FImpactClipRecording& Recording, int32 FrameIndex, bool bMoving)
+	TArray<FTransform> ToComponent(const FReferenceSkeleton& Ref, const FImpactClipRecording& Recording, int32 FrameIndex, bool bMoving)
 	{
 		const FImpactRecordedFrame& Frame = Recording.Frames[FrameIndex];
 		const TArrayView<const FTransform> Bodies = Recording.BodyPoses.GetFrame(FrameIndex);
@@ -81,17 +82,10 @@ namespace ImpactPhase3Review
 			}
 		}
 
-		TArray<FTransform> Local;
-		Local.SetNum(Bones);
-		for (int32 Bone = 0; Bone < Bones; ++Bone)
-		{
-			const int32 Parent = Ref.GetParentIndex(Bone);
-			Local[Bone] = Parent == INDEX_NONE ? Component[Bone] : Component[Bone].GetRelativeTransform(Component[Parent]);
-		}
-		return Local;
+		return Component;
 	}
 
-	bool Bake(USkeletalMesh* Mesh, const TArray<TArray<FTransform>>& Frames, const FString& Name)
+	bool Bake(USkeletalMesh* Mesh, const FImpactPoseBuffer& Poses, const FString& Name)
 	{
 		const FString PackageName = FString::Printf(TEXT("/Game/%s/%s"), Folder, *Name);
 		if (FPackageName::DoesPackageExist(PackageName))
@@ -101,36 +95,19 @@ namespace ImpactPhase3Review
 			UE_LOG(LogTemp, Error, TEXT("%s already exists in Content; delete it to re-bake."), *PackageName);
 			return false;
 		}
+		FText Reason;
 		UPackage* Package = CreatePackage(*PackageName);
-		UAnimSequence* Sequence = NewObject<UAnimSequence>(Package, *Name, RF_Public | RF_Standalone);
-		Sequence->SetSkeleton(Mesh->GetSkeleton());
-		IAnimationDataController& Controller = Sequence->GetController();
-		Controller.InitializeModel();
-		Controller.OpenBracket(INVTEXT("Bake review clip"), false);
-		Controller.SetFrameRate(FFrameRate(60, 1), false);
-		Controller.SetNumberOfFrames(FFrameNumber(Frames.Num() - 1), false);
-		const FReferenceSkeleton& Ref = Mesh->GetRefSkeleton();
-		TArray<FVector3f> P; TArray<FQuat4f> R; TArray<FVector3f> S;
-		for (int32 Bone = 0; Bone < Ref.GetNum(); ++Bone)
-		{
-			P.Reset(); R.Reset(); S.Reset();
-			for (const TArray<FTransform>& Frame : Frames)
-			{
-				P.Add(FVector3f(Frame[Bone].GetLocation()));
-				R.Add(FQuat4f(Frame[Bone].GetRotation()));
-				S.Add(FVector3f(Frame[Bone].GetScale3D()));
-			}
-			Controller.AddBoneCurve(Ref.GetBoneName(Bone), false);
-			Controller.SetBoneTrackKeys(Ref.GetBoneName(Bone), P, R, S, false);
-		}
-		Controller.NotifyPopulated();
-		Controller.CloseBracket(false);
-		FSavePackageArgs Args;
-		Args.TopLevelFlags = RF_Public | RF_Standalone;
-		Args.SaveFlags = SAVE_NoError;
+		UAnimSequence* Sequence = FImpactClipBaker::Bake(Package, *Name, Mesh->GetSkeleton(), Mesh->GetRefSkeleton(), Poses, 60, Reason);
 		const FString File = FPaths::ProjectSavedDir() / Folder / (Name + FPackageName::GetAssetPackageExtension());
-		const bool bSaved = UPackage::SavePackage(Package, Sequence, *File, Args);
-		Sequence->ClearFlags(RF_Public | RF_Standalone);
+		const bool bSaved = Sequence && FImpactClipBaker::Save(Sequence, File, Reason);
+		if (!bSaved)
+		{
+			UE_LOG(LogTemp, Error, TEXT("%s: %s"), *Name, *Reason.ToString());
+		}
+		if (Sequence)
+		{
+			Sequence->ClearFlags(RF_Public | RF_Standalone);
+		}
 		Package->MarkAsGarbage();
 		return bSaved;
 	}
@@ -215,12 +192,18 @@ bool FImpactPhase3Review::RunTest(const FString& Parameters)
 			continue;
 		}
 
-		TArray<TArray<FTransform>> Frames;
+		FImpactPoseBuffer Poses;
+		Poses.Reserve(Recording.Frames.Num(), Mesh->GetRefSkeleton().GetNum());
 		for (int32 FrameIndex = 0; FrameIndex < Recording.Frames.Num(); ++FrameIndex)
 		{
-			Frames.Add(ToLocal(Mesh->GetRefSkeleton(), Recording, FrameIndex, Recording.bMovingSource));
+			const TArray<FTransform> Component = ToComponent(Mesh->GetRefSkeleton(), Recording, FrameIndex, Recording.bMovingSource);
+			TArrayView<FTransform> Frame = Poses.AddFrame();
+			for (int32 Bone = 0; Bone < Frame.Num(); ++Bone)
+			{
+				Frame[Bone] = Component[Bone];
+			}
 		}
-		TestTrue(*FString::Printf(TEXT("%s baked"), Scenario.Name), Bake(Mesh, Frames, FString::Printf(TEXT("P3_%s"), Scenario.Name)));
+		TestTrue(*FString::Printf(TEXT("%s baked"), Scenario.Name), Bake(Mesh, Poses, FString::Printf(TEXT("P3_%s"), Scenario.Name)));
 
 		const FString Line = FString::Printf(TEXT("%s: impulse %.0f (%s, %s), outcome %s at +%d, steps %d, trip %d, overwhelmed %d, end %s%s, %d frames, worst joint %.1f deg past limit (%s)"),
 			Scenario.Name, Params.ReactionImpulseKgCmPerSecond,
