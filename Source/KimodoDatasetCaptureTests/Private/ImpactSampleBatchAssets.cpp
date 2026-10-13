@@ -1,6 +1,7 @@
 // Copyright Animotive. All Rights Reserved.
 
 #include "Animation/Skeleton.h"
+#include "Engine/Engine.h"
 #include "Engine/SkeletalMesh.h"
 #include "ImpactBatchDefinition.h"
 #include "ImpactRegionTable.h"
@@ -82,10 +83,20 @@ bool FImpactSampleBatchAssetsGen::RunTest(const FString& Parameters)
 	Batch->ClipCount = 1000;
 	Batch->OutputRoot = TEXT("/Game/KimodoImpactDataset");
 
+	// The full grid over the same sources: every impactor, region it can strike, 8 directions,
+	// 3 elevations and 3 strengths. Invalid clips are recorded with their sidecar, not baked.
+	UImpactBatchDefinition* Grid = NewAsset<UImpactBatchDefinition>(TEXT("IB_KimodoGrid"));
+	UEngine::CopyPropertiesForUnrelatedObjects(Batch, Grid);
+	Grid->bFullGrid = true;
+	Grid->Grid = FImpactGridSettings();
+	Grid->bDiscardInvalid = true;
+
 	FText Reason;
 	TestTrue(*FString::Printf(TEXT("The sample batch is valid: %s"), *Reason.ToString()), Batch->ValidateSettings(Reason));
+	TestTrue(*FString::Printf(TEXT("The grid batch is valid: %s"), *Reason.ToString()), Grid->ValidateSettings(Reason));
 	TestTrue(TEXT("Catalog saved"), Save(Catalog));
 	TestTrue(TEXT("Region table saved"), Save(Regions));
 	TestTrue(TEXT("Batch saved"), Save(Batch));
+	TestTrue(TEXT("Grid batch saved"), Save(Grid));
 	return true;
 }

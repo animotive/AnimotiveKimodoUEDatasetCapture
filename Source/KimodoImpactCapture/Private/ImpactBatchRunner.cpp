@@ -296,8 +296,8 @@ bool FImpactBatchRunner::Begin(UImpactBatchDefinition& InBatch, const FImpactBat
 	FImpactDiskEstimate::ShouldWarn(Needed, FImpactDiskEstimate::FreeBytes(Existing), DiskWarning);
 
 	World = MakeUnique<FImpactSimWorld>();
-	UE_LOG(LogKimodoImpactCapture, Display, TEXT("Impact batch %s: clips %d-%d, %d pending, %d already done."),
-		*InBatch.GetName(), Range.Start, Range.End() - 1, Stats.Pending, Stats.Skipped);
+	UE_LOG(LogKimodoImpactCapture, Display, TEXT("Impact batch %s (%d clips%s): clips %d-%d, %d pending, %d already done."),
+		*InBatch.GetName(), Assets.ClipCount(InBatch), InBatch.bFullGrid ? TEXT(", full grid") : TEXT(""), Range.Start, Range.End() - 1, Stats.Pending, Stats.Skipped);
 	return true;
 }
 
