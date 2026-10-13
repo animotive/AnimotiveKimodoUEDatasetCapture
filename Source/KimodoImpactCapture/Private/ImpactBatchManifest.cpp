@@ -65,16 +65,8 @@ bool FImpactBatchManifest::Load(const FString& InFilename, FText& OutReason)
 		// Rewrite without the dropped lines, through a temporary file, so a crash during the repair
 		// still leaves one whole manifest on disk.
 		UE_LOG(LogKimodoImpactCapture, Warning, TEXT("Batch manifest %s: dropped %d line(s) (cut short, unreadable or repeated); rewriting it."), *Filename, DroppedLines);
-		FString Repaired;
-		for (const FImpactManifestEntry& Entry : Entries)
+		if (!SaveAs(Filename, OutReason))
 		{
-			Repaired += ToLine(Entry);
-			Repaired += TEXT("\n");
-		}
-		const FString Temporary = Filename + TEXT(".tmp");
-		if (!WriteText(Repaired, Temporary, FILEWRITE_None) || !IFileManager::Get().Move(*Filename, *Temporary, /*bReplace*/ true))
-		{
-			OutReason = FText::Format(LOCTEXT("RepairFailed", "Could not repair the batch manifest {0}."), FText::FromString(Filename));
 			return false;
 		}
 	}
@@ -130,17 +122,57 @@ const TCHAR* FImpactBatchManifest::FilePattern = TEXT("Manifest*.jsonl");
 
 int32 FImpactBatchManifest::Merge(const FImpactBatchManifest& Other)
 {
-	return 0;
+	int32 Repeats = 0;
+	for (const FImpactManifestEntry& Entry : Other.Entries)
+	{
+		if (Contains(Entry.ClipIndex))
+		{
+			++Repeats;
+			continue;
+		}
+		IndexToEntry.Add(Entry.ClipIndex, Entries.Add(Entry));
+	}
+	return Repeats;
 }
 
 bool FImpactBatchManifest::LoadAll(const FString& Folder, FImpactBatchManifest& Out, FText& OutReason)
 {
 	Out = FImpactBatchManifest();
+	TArray<FString> Files;
+	IFileManager::Get().FindFiles(Files, *(Folder / FilePattern), /*Files*/ true, /*Directories*/ false);
+	// Sorted, so which shard's copy of a repeated clip wins never depends on directory order.
+	Files.Sort();
+	for (const FString& File : Files)
+	{
+		FImpactBatchManifest Shard;
+		if (!Shard.Load(Folder / File, OutReason))
+		{
+			return false;
+		}
+		const int32 Repeats = Out.Merge(Shard);
+		if (Repeats > 0)
+		{
+			UE_LOG(LogKimodoImpactCapture, Warning, TEXT("Batch manifest %s repeats %d clip(s) already finished by another shard."), *File, Repeats);
+		}
+		Out.DroppedLines += Shard.DroppedLines;
+	}
 	return true;
 }
 
 bool FImpactBatchManifest::SaveAs(const FString& InFilename, FText& OutReason) const
 {
+	FString Text;
+	for (const FImpactManifestEntry& Entry : Entries)
+	{
+		Text += ToLine(Entry);
+		Text += TEXT("\n");
+	}
+	const FString Temporary = InFilename + TEXT(".tmp");
+	if (!WriteText(Text, Temporary, FILEWRITE_None) || !IFileManager::Get().Move(*InFilename, *Temporary, /*bReplace*/ true))
+	{
+		OutReason = FText::Format(LOCTEXT("SaveFailed", "Could not write the batch manifest {0}."), FText::FromString(InFilename));
+		return false;
+	}
 	return true;
 }
 
