@@ -100,7 +100,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement target-window fold detection in the simulator and reaction character (Green) (3e0cefd)
 - [x] Task: Write tests for joint limits opened to hold the source — Kimodo's forearms twist up to 41 degrees and bend sideways up to 27 on axes `PA_UEFN_Mannequin` locks; the hard lock snapped run elbows to the opposite side when the body went physical (user chose "open axes to source", 2026-10-13). Per clip, an axis the source exceeds opens to the source's range plus a margin; axes the source keeps within are untouched; a cone is scaled to hold every source angle (Red) (cbc764c)
 - [x] Task: Implement per-clip limit opening on the reaction character from a scan of the source (Green) (7d5b436)
-- [ ] Task: Implement `FImpactBatchRunner` — clip loop driving character, recorder, bake, sidecar, manifest; periodic GC; fixed timestep (Green, covered by the runner tests above plus an integration test on a tiny batch)
+- [x] Task: Implement `FImpactBatchRunner` — clip loop driving character, recorder, bake, sidecar, manifest; periodic GC; fixed timestep (Green, covered by the runner tests above plus an integration test on a tiny batch) (8a93384)
 - [ ] Task: Implement the headless host chosen in Phase 1 (`-Batch= -Start= -Count=`), exit codes for success / partial / failure **(exempt)**
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
 
