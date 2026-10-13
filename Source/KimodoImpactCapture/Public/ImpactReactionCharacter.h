@@ -55,6 +55,8 @@ public:
 		int32 ConstraintParentBody = INDEX_NONE;
 		/** The asset's joint is a hinge (knee, elbow), kept even after its limits are opened. */
 		bool bHinge = false;
+		/** The physics asset's own limits, before any opening for the source. */
+		FImpactJointLimit AssetLimit;
 		/** The constraint's angular limits, for measuring how far past them the joint sits. */
 		FImpactJointLimit Limit;
 		/** The joint's angles in the mesh's reference pose. */
@@ -94,10 +96,11 @@ public:
 
 	/**
 	 * A ragdoll: world controls off and every body simulated. Joint controls stay on (their tone
-	 * comes from SetStrength), every joint limit becomes hard at the asset's angles, and the hips
+	 * comes from SetStrength), every joint limit becomes hard at the asset's angles (opened, as
+	 * OpenLimitsToHold does, only as far as the release pose needs, plus MarginDeg), and the hips
 	 * are held to Ranges.
 	 */
-	void Release(const FImpactRagdollRanges& Ranges);
+	void Release(const FImpactRagdollRanges& Ranges, const TArray<FTransform>& ReleasePoseComponentSpace, float MarginDeg);
 
 	/**
 	 * Opens each joint's limits just enough to hold the source's own range (plus MarginDeg),

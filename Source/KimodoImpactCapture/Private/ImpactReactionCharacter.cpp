@@ -142,6 +142,7 @@ bool AImpactReactionCharacter::Setup(USkeletalMesh* Mesh, UPhysicsAsset* Physics
 			Body.Limit.Swing1Deg = LimitDegrees(Constraint->GetAngularSwing1Motion(), Constraint->GetAngularSwing1Limit());
 			Body.Limit.Swing2Deg = LimitDegrees(Constraint->GetAngularSwing2Motion(), Constraint->GetAngularSwing2Limit());
 			Body.bHinge = Body.Limit.IsHinge();
+			Body.AssetLimit = Body.Limit;
 			const int32 ParentBone = Ref.FindBoneIndex(Constraint->GetParentBoneName());
 			if (ParentBone != INDEX_NONE)
 			{
@@ -227,7 +228,7 @@ void AImpactReactionCharacter::SetStrength(int32 Body, float World, float Joint,
 	}
 }
 
-void AImpactReactionCharacter::Release(const FImpactRagdollRanges& Ranges)
+void AImpactReactionCharacter::Release(const FImpactRagdollRanges& Ranges, const TArray<FTransform>& ReleasePoseComponentSpace, float MarginDeg)
 {
 	Control->SetControlsInSetEnabled(WorldSet, false);
 	SetAllSimulated();
@@ -235,6 +236,20 @@ void AImpactReactionCharacter::Release(const FImpactRagdollRanges& Ranges)
 	{
 		if (FConstraintInstance* Constraint = Body.Constraint)
 		{
+			// A ragdoll keeps the asset's limits, opened only as far as the pose it was released in
+			// needs: opened to the whole source's range, a released forearm read as too loose.
+			if (Body.ConstraintParentBody != INDEX_NONE)
+			{
+				const FQuat Child = ReleasePoseComponentSpace[Body.BoneIndex].GetRotation() * Constraint->GetRefFrame(EConstraintFrame::Frame1).GetRotation();
+				const FQuat Parent = ReleasePoseComponentSpace[Bodies[Body.ConstraintParentBody].BoneIndex].GetRotation()
+					* Constraint->GetRefFrame(EConstraintFrame::Frame2).GetRotation();
+				const FImpactJointAngles Released[] = { FImpactJointAngles::FromRelative(Parent.Inverse() * Child) };
+				Body.Limit = Body.AssetLimit.OpenedToHold(Released, MarginDeg);
+				auto Motion = [](float LimitDeg) { return LimitDeg <= 0.0f ? ACM_Locked : LimitDeg >= 180.0f ? ACM_Free : ACM_Limited; };
+				Constraint->SetAngularTwistLimit(Motion(Body.Limit.TwistDeg), Body.Limit.TwistDeg);
+				Constraint->SetAngularSwing1Limit(Motion(Body.Limit.Swing1Deg), Body.Limit.Swing1Deg);
+				Constraint->SetAngularSwing2Limit(Motion(Body.Limit.Swing2Deg), Body.Limit.Swing2Deg);
+			}
 			if (Body.bLeg && Body.Bone.ToString().StartsWith(TEXT("thigh")) && Body.Limit.Swing1Deg < 180.0f)
 			{
 				// A natural hip: the frame turned to the range's centre, limited to its half-width.
