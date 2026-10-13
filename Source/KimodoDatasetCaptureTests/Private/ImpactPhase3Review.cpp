@@ -5,6 +5,7 @@
 #include "Engine/SkeletalMesh.h"
 #include "HAL/FileManager.h"
 #include "ImpactClipSimulator.h"
+#include "ImpactLegIK.h"
 #include "ImpactParams.h"
 #include "ImpactPoseRebuild.h"
 #include "ImpactRandom.h"
@@ -18,7 +19,6 @@
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "PhysicsEngine/PhysicsAsset.h"
-#include "TwoBoneIK.h"
 #include "UObject/Package.h"
 #include "UObject/SavePackage.h"
 #include "UObject/StrongObjectPtr.h"
@@ -64,44 +64,20 @@ namespace ImpactPhase3Review
 		for (int32 Side = 0; Side < 2; ++Side)
 		{
 			const TCHAR* Suffix = Side == 0 ? TEXT("_l") : TEXT("_r");
-			const int32 Thigh = Ref.FindBoneIndex(*(FString(TEXT("thigh")) + Suffix));
-			const int32 Calf = Ref.FindBoneIndex(*(FString(TEXT("calf")) + Suffix));
-			const int32 Foot = Ref.FindBoneIndex(*(FString(TEXT("foot")) + Suffix));
-			if (Thigh == INDEX_NONE || Calf == INDEX_NONE || Foot == INDEX_NONE || Frame.bReleased)
+			FImpactLegChain Leg;
+			Leg.Thigh = Ref.FindBoneIndex(*(FString(TEXT("thigh")) + Suffix));
+			Leg.Calf = Ref.FindBoneIndex(*(FString(TEXT("calf")) + Suffix));
+			Leg.Foot = Ref.FindBoneIndex(*(FString(TEXT("foot")) + Suffix));
+			if (!Leg.IsValid())
 			{
 				continue;
 			}
-			FVector Effector;
-			if (Frame.bFootPlaced[Side])
+			const TOptional<FVector> Effector = FImpactLegIK::ChooseEffector(Frame.bReleased, Frame.bFootPlaced[Side],
+				Recording.Reference.InverseTransformPosition(Frame.FootTarget[Side]), bMoving, Source[Leg.Foot].GetLocation(),
+				Component[Leg.Foot].GetLocation());
+			if (Effector.IsSet())
 			{
-				Effector = Recording.Reference.InverseTransformPosition(Frame.FootTarget[Side]);
-			}
-			else if (bMoving && Source[Foot].GetLocation().Z < 12.0)
-			{
-				const FVector Current = Component[Foot].GetLocation();
-				Effector = FVector(Current.X, Current.Y, Source[Foot].GetLocation().Z);
-			}
-			else
-			{
-				continue;
-			}
-			FTransform ThighCS = Component[Thigh], CalfCS = Component[Calf], FootCS = Component[Foot];
-			const FQuat FootRotation = FootCS.GetRotation();
-			const FVector Pole = CalfCS.GetLocation() + FVector(0.0, 30.0, 0.0);
-			const double Upper = (CalfCS.GetLocation() - ThighCS.GetLocation()).Size();
-			const double Lower = (FootCS.GetLocation() - CalfCS.GetLocation()).Size();
-			AnimationCore::SolveTwoBoneIK(ThighCS, CalfCS, FootCS, Pole, Effector, Upper, Lower, false, 1.0, 1.0);
-			FootCS.SetRotation(FootRotation);
-			Component[Thigh] = ThighCS;
-			Component[Calf] = CalfCS;
-			Component[Foot] = FootCS;
-			for (int32 Child = Foot + 1; Child < Bones; ++Child)
-			{
-				const int32 ChildParent = Ref.GetParentIndex(Child);
-				if (ChildParent == Foot || (ChildParent > Foot && Ref.BoneIsChildOf(ChildParent, Foot)))
-				{
-					Component[Child] = Source[Child].GetRelativeTransform(Source[ChildParent]) * Component[ChildParent];
-				}
+				FImpactLegIK::Solve(Ref, Leg, Effector.GetValue(), FVector(0.0, 1.0, 0.0), Source, Component);
 			}
 		}
 
