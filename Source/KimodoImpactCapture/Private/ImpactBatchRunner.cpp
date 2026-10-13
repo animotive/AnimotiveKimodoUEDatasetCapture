@@ -110,12 +110,12 @@ bool FImpactBatchAssets::Load(const UImpactBatchDefinition& Batch, FImpactBatchA
 		Out.Sources.Emplace(Sequence);
 		Out.SourcePlaysOnce.Add(PlaysOnce(Batch, Sequence->GetName()));
 	}
-	return true;
+	return !Batch.bFullGrid || Out.Grid.Build(Batch, *Out.Catalog, Out.Sources.Num(), OutReason);
 }
 
 int32 FImpactBatchAssets::ClipCount(const UImpactBatchDefinition& Batch) const
 {
-	return Batch.ClipCount;
+	return Batch.bFullGrid ? Grid.Num() : Batch.ClipCount;
 }
 
 bool FImpactBatchAssets::PlaysOnce(const UImpactBatchDefinition& Batch, const FString& Name)
@@ -145,13 +145,31 @@ bool FImpactClipFactory::Make(const UImpactBatchDefinition& Batch, const FImpact
 	Setup.MaxReactionFrames = Batch.MaxReactionFrames;
 	Setup.SettleFrames = Batch.SettleFrames;
 
-	FImpactRandom SourceRandom(Batch.Seed, ClipIndex, EImpactRandomStream::SourceAnimation);
-	const int32 Source = SourceRandom.RangeInt(0, Assets.Sources.Num() - 1);
+	int32 Source = 0;
+	if (Batch.bFullGrid)
+	{
+		// A full grid names the clip's source and impact outright; the rest still comes from the seed.
+		if (ClipIndex < 0 || ClipIndex >= Assets.Grid.Num())
+		{
+			OutReason = LOCTEXT("OutsideGrid", "The clip index is outside the batch's full grid.");
+			return false;
+		}
+		const FImpactGridCell Cell = Assets.Grid.Cell(ClipIndex);
+		Source = Cell.Source;
+		Setup.Params = FImpactGrid::Params(Cell, Batch, *Assets.Catalog);
+	}
+	else
+	{
+		FImpactRandom SourceRandom(Batch.Seed, ClipIndex, EImpactRandomStream::SourceAnimation);
+		Source = SourceRandom.RangeInt(0, Assets.Sources.Num() - 1);
+		if (!FImpactParamsSampler::Sample(*Assets.Catalog, Batch.Impact, Batch.CharacterMassKg, Batch.Seed, ClipIndex, Setup.Params, OutReason))
+		{
+			return false;
+		}
+	}
 	Setup.Source = Assets.Sources[Source].Get();
 	Setup.bSourcePlaysOnce = Assets.SourcePlaysOnce.IsValidIndex(Source) && Assets.SourcePlaysOnce[Source];
-
-	if (!FImpactParamsSampler::Sample(*Assets.Catalog, Batch.Impact, Batch.CharacterMassKg, Batch.Seed, ClipIndex, Setup.Params, OutReason)
-		|| !FImpactScheduleSampler::Sample(Setup.Params, Batch.Delivery, Batch.Seed, ClipIndex, Setup.Schedule, OutReason))
+	if (!FImpactScheduleSampler::Sample(Setup.Params, Batch.Delivery, Batch.Seed, ClipIndex, Setup.Schedule, OutReason))
 	{
 		return false;
 	}
@@ -250,7 +268,7 @@ bool FImpactBatchRunner::Begin(UImpactBatchDefinition& InBatch, const FImpactBat
 
 	if (!InBatch.ValidateSettings(OutReason)
 		|| !FImpactBatchAssets::Load(InBatch, Assets, OutReason)
-		|| !FImpactSharding::Resolve(InBatch.ClipCount, Config.Start, Config.Count, Range, OutReason))
+		|| !FImpactSharding::Resolve(Assets.ClipCount(InBatch), Config.Start, Config.Count, Range, OutReason))
 	{
 		return false;
 	}
