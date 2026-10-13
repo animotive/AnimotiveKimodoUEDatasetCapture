@@ -93,7 +93,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement sharding and manifest merge (Green) (b4f9ff3)
 - [x] Task: Write tests for the distribution report — counts per region / intensity / mode / outcome / source anim match the manifest (Red) (536dc21)
 - [x] Task: Implement the distribution report (Green) (270cd85)
-- [ ] Task: Write tests for the disk estimate — warns when estimate exceeds free space (Red → Green)
+- [x] Task: Write tests for the disk estimate — warns when estimate exceeds free space (Red → Green) (5a9194f)
 - [ ] Task: Implement `FImpactBatchRunner` — clip loop driving character, recorder, bake, sidecar, manifest; periodic GC; fixed timestep (Green, covered by the runner tests above plus an integration test on a tiny batch)
 - [ ] Task: Implement the headless host chosen in Phase 1 (`-Batch= -Start= -Count=`), exit codes for success / partial / failure **(exempt)**
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
