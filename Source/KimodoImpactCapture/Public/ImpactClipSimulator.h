@@ -94,6 +94,10 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipRecording
 
 	/** First frame of the reaction (the first hit). */
 	int32 ImpactFrame = 0;
+	/** The physics body the contact landed on, within the struck region. */
+	FName StruckBody;
+	/** Character space (X forward, Y right, Z up) to world, for hit directions. */
+	FQuat CharacterToWorld = FQuat::Identity;
 	bool bMovingSource = false;
 	bool bOverwhelmed = false;
 	EImpactClipEnd End = EImpactClipEnd::None;
