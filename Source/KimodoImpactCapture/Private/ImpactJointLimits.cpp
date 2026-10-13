@@ -103,3 +103,8 @@ float FImpactJointLimit::ExcessBeyond(const FImpactJointAngles& Angles, const FI
 	}
 	return FMath::Max(0.0f, FMath::Max(Twist, Swing));
 }
+
+float FImpactJointLimit::ExcessBeyondAny(const FImpactJointAngles& Angles, TConstArrayView<FImpactJointAngles> Allowed) const
+{
+	return 0.0f;
+}

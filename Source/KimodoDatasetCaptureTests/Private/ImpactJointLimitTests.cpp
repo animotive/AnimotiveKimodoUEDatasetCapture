@@ -207,3 +207,36 @@ bool FImpactJointLimitExcessBeyondTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Twist the other way keeps the asset limit"), Shoulder.ExcessBeyond(Angles(-50, 0, 0), Twisted), 20.0f, 1e-4f);
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactJointLimitExcessBeyondAnyTest,
+	"KimodoDatasetCapture.Impact.JointLimits.ExcessBeyondRecentTargets",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactJointLimitExcessBeyondAnyTest::RunTest(const FString& Parameters)
+{
+	auto Angles = [](float Twist, float Swing1, float Swing2)
+	{
+		FImpactJointAngles A;
+		A.TwistDeg = Twist;
+		A.Swing1Deg = Swing1;
+		A.Swing2Deg = Swing2;
+		return A;
+	};
+	FImpactJointLimit Elbow;
+	Elbow.TwistDeg = 0.0f;
+	Elbow.Swing1Deg = 70.0f;
+	Elbow.Swing2Deg = 0.0f;
+
+	// A sprinting arm swings back from 99 degrees; the held elbow trails, still at 97, while this
+	// frame's target is already 80.
+	const TArray<FImpactJointAngles> Recent = { Angles(0, 99, 0), Angles(0, 92, 0), Angles(0, 80, 0) };
+	const FImpactJointAngles Trailing = Angles(0, 97, 0);
+	TestEqual(TEXT("Against this frame's target alone, the lag reads as a fold"), Elbow.ExcessBeyond(Trailing, Recent.Last()), 17.0f, 1e-4f);
+	TestEqual(TEXT("Against the recent targets, it does not"), Elbow.ExcessBeyondAny(Trailing, Recent), 0.0f, 1e-4f);
+	TestEqual(TEXT("Past every recent target: the part beyond the nearest"), Elbow.ExcessBeyondAny(Angles(0, 105, 0), Recent), 6.0f, 1e-4f);
+	TestEqual(TEXT("A sideways fold is still caught"), Elbow.ExcessBeyondAny(Angles(0, 95, 22), Recent), 22.0f, 1e-4f);
+	TestEqual(TEXT("A twist is still caught"), Elbow.ExcessBeyondAny(Angles(12, 95, 0), Recent), 12.0f, 1e-4f);
+	TestEqual(TEXT("No targets: the plain excess"), Elbow.ExcessBeyondAny(Angles(0, 80, 0), TConstArrayView<FImpactJointAngles>()), 10.0f, 1e-4f);
+	return true;
+}

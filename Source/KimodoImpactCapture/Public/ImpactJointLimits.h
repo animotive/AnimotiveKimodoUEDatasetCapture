@@ -40,6 +40,12 @@ struct KIMODOIMPACTCAPTURE_API FImpactJointLimit
 	 */
 	float ExcessBeyond(const FImpactJointAngles& Angles, const FImpactJointAngles& Allowed) const;
 
+	/**
+	 * The least ExcessBeyond over several allowed angles: the targets a held joint was given over
+	 * the last few frames, since it trails them. Plain Excess when Allowed is empty.
+	 */
+	float ExcessBeyondAny(const FImpactJointAngles& Angles, TConstArrayView<FImpactJointAngles> Allowed) const;
+
 	/** One swing limited, the other swing and the twist locked: a knee or an elbow. */
 	bool IsHinge() const;
 };
