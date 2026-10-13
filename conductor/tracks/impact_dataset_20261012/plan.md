@@ -76,7 +76,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Write tests for leg IK in the recorder — planted foot lands exactly on target; source-contact detection for moving sources; knee follows the pole; bones below the foot keep their locals; unreachable targets do not stretch (Red) (b3ca9a9)
 - [x] Task: Implement recorder leg IK (Green) (af832ed)
 - [x] Task: Write tests for the bake — recorded buffer → `UAnimSequence` with matching frame count, frame rate, bone tracks, and sampled transforms equal at first/middle/last frame (Red) (a379b28)
-- [ ] Task: Implement the bake via `IAnimationDataController` and save under `<OutputRoot>/<Batch>/<ClipId>` (Green)
+- [x] Task: Implement the bake via `IAnimationDataController` and save under `<OutputRoot>/<Batch>/<ClipId>` (Green) (01e04c9)
 - [ ] Task: Write tests for sidecar schema v3 — `clipSource`, absent input layers, `impact` block with all hits and outcome; v2 files still read; v3 round-trips (Red)
 - [ ] Task: Implement schema v3 structs and serializer changes; regenerate `SidecarSchemaSample.json` (Green)
 - [ ] Task: Write tests for the human-language description — names subject, source motion, impactor noun with its verb, region, direction and outcome; every archetype × region × outcome combination yields a non-empty sentence with no unfilled slot; multiple phrasings selected deterministically from the clip seed; source-motion phrase from the per-animation table with name-derived fallback; tag set matches params (Red)
