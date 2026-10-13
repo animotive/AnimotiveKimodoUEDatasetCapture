@@ -43,7 +43,8 @@ namespace
 
 int32 FImpactorArchetype::ContactFrames(int32 FrameRate) const
 {
-	return 1;
+	// Tolerance so a contact time that is a whole number of frames does not round up by float error.
+	return FMath::Max(1, FMath::CeilToInt32(ContactSeconds * float(FMath::Max(0, FrameRate)) - 1e-3f));
 }
 
 TArray<FImpactorArchetype> UImpactorCatalog::MakeStarterArchetypes()
@@ -95,9 +96,14 @@ TArray<FImpactorArchetype> UImpactorCatalog::MakeStarterArchetypes()
 		{ TEXT("SportsTackle"), 1.5f }, { TEXT("SwingingBat"), 2.5f }, { TEXT("CarBumper"), 1.0f },
 		{ TEXT("WreckingBall"), 1.5f }, { TEXT("WindPush"), 1.0f },
 	};
+	// Contact times: wide, heavy impactors keep pushing; everything else lands in one frame.
+	const TMap<FName, float> ContactTimes = {
+		{ TEXT("CarBumper"), 0.1f }, { TEXT("WreckingBall"), 0.08f }, { TEXT("SportsTackle"), 0.15f },
+	};
 	for (FImpactorArchetype& Archetype : Starter)
 	{
 		Archetype.ReactionGain = Gains.FindRef(Archetype.Id, 1.0f);
+		Archetype.ContactSeconds = ContactTimes.FindRef(Archetype.Id, 0.0f);
 	}
 	return Starter;
 }

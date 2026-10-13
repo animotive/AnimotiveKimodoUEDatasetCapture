@@ -112,7 +112,7 @@ bool FImpactContactSpreadMassTest::RunTest(const FString& Parameters)
 	const TArray<FImpactBodyProxy> Bodies = {
 		{ TEXT("pelvis"), FVector(0, 0, 100), 12.0f, 12.0f },
 		{ TEXT("hand_l"), FVector(-30, 0, 100), 5.0f, 0.6f },
-		{ TEXT("thigh_l"), FVector(-10, 0, 69), 5.0f, 9.0f },
+		{ TEXT("thigh_l"), FVector(-12, 0, 82), 5.0f, 9.0f },
 	};
 	const FVector Contact(-12, 0, 100);
 	const TArray<FImpactBodyShare> Shares = FImpactContactSpread::Distribute(Bodies, 0, Contact, 60.0f, 60000.0f);

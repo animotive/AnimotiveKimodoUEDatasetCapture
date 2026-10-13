@@ -26,6 +26,10 @@ FImpactBodyStrength FImpactStrengthProfile::Evaluate(const FImpactBodyStrengthQu
 		const float Fade = FMath::SmoothStep(0.0f, 1.0f, float(FMath::Max(0, Body.FramesSinceRelease)) / float(FMath::Max(1, ReleasedToneFadeFrames)));
 		Strength.World = 0.0f;
 		Strength.Joint = FMath::Lerp(ReleasedToneStart, ReleasedToneEnd, Fade);
+		if (Body.bCore)
+		{
+			Strength.Joint = FMath::Min(1.0f, Strength.Joint * ReleasedCoreToneScale);
+		}
 		Strength.JointDamping = ReleasedJointDamping;
 		return Strength;
 	}

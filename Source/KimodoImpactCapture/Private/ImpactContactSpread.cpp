@@ -63,6 +63,13 @@ TArray<FImpactBodyShare> FImpactContactSpread::Distribute(
 		else if (Radius > 0.0f && SurfaceDistance < Radius)
 		{
 			Weight = FMath::Square(1.0f - SurfaceDistance / Radius);
+			// A surface pushes what it touches together: by mass, relative to the struck body, so a
+			// light hand beside a struck pelvis moves with it rather than being flung off.
+			const float StruckMass = Bodies[StruckIndex].MassKg;
+			if (Body.MassKg > 0.0f && StruckMass > 0.0f)
+			{
+				Weight *= Body.MassKg / StruckMass;
+			}
 		}
 		if (Weight <= 0.0f)
 		{

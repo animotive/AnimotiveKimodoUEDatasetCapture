@@ -166,12 +166,15 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	const FQuat CharacterToWorld = FRotationMatrix::MakeFromXZ(Reference.TransformVectorNoScale(Setup.MeshForward), FVector::UpVector).ToQuat();
 
 	// --- Timing --------------------------------------------------------------------------------
+	// A single-frame hit is pushed over the impactor's contact time.
+	const int32 ContactFrames = Setup.Params.Impactor.Archetype->ContactFrames(Setup.FrameRate);
+	auto HitFrames = [ContactFrames](const FImpactHit& Hit) { return Hit.DurationFrames > 0 ? Hit.DurationFrames : ContactFrames; };
 	// Bodies switch to simulated on the last pre-roll frame; the first hit lands on the next.
 	const int32 ImpactFrame = Setup.PreRollFrames + 1;
 	int32 LastHitOffset = 0;
 	for (const FImpactHit& Hit : Setup.Schedule.Hits)
 	{
-		LastHitOffset = FMath::Max(LastHitOffset, Hit.FrameOffset + FMath::Max(0, Hit.DurationFrames - 1));
+		LastHitOffset = FMath::Max(LastHitOffset, Hit.FrameOffset + HitFrames(Hit) - 1);
 	}
 	int32 ProjectileArrival = 0;
 	if (Setup.Schedule.Projectile.IsSet())
@@ -307,6 +310,8 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			Query.ContactDistance = Distance[Index] == MAX_int32 ? 99 : Distance[Index];
 			Query.bLeg = Bodies[Index].bLeg;
 			Query.bPelvis = Bodies[Index].bPelvis;
+			const FString BoneName = Bodies[Index].Bone.ToString();
+			Query.bCore = BoneName.StartsWith(TEXT("spine")) || BoneName.StartsWith(TEXT("neck")) || BoneName == TEXT("head");
 			Query.bMovingSource = bMoving;
 			Query.bReleased = bReleased;
 			Query.FramesSinceRelease = bReleased ? Frame - ReleaseFrame : 0;
@@ -337,7 +342,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		{
 			for (const FImpactHit& Hit : Setup.Schedule.Hits)
 			{
-				const int32 Duration = FMath::Max(1, Hit.DurationFrames);
+				const int32 Duration = HitFrames(Hit);
 				const int32 Into = SinceHit - Hit.FrameOffset;
 				if (Into < 0 || Into >= Duration)
 				{
@@ -353,7 +358,8 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 				TArray<FImpactBodyProxy> Proxies;
 				for (int32 Index = 0; Index < Bodies.Num(); ++Index)
 				{
-					Proxies.Add({ Bodies[Index].Bone, Bodies[Index].Instance ? Bodies[Index].Instance->GetCOMPosition() : FVector::ZeroVector, Character->BodyRadius(Index) });
+					Proxies.Add({ Bodies[Index].Bone, Bodies[Index].Instance ? Bodies[Index].Instance->GetCOMPosition() : FVector::ZeroVector, Character->BodyRadius(Index),
+							Bodies[Index].Instance ? Bodies[Index].Instance->GetBodyMass() : 0.0f });
 				}
 				// The physical push lands where the impactor does, over its own contact area; the part the
 				// reaction gain adds is a regional response, spread at least ReactionSpreadRadiusCm.
@@ -383,7 +389,8 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 					TArray<FImpactBodyProxy> Proxies;
 					for (int32 Index = 0; Index < Bodies.Num(); ++Index)
 					{
-						Proxies.Add({ Bodies[Index].Bone, Bodies[Index].Instance ? Bodies[Index].Instance->GetCOMPosition() : FVector::ZeroVector, Character->BodyRadius(Index) });
+						Proxies.Add({ Bodies[Index].Bone, Bodies[Index].Instance ? Bodies[Index].Instance->GetCOMPosition() : FVector::ZeroVector, Character->BodyRadius(Index),
+								Bodies[Index].Instance ? Bodies[Index].Instance->GetBodyMass() : 0.0f });
 					}
 					const float SpreadRadius = FMath::Max(Spec.SizeCm * 0.5f, Setup.ReactionSpreadRadiusCm);
 					Character->ApplyShares(FImpactContactSpread::Distribute(Proxies, Struck, Contact, SpreadRadius, Spec.ExtraReactionImpulseKgCmPerSecond), BaseDirection);
