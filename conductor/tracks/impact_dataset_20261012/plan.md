@@ -67,7 +67,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Tune the ragdoll to the approved "Loose" look (verification feedback: slightly too rigid) — lighter tone (0.1-0.18, fading to 20-40%), core bracing 1.25x, joint damping 4.5x, hips 90 forward / 25 back / 30 sideways and twist; tests adjusted to the new ranges (c2e427f)
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Reaction Character, Impact Delivery and Outcome Detection' (Protocol in workflow.md) (45ea9b9)
 
-## Phase 4: Pose Recording, Bake and Sidecar v3
+## Phase 4: Pose Recording, Bake and Sidecar v3 [checkpoint: 479f236]
 
 - [x] Task: Write tests for the pose buffer — pre-reserved from max clip frames × bone count at clip start, no reallocation across a full simulated clip, overflow invalidates with reason (Red) (c877c30)
 - [x] Task: Implement the fixed-step pose recorder (component-space transforms) (Green) (241de31)
@@ -83,7 +83,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement template-based description and tag generation, plus the per-animation source-motion description table as data (Green) (4f4ecf4)
 - [x] Task: Write tests for the clip sidecar builder — added so Phase 4 verification shows real clips' sidecars: from a clip's setup and recording, a v3 synthetic-impact sidecar with identity (clip id, baked asset, frame rate, duration), skeleton (path, bone count, fingerprint), labels (caption and tags from the caption generator, full trim, validity and reason), and the impact block (seed, source animation and start, source motion, intensity, transferred impulse and gain, control profile, outcome, every hit with frame, duration including contact time, impactor noun/description/size/mass/speed, region, struck body, local and world direction, impulse, radius, mode, projectile spec) (Red) (87cc3c8)
 - [x] Task: Implement the clip sidecar builder; record the struck body and character orientation in the clip recording; the Phase 3 review writes a sidecar beside each review clip (Green) (3085add)
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Pose Recording, Bake and Sidecar v3' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Pose Recording, Bake and Sidecar v3' (Protocol in workflow.md) (479f236)
 
 ## Phase 5: Batch Runner, Resume and Headless Host
 
