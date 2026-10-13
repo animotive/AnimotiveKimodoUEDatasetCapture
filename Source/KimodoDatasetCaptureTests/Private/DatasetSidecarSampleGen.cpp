@@ -10,7 +10,7 @@
 #include "Misc/Paths.h"
 
 /**
- * Writes a representative schema v1 sidecar to
+ * Writes a representative recorded-take sidecar to
  *   Saved/KimodoDatasetCapture/SidecarSchemaSample.json
  * and leaves it there.
  *
@@ -137,5 +137,80 @@ bool FDatasetSidecarSchemaSampleTest::RunTest(const FString& Parameters)
 	UE_LOG(LogKimodoDatasetCapture, Display, TEXT("Sidecar schema v%d sample written to '%s'."), KDatasetSidecarSchemaVersion, *FilePath);
 
 	// Deliberately NOT deleted: the artefact is the point.
+	return true;
+}
+
+/**
+ * Writes a representative synthetic impact clip sidecar to
+ *   Saved/KimodoDatasetCapture/SidecarSchemaSampleImpact.json
+ * and leaves it there, for the same reason as the take sample: the training pipeline reads
+ * this format, so a person must be able to see it as the code writes it.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FDatasetSidecarImpactSampleTest,
+	"KimodoDatasetCapture.SidecarSerializer.ImpactSample",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FDatasetSidecarImpactSampleTest::RunTest(const FString& Parameters)
+{
+	FDatasetSidecar Sidecar;
+	Sidecar.ClipSource = DatasetClipSource::SyntheticImpact;
+	Sidecar.Identity.TakeName = TEXT("imp_3f2a9c0d11e4b7a5");
+	Sidecar.Identity.AnimSequencePath = TEXT("/Game/ImpactDataset/Batch01/imp_3f2a9c0d11e4b7a5.imp_3f2a9c0d11e4b7a5");
+	Sidecar.Identity.FrameRateNumerator = 60;
+	Sidecar.Identity.FrameRateDenominator = 1;
+	Sidecar.Identity.TickResolutionNumerator = 60;
+	Sidecar.Identity.TickResolutionDenominator = 1;
+	Sidecar.Identity.DurationFrames = 109;
+	Sidecar.Skeleton.SkeletonPath = TEXT("/Game/Characters/UEFN_Mannequin/Meshes/SK_UEFN_Mannequin.SK_UEFN_Mannequin");
+	Sidecar.Skeleton.BoneCount = 92;
+	Sidecar.Labels.Caption = TEXT("A person is shot in the left foot with a small bullet while running and trips, falling forwards.");
+	Sidecar.Labels.Tags = { TEXT("impact"), TEXT("SmallBullet"), TEXT("FootLeft"), TEXT("Knockdown"), TEXT("Medium"), TEXT("run") };
+	Sidecar.Labels.TrimInFrame = 0;
+	Sidecar.Labels.TrimOutFrame = 108;
+
+	FDatasetSidecarImpact& Impact = Sidecar.Impact;
+	Impact.ClipId = TEXT("imp_3f2a9c0d11e4b7a5");
+	Impact.BatchSeed = 3;
+	Impact.ClipIndex = 3;
+	Impact.SourceAnimation = TEXT("/Game/Characters/UEFN_Mannequin/Animations/Run/M_Neutral_Run_Loop_F.M_Neutral_Run_Loop_F");
+	Impact.SourceStartSeconds = 0.25f;
+	Impact.SourceMotion = TEXT("while running");
+	Impact.Intensity = TEXT("Medium");
+	Impact.TransferredImpulseKgCmPerSecond = 302.4f;
+	Impact.ReactionGain = 60.0f;
+	Impact.Control.WorldStrength = 8.0f;
+	Impact.Control.ParentStrength = 16.0f;
+	Impact.Control.ReleasedToneStart = 0.14f;
+	Impact.Control.ReleasedToneEnd = 0.042f;
+	Impact.Outcome = TEXT("Knockdown");
+	Impact.OutcomeFrame = 11;
+	Impact.bTrip = true;
+	Impact.End = TEXT("Settled");
+
+	FDatasetSidecarImpactHit Hit;
+	Hit.Frame = 31;
+	Hit.ImpactorId = TEXT("SmallBullet");
+	Hit.ImpactorNoun = TEXT("a small bullet");
+	Hit.ImpactorDescription = TEXT("A small-calibre pistol round.");
+	Hit.ImpactorSizeCm = 0.9f;
+	Hit.ImpactorMassKg = 0.008f;
+	Hit.ImpactorSpeedMetresPerSecond = 370.0f;
+	Hit.Region = TEXT("FootLeft");
+	Hit.Body = TEXT("foot_l");
+	Hit.DirectionWorld = FVector(0.0, -1.0, 0.0);
+	Hit.DirectionLocal = FVector(-1.0, 0.0, 0.0);
+	Hit.ImpulseKgCmPerSecond = 18142.0f;
+	Hit.ContactRadiusCm = 0.5f;
+	Hit.DeliveryMode = TEXT("Instant");
+	Impact.Hits.Add(Hit);
+
+	const FString FilePath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("KimodoDatasetCapture"), TEXT("SidecarSchemaSampleImpact.json"));
+	FText FailureReason;
+	TestTrue(TEXT("Impact sample written"), FDatasetSidecarSerializer::SaveToFile(Sidecar, FilePath, FailureReason));
+	FDatasetSidecar Reloaded;
+	TestTrue(TEXT("Impact sample reads back"), FDatasetSidecarSerializer::LoadFromFile(FilePath, Reloaded, FailureReason));
+	TestTrue(TEXT("Impact sample round-trips identically"), Reloaded == Sidecar);
+	UE_LOG(LogKimodoDatasetCapture, Display, TEXT("Sidecar schema v%d impact sample written to '%s'."), KDatasetSidecarSchemaVersion, *FilePath);
 	return true;
 }

@@ -277,9 +277,10 @@ bool FDatasetKeyboardChannelsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Mouse delta Y survived"), ReadBack.MouseDeltaY, -2.5f);
 	TestTrue(TEXT("Whole sample round-trips through the section"), ReadBack == Written);
 
-	// The sidecar schema had to change to carry a new device, so its version must have moved.
-	// A reader that speaks v1 must not silently accept a v2 file.
-	TestEqual(TEXT("Schema version is 2"), KDatasetSidecarSchemaVersion, 2);
+	// The sidecar schema had to change to carry a new device, so its version must have moved
+	// past 1 (it is 3 since synthetic clips). A reader that speaks v1 must not silently accept
+	// a newer file.
+	TestTrue(TEXT("Schema version moved past 1"), KDatasetSidecarSchemaVersion >= 2);
 	TestTrue(TEXT("Version 2 is supported"), FDatasetSidecarSerializer::IsSupportedSchemaVersion(2));
 	TestFalse(TEXT("Version 1 is no longer supported"), FDatasetSidecarSerializer::IsSupportedSchemaVersion(1));
 

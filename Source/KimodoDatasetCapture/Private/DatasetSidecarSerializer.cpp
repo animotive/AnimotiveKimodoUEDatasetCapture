@@ -35,11 +35,31 @@ bool FDatasetSidecarSerializer::ToJson(const FDatasetSidecar& Sidecar, FString& 
 {
 	OutJson.Reset();
 
-	// Pretty-printed on purpose. A sidecar is read by people diagnosing a dataset at least
-	// as often as by tools, and the size difference is irrelevant next to the take itself.
-	if (!FJsonObjectConverter::UStructToJsonObjectString(Sidecar, OutJson, 0, 0))
+	const TSharedPtr<FJsonObject> Root = FJsonObjectConverter::UStructToJsonObject(Sidecar, 0, 0);
+	if (!Root.IsValid())
 	{
 		UE_LOG(LogKimodoDatasetCapture, Error, TEXT("Failed to serialise sidecar for take '%s'."), *Sidecar.Identity.TakeName);
+		return false;
+	}
+
+	// Blocks that do not apply are absent, not empty: a synthetic clip has no raw input to
+	// zero-fill, and a recorded take has no impact.
+	if (Sidecar.IsSyntheticImpact())
+	{
+		Root->RemoveField(TEXT("inputStream"));
+		Root->RemoveField(TEXT("layers"));
+	}
+	else
+	{
+		Root->RemoveField(TEXT("impact"));
+	}
+
+	// Pretty-printed on purpose. A sidecar is read by people diagnosing a dataset at least
+	// as often as by tools, and the size difference is irrelevant next to the take itself.
+	const TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutJson);
+	if (!FJsonSerializer::Serialize(Root.ToSharedRef(), Writer))
+	{
+		UE_LOG(LogKimodoDatasetCapture, Error, TEXT("Failed to write sidecar JSON for take '%s'."), *Sidecar.Identity.TakeName);
 		return false;
 	}
 
@@ -106,14 +126,13 @@ bool FDatasetSidecarSerializer::TryReadSchemaVersion(const FString& Json, int32&
 
 bool FDatasetSidecarSerializer::IsSupportedSchemaVersion(int32 SchemaVersion)
 {
-	// Exactly the current version, and deliberately not "less than or equal to". A range
-	// check would silently accept a version this build has no reader for.
+	// An explicit list, never "less than or equal to": a range check would silently accept a
+	// version this build has no reader for.
 	//
-	// v1 is rejected rather than upgraded because nothing had been captured at v1: there is no
-	// data to migrate, so an upgrade path would be untested code guarding an empty set. When a
-	// version ships with real data behind it, this becomes a range plus a migration in
-	// FromJson.
-	return SchemaVersion == KDatasetSidecarSchemaVersion;
+	// v2 reads unchanged because v3 is purely additive: a v2 file lacks clipSource and impact,
+	// which default to a recorded take with no impact. v1 is rejected rather than upgraded
+	// because nothing had been captured at v1: there is no data to migrate.
+	return SchemaVersion == 2 || SchemaVersion == KDatasetSidecarSchemaVersion;
 }
 
 bool FDatasetSidecarSerializer::SaveToFile(const FDatasetSidecar& Sidecar, const FString& FilePath, FText& OutFailureReason)

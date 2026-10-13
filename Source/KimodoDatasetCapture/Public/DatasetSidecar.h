@@ -21,6 +21,11 @@
  *       mouseDeltaY to each sample, and renames the RawInput layer to RawGamepadInput
  *       alongside the new RawKeyboardMouseInput. Nothing had been captured at v1, so no
  *       migration path exists and v1 files are rejected rather than half-read.
+ *   3 - synthetic clips: adds clipSource ("take_recorder" or "synthetic_impact") and, for a
+ *       synthetic impact clip only, the impact block (source animation, every hit with its
+ *       impactor's noun, description, size, mass and speed, control profile, outcome, seed).
+ *       A synthetic clip has no raw input, so inputStream and layers are not written at all
+ *       rather than written empty. Additive: v2 files still read, as recorded takes.
  *
  * WIRE FORMAT NOTES. These are consequences of how FJsonObjectConverter serialises the
  * structs below, and they are part of the contract with the training pipeline, so they are
@@ -41,7 +46,7 @@
  * A representative sample of the current schema is produced by the test suite at
  * Saved/KimodoDatasetCapture/SidecarSchemaSample.json, so it cannot drift from the code.
  */
-inline constexpr int32 KDatasetSidecarSchemaVersion = 2;
+inline constexpr int32 KDatasetSidecarSchemaVersion = 3;
 
 /** Which capture layers a take actually contains. The opt-in layers may be absent. */
 UENUM()

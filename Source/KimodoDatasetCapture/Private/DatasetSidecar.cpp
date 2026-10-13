@@ -136,6 +136,8 @@ void FDatasetSidecar::AddLayer(EDatasetCaptureLayer Layer)
 bool FDatasetSidecar::operator==(const FDatasetSidecar& Other) const
 {
 	return SchemaVersion == Other.SchemaVersion
+		&& ClipSource == Other.ClipSource
+		&& Impact == Other.Impact
 		&& Identity == Other.Identity
 		&& InputStream == Other.InputStream
 		&& Skeleton == Other.Skeleton
@@ -145,20 +147,56 @@ bool FDatasetSidecar::operator==(const FDatasetSidecar& Other) const
 
 bool FDatasetSidecarImpactHit::operator==(const FDatasetSidecarImpactHit& Other) const
 {
-	return true;
+	return Frame == Other.Frame
+		&& DurationFrames == Other.DurationFrames
+		&& ImpactorId == Other.ImpactorId
+		&& ImpactorNoun == Other.ImpactorNoun
+		&& ImpactorDescription == Other.ImpactorDescription
+		&& ImpactorSizeCm == Other.ImpactorSizeCm
+		&& ImpactorMassKg == Other.ImpactorMassKg
+		&& ImpactorSpeedMetresPerSecond == Other.ImpactorSpeedMetresPerSecond
+		&& Region == Other.Region
+		&& Body == Other.Body
+		&& DirectionWorld == Other.DirectionWorld
+		&& DirectionLocal == Other.DirectionLocal
+		&& ImpulseKgCmPerSecond == Other.ImpulseKgCmPerSecond
+		&& ContactRadiusCm == Other.ContactRadiusCm
+		&& DeliveryMode == Other.DeliveryMode
+		&& bProjectile == Other.bProjectile
+		&& ProjectileShape == Other.ProjectileShape
+		&& ProjectileLaunchDistanceCm == Other.ProjectileLaunchDistanceCm;
 }
 
 bool FDatasetSidecarImpactControl::operator==(const FDatasetSidecarImpactControl& Other) const
 {
-	return true;
+	return WorldStrength == Other.WorldStrength
+		&& ParentStrength == Other.ParentStrength
+		&& ReleasedToneStart == Other.ReleasedToneStart
+		&& ReleasedToneEnd == Other.ReleasedToneEnd;
 }
 
 bool FDatasetSidecarImpact::operator==(const FDatasetSidecarImpact& Other) const
 {
-	return true;
+	return ClipId == Other.ClipId
+		&& BatchSeed == Other.BatchSeed
+		&& ClipIndex == Other.ClipIndex
+		&& SourceAnimation == Other.SourceAnimation
+		&& SourceStartSeconds == Other.SourceStartSeconds
+		&& SourceMotion == Other.SourceMotion
+		&& Intensity == Other.Intensity
+		&& TransferredImpulseKgCmPerSecond == Other.TransferredImpulseKgCmPerSecond
+		&& ReactionGain == Other.ReactionGain
+		&& Hits == Other.Hits
+		&& Control == Other.Control
+		&& Outcome == Other.Outcome
+		&& OutcomeFrame == Other.OutcomeFrame
+		&& Steps == Other.Steps
+		&& bTrip == Other.bTrip
+		&& bOverwhelmed == Other.bOverwhelmed
+		&& End == Other.End;
 }
 
 bool FDatasetSidecar::IsSyntheticImpact() const
 {
-	return false;
+	return ClipSource == DatasetClipSource::SyntheticImpact;
 }
