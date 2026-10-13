@@ -9,6 +9,7 @@
 #include "ImpactBatchManifest.h"
 #include "ImpactCaption.h"
 #include "ImpactDistributionReport.h"
+#include "ImpactGrid.h"
 #include "ImpactRegionTable.h"
 #include "ImpactShard.h"
 #include "ImpactorCatalog.h"
@@ -36,6 +37,11 @@ struct KIMODOIMPACTCAPTURE_API FImpactBatchAssets
 	TArray<TStrongObjectPtr<UAnimSequence>> Sources;
 	/** Per source: plays once and holds its last frame (UImpactBatchDefinition::PlayOnceNames). */
 	TArray<bool> SourcePlaysOnce;
+	/** The full grid's layout, when the batch is a full grid. */
+	FImpactGrid Grid;
+
+	/** Clips in the batch: the grid's size for a full grid, else ClipCount. */
+	int32 ClipCount(const UImpactBatchDefinition& Batch) const;
 
 	/** Resolves and loads the batch's assets. False with a reason when any cannot be loaded. */
 	static bool Load(const UImpactBatchDefinition& Batch, FImpactBatchAssets& Out, FText& OutReason);

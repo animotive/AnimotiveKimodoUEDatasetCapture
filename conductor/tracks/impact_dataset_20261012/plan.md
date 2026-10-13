@@ -114,7 +114,9 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement spread-based overwhelm in the simulator (Green) (d591ef3)
 - [x] Task: Write tests for falls judged against the source's own height — crouch idle and crouch walk clips ragdolled within frames of a light hit. Not the outcome classifier (it already compares each frame with the source): the balance planner declared a fall once the centre of mass dropped below a fixed 55 cm, where a crouch already sits. The fall height scales with the source's pelvis height that frame (Red) (584d92e)
 - [x] Task: Implement source-relative fall detection in the balance planner and simulator (Green) (4c444b2)
-- [ ] Task: Investigate the hard-hit ragdoll fold invalidations (11 of 40 in the re-bake) once the two fixes above are in; report before changing the ragdoll's feel
+- [x] Task: Investigate the hard-hit ragdoll fold invalidations (11 of 40 in the re-bake) once the two fixes above are in; report before changing the ragdoll's feel — after both fixes 9 of 40: five overwhelmed car/tackle/wrecking-ball ragdolls 31-42 deg past hard limits (the solver cannot hold them), one rifle reaction on a running hand spun the arm to 19,600 deg/s, two marginal 21-22 deg hinge folds. Reported; ragdoll feel unchanged
+- [ ] Task: Write tests for full-grid batches — user, 2026-10-13: "do a full grid generation of every force in every direction on every animation" (spec FR1 "full grid" mode): every source x every impactor x every region it can strike x azimuth steps x elevation steps (within the impactor's range) x strength levels (impactor mass/speed lowest to highest) x phases; clip index decodes to its cell; the rest (delivery, strength profile, contact aim) still from (seed, index) (Red)
+- [ ] Task: Implement full-grid layout, grid params, factory and runner count (Green)
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
 
 ## Phase 6: Panel, Preview and End-to-End Run

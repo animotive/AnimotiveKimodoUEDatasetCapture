@@ -113,6 +113,11 @@ bool FImpactBatchAssets::Load(const UImpactBatchDefinition& Batch, FImpactBatchA
 	return true;
 }
 
+int32 FImpactBatchAssets::ClipCount(const UImpactBatchDefinition& Batch) const
+{
+	return Batch.ClipCount;
+}
+
 bool FImpactBatchAssets::PlaysOnce(const UImpactBatchDefinition& Batch, const FString& Name)
 {
 	return Batch.PlayOnceNames.ContainsByPredicate([&Name](const FString& Once)

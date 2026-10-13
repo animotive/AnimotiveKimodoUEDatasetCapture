@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "Engine/EngineTypes.h"
+#include "ImpactGrid.h"
 #include "ImpactParams.h"
 #include "ImpactSchedule.h"
 #include "ImpactStrengthProfile.h"
@@ -91,6 +92,16 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Sampling")
 	FImpactStrengthDistribution Strength;
+
+	/**
+	 * Every combination instead of a random draw: each source x each impactor x each region it can
+	 * strike x the grid's directions, strengths and phases. ClipCount is then the grid's size.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Sampling")
+	bool bFullGrid = false;
+
+	UPROPERTY(EditAnywhere, Category = "Sampling", meta = (EditCondition = "bFullGrid"))
+	FImpactGridSettings Grid;
 
 	// --- Timing ----------------------------------------------------------------------------------
 
