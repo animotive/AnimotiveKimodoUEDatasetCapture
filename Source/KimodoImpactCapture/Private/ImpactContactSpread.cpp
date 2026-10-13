@@ -97,3 +97,8 @@ TArray<FImpactBodyShare> FImpactContactSpread::Distribute(
 	}
 	return Shares;
 }
+
+float FImpactContactSpread::StruckDeltaV(TConstArrayView<FImpactBodyShare> Shares, TConstArrayView<FImpactBodyProxy> Bodies, int32 StruckIndex)
+{
+	return 0.0f;
+}

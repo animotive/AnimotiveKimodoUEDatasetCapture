@@ -1,5 +1,6 @@
 // Copyright Animotive. All Rights Reserved.
 
+#include "ImpactBalancePlanner.h"
 #include "ImpactContactSpread.h"
 #include "Misc/AutomationTest.h"
 
@@ -153,3 +154,47 @@ bool FImpactContactSpreadInvalidTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Negative radius behaves as a point contact"), FImpactContactSpread::Distribute(Bodies, 1, Contact, -4.0f, 1000.0f).Num(), 1);
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactStruckDeltaVTest,
+	"KimodoDatasetCapture.Impact.ContactSpread.StruckDeltaV",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactStruckDeltaVTest::RunTest(const FString& Parameters)
+{
+	// A right arm, mannequin masses: hand, forearm, upper arm, and a chest out of reach.
+	const TArray<FImpactBodyProxy> Arm = {
+		{ TEXT("hand_r"), FVector(0, 0, 0), 4.0f, 0.5f },
+		{ TEXT("lowerarm_r"), FVector(0, 20, 0), 5.0f, 1.2f },
+		{ TEXT("upperarm_r"), FVector(0, 45, 0), 6.0f, 2.0f },
+		{ TEXT("spine_05"), FVector(0, 90, 0), 15.0f, 12.0f },
+	};
+	const FVector Contact(0, -4, 0);
+	const float LightPunch = 8500.0f;
+
+	// The push a light punch to the hand spreads over the hand and arm.
+	const TArray<FImpactBodyShare> Spread = FImpactContactSpread::Distribute(Arm, 0, Contact, 40.0f, LightPunch);
+	const float SpreadDeltaV = FImpactContactSpread::StruckDeltaV(Spread, Arm, 0);
+	const FImpactBodyShare* HandShare = Spread.FindByPredicate([](const FImpactBodyShare& Share) { return Share.Name == TEXT("hand_r"); });
+	if (TestNotNull(TEXT("The hand takes a share"), HandShare))
+	{
+		TestEqual(TEXT("Its speed change is its share over its mass"), SpreadDeltaV, HandShare->ImpulseKgCmPerSecond / 0.5f, 1e-2f);
+	}
+	TestTrue(TEXT("Spread over the arm, the hand moves far slower than the whole punch on it alone"), SpreadDeltaV < LightPunch / 0.5f * 0.6f);
+
+	// The same punch on the hand alone: what the old rule assumed.
+	const TArray<FImpactBodyShare> Point = FImpactContactSpread::Distribute(Arm, 0, Contact, 1.0f, LightPunch);
+	TestEqual(TEXT("Unspread, the hand takes it all"), FImpactContactSpread::StruckDeltaV(Point, Arm, 0), LightPunch / 0.5f, 1e-1f);
+
+	const FImpactFallRules Rules;
+	TestFalse(TEXT("A light punch spread over the arm does not overwhelm"), Rules.IsOverwhelming(LightPunch, 75.0f, SpreadDeltaV));
+	TestTrue(TEXT("A violent blow on the hand alone still would"), Rules.IsOverwhelming(LightPunch, 75.0f, LightPunch / 0.5f));
+
+	TestEqual(TEXT("No share: no speed change"), FImpactContactSpread::StruckDeltaV(TArray<FImpactBodyShare>(), Arm, 0), 0.0f);
+	TestEqual(TEXT("Invalid struck index: none"), FImpactContactSpread::StruckDeltaV(Spread, Arm, 9), 0.0f);
+	TArray<FImpactBodyProxy> Massless = Arm;
+	Massless[0].MassKg = 0.0f;
+	TestEqual(TEXT("Unknown mass: none"), FImpactContactSpread::StruckDeltaV(Spread, Massless, 0), 0.0f);
+	return true;
+}
+

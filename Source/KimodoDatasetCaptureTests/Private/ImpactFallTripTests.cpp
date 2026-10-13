@@ -39,11 +39,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FImpactOverwhelmTest::RunTest(const FString& Parameters)
 {
 	const FImpactFallRules Rules;
-	TestTrue(TEXT("A car (62k on 75 kg) overwhelms"), Rules.IsOverwhelming(62000.0f, 75.0f, 13.0f));
-	TestFalse(TEXT("A rifle round (30k on 75 kg, chest) does not"), Rules.IsOverwhelming(30000.0f, 75.0f, 13.0f));
-	TestTrue(TEXT("Exactly the body threshold overwhelms"), Rules.IsOverwhelming(Rules.OverwhelmBodyDeltaVCmPerSecond * 75.0f, 75.0f, 1000.0f));
-	TestFalse(TEXT("Just below the body threshold does not"), Rules.IsOverwhelming(Rules.OverwhelmBodyDeltaVCmPerSecond * 75.0f - 1.0f, 75.0f, 1000.0f));
-	TestTrue(TEXT("A violent blow to a light body part overwhelms"), Rules.IsOverwhelming(Rules.OverwhelmStruckBodyDeltaVCmPerSecond * 4.0f, 75.0f, 4.0f));
+	TestTrue(TEXT("A car (62k on 75 kg) overwhelms"), Rules.IsOverwhelming(62000.0f, 75.0f, 1500.0f));
+	TestFalse(TEXT("A rifle round (30k on 75 kg, chest, spread) does not"), Rules.IsOverwhelming(30000.0f, 75.0f, 1500.0f));
+	TestTrue(TEXT("Exactly the body threshold overwhelms"), Rules.IsOverwhelming(Rules.OverwhelmBodyDeltaVCmPerSecond * 75.0f, 75.0f, 0.0f));
+	TestFalse(TEXT("Just below the body threshold does not"), Rules.IsOverwhelming(Rules.OverwhelmBodyDeltaVCmPerSecond * 75.0f - 1.0f, 75.0f, 0.0f));
+	TestTrue(TEXT("A struck part driven at the threshold overwhelms"), Rules.IsOverwhelming(1000.0f, 75.0f, Rules.OverwhelmStruckBodyDeltaVCmPerSecond));
+	TestFalse(TEXT("Just below it does not"), Rules.IsOverwhelming(1000.0f, 75.0f, Rules.OverwhelmStruckBodyDeltaVCmPerSecond - 1.0f));
 	TestFalse(TEXT("Zero body mass never overwhelms (no divide by zero)"), Rules.IsOverwhelming(1.0e6f, 0.0f, 0.0f));
 
 	// The planner releases straight away: the classifier sees a ragdoll.

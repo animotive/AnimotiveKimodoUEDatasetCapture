@@ -64,4 +64,10 @@ struct KIMODOIMPACTCAPTURE_API FImpactContactSpread
 	static TArray<FImpactBodyShare> Distribute(
 		TConstArrayView<FImpactBodyProxy> Bodies, int32 StruckIndex, const FVector& ContactPoint,
 		float ContactRadiusCm, float TotalImpulseKgCmPerSecond);
+
+	/**
+	 * Speed change the struck body takes from its share of a spread impact, cm/s: its share over
+	 * its mass. Zero when it has no share or no known mass.
+	 */
+	static float StruckDeltaV(TConstArrayView<FImpactBodyShare> Shares, TConstArrayView<FImpactBodyProxy> Bodies, int32 StruckIndex);
 };

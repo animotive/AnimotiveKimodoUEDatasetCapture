@@ -110,6 +110,11 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement the play-once start window in the simulator and sidecar (Green) (9f1ac4b)
 - [x] Task: Write tests for mid-air hits — IMP_000008 was hit, followed the jump's own landing, then fell (user chose "release if hit in the air"): the source is airborne when both feet are over 12 cm above their reference height; a Heavy-or-stronger hit while airborne releases the body (Red) (4afc28a)
 - [x] Task: Implement mid-air release in the simulator (Green) (6152b07)
+- [ ] Task: Write tests for overwhelm by the struck part's spread speed change — the 40-clip re-bake overwhelmed light punches to the neck, wind to a hand and a bullet to a hand: impulse over the bare struck-part mass (a hand is ~0.5 kg) reads as violent. The rule takes the speed change the struck part gets from its share of the spread push (Red)
+- [ ] Task: Implement spread-based overwhelm in the simulator (Green)
+- [ ] Task: Write tests for falls judged against the source's own pelvis height — crouch idle and crouch walk clips were classified as falls because pelvis height was compared with standing height (Red)
+- [ ] Task: Implement source-relative fall classification (Green)
+- [ ] Task: Investigate the hard-hit ragdoll fold invalidations (11 of 40 in the re-bake) once the two fixes above are in; report before changing the ragdoll's feel
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
 
 ## Phase 6: Panel, Preview and End-to-End Run
