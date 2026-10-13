@@ -126,6 +126,24 @@ TArray<int32> FImpactBatchManifest::Pending(int32 Start, int32 Count) const
 	return Result;
 }
 
+const TCHAR* FImpactBatchManifest::FilePattern = TEXT("Manifest*.jsonl");
+
+int32 FImpactBatchManifest::Merge(const FImpactBatchManifest& Other)
+{
+	return 0;
+}
+
+bool FImpactBatchManifest::LoadAll(const FString& Folder, FImpactBatchManifest& Out, FText& OutReason)
+{
+	Out = FImpactBatchManifest();
+	return true;
+}
+
+bool FImpactBatchManifest::SaveAs(const FString& InFilename, FText& OutReason) const
+{
+	return true;
+}
+
 FString FImpactBatchManifest::ToLine(const FImpactManifestEntry& Entry)
 {
 	// Condensed JSON escapes line breaks inside strings, so one entry is always one line.

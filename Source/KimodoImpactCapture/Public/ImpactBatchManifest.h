@@ -86,6 +86,24 @@ public:
 
 	const FString& GetFilename() const { return Filename; }
 
+	/**
+	 * Adds Other's entries for clips this manifest does not have, in memory only. Returns how many
+	 * of Other's entries were repeats and skipped.
+	 */
+	int32 Merge(const FImpactBatchManifest& Other);
+
+	/**
+	 * Every manifest file in Folder (every shard's), merged into one. Out is a read-only view: it
+	 * has no file to append to. Repeats across shards count once.
+	 */
+	static bool LoadAll(const FString& Folder, FImpactBatchManifest& Out, FText& OutReason);
+
+	/** Writes every entry to Filename as one manifest, through a temporary file. */
+	bool SaveAs(const FString& Filename, FText& OutReason) const;
+
+	/** Manifest files are named Manifest*.jsonl so LoadAll finds every shard's. */
+	static const TCHAR* FilePattern;
+
 	/** One entry as a single line of JSON, without the line break. */
 	static FString ToLine(const FImpactManifestEntry& Entry);
 	static bool FromLine(const FString& Line, FImpactManifestEntry& OutEntry);
