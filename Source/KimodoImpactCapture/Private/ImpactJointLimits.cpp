@@ -52,31 +52,54 @@ FQuat FImpactJointRange::TurnSwing1(const FQuat& ParentFrame, float CentreDeg)
 	return ParentFrame * FQuat(FVector::ZAxisVector, FMath::DegreesToRadians(CentreDeg));
 }
 
+namespace
+{
+	bool IsCone(float Swing1Deg, float Swing2Deg)
+	{
+		return Swing1Deg > 0.0f && Swing1Deg < 180.0f && Swing2Deg > 0.0f && Swing2Deg < 180.0f;
+	}
+
+	/** How far Angle is past a limit of LimitDeg, opened on Allowed's side as far as Allowed. */
+	float AxisExcess(float AngleDeg, float LimitDeg, float AllowedDeg)
+	{
+		const bool bAllowedSide = AllowedDeg != 0.0f && (AngleDeg > 0.0f) == (AllowedDeg > 0.0f);
+		return FMath::Abs(AngleDeg) - (bAllowedSide ? FMath::Max(LimitDeg, FMath::Abs(AllowedDeg)) : LimitDeg);
+	}
+
+	/** How far the swing runs past an elliptical cone along its own direction. */
+	float ConeExcess(const FImpactJointAngles& Angles, float Swing1Deg, float Swing2Deg)
+	{
+		const float Angle = FMath::Sqrt(FMath::Square(Angles.Swing1Deg) + FMath::Square(Angles.Swing2Deg));
+		if (Angle <= UE_KINDA_SMALL_NUMBER)
+		{
+			return 0.0f;
+		}
+		const float Along1 = Angles.Swing1Deg / Angle / Swing1Deg;
+		const float Along2 = Angles.Swing2Deg / Angle / Swing2Deg;
+		return Angle - 1.0f / FMath::Sqrt(FMath::Square(Along1) + FMath::Square(Along2));
+	}
+}
+
 float FImpactJointLimit::Excess(const FImpactJointAngles& Angles) const
 {
-	const float Twist = FMath::Abs(Angles.TwistDeg) - TwistDeg;
-	float Swing = 0.0f;
-	if (Swing1Deg > 0.0f && Swing1Deg < 180.0f && Swing2Deg > 0.0f && Swing2Deg < 180.0f)
-	{
-		// Both swings limited: an elliptical cone. Excess is how far the swing runs past the ellipse
-		// along its own direction.
-		const float Angle = FMath::Sqrt(FMath::Square(Angles.Swing1Deg) + FMath::Square(Angles.Swing2Deg));
-		if (Angle > UE_KINDA_SMALL_NUMBER)
-		{
-			const float Along1 = Angles.Swing1Deg / Angle / Swing1Deg;
-			const float Along2 = Angles.Swing2Deg / Angle / Swing2Deg;
-			Swing = Angle - 1.0f / FMath::Sqrt(FMath::Square(Along1) + FMath::Square(Along2));
-		}
-	}
-	else
-	{
-		// A hinge, a locked or a free swing: each axis on its own.
-		Swing = FMath::Max(FMath::Abs(Angles.Swing1Deg) - Swing1Deg, FMath::Abs(Angles.Swing2Deg) - Swing2Deg);
-	}
-	return FMath::Max(0.0f, FMath::Max(Twist, Swing));
+	return ExcessBeyond(Angles, FImpactJointAngles());
 }
 
 float FImpactJointLimit::ExcessBeyond(const FImpactJointAngles& Angles, const FImpactJointAngles& Allowed) const
 {
-	return 0.0f;
+	const float Twist = AxisExcess(Angles.TwistDeg, TwistDeg, Allowed.TwistDeg);
+	float Swing = 0.0f;
+	if (IsCone(Swing1Deg, Swing2Deg))
+	{
+		// A cone has no sides to open one at a time: it is scaled until Allowed is on it.
+		const float Reach = FMath::Sqrt(FMath::Square(Allowed.Swing1Deg / Swing1Deg) + FMath::Square(Allowed.Swing2Deg / Swing2Deg));
+		const float Scale = FMath::Max(1.0f, Reach);
+		Swing = ConeExcess(Angles, Swing1Deg * Scale, Swing2Deg * Scale);
+	}
+	else
+	{
+		// A hinge, a locked or a free swing: each axis on its own.
+		Swing = FMath::Max(AxisExcess(Angles.Swing1Deg, Swing1Deg, Allowed.Swing1Deg), AxisExcess(Angles.Swing2Deg, Swing2Deg, Allowed.Swing2Deg));
+	}
+	return FMath::Max(0.0f, FMath::Max(Twist, Swing));
 }

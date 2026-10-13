@@ -202,7 +202,8 @@ bool FImpactJointLimitExcessBeyondTest::RunTest(const FString& Parameters)
 
 	// Twist past its limit in the source.
 	const FImpactJointAngles Twisted = Angles(50, 0, 0);
-	TestEqual(TEXT("Twist at the source's"), Shoulder.ExcessBeyond(Angles(-50, 0, 0), Twisted), 0.0f, 1e-4f);
+	TestEqual(TEXT("Twist at the source's"), Shoulder.ExcessBeyond(Angles(50, 0, 0), Twisted), 0.0f, 1e-4f);
 	TestEqual(TEXT("Twist past the source's"), Shoulder.ExcessBeyond(Angles(60, 0, 0), Twisted), 10.0f, 1e-4f);
+	TestEqual(TEXT("Twist the other way keeps the asset limit"), Shoulder.ExcessBeyond(Angles(-50, 0, 0), Twisted), 20.0f, 1e-4f);
 	return true;
 }

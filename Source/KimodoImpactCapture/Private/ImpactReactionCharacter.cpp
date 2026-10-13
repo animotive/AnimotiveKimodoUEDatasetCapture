@@ -340,7 +340,14 @@ void AImpactReactionCharacter::CollectSamples(const TArray<FTransform>& PoseComp
 				const FQuat ChildFrame = TM.GetRotation() * Body.Constraint->GetRefFrame(EConstraintFrame::Frame1).GetRotation();
 				const FQuat ParentFrame = Bodies[Body.ConstraintParentBody].Instance->GetUnrealWorldTransform().GetRotation()
 					* Body.Constraint->GetRefFrame(EConstraintFrame::Frame2).GetRotation();
-				Sample.JointLimitExcessDeg = Body.Limit.Excess(FImpactJointAngles::FromRelative(ParentFrame.Inverse() * ChildFrame));
+				// The same joint in the source pose. Authored motion can sit outside the asset's limits
+				// (Kimodo's arms do, by up to 34 degrees); that is the motion asked for, so only what
+				// the physics adds beyond it counts as a fold.
+				const FQuat SourceChild = PoseComponentSpace[Body.BoneIndex].GetRotation() * Body.Constraint->GetRefFrame(EConstraintFrame::Frame1).GetRotation();
+				const FQuat SourceParent = PoseComponentSpace[Bodies[Body.ConstraintParentBody].BoneIndex].GetRotation()
+					* Body.Constraint->GetRefFrame(EConstraintFrame::Frame2).GetRotation();
+				Sample.JointLimitExcessDeg = Body.Limit.ExcessBeyond(FImpactJointAngles::FromRelative(ParentFrame.Inverse() * ChildFrame),
+					FImpactJointAngles::FromRelative(SourceParent.Inverse() * SourceChild));
 				Sample.bHingeJoint = Body.Limit.IsHinge();
 			}
 		}
