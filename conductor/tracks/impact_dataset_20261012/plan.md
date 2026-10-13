@@ -80,7 +80,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Write tests for sidecar schema v3 — `clipSource`, absent input layers, `impact` block with all hits and outcome; v2 files still read; v3 round-trips (Red) (7525826)
 - [x] Task: Implement schema v3 structs and serializer changes; regenerate `SidecarSchemaSample.json` (Green) (c7c303c)
 - [x] Task: Write tests for the human-language description — names subject, source motion, impactor noun with its verb, region, direction and outcome; every archetype × region × outcome combination yields a non-empty sentence with no unfilled slot; multiple phrasings selected deterministically from the clip seed; source-motion phrase from the per-animation table with name-derived fallback; tag set matches params (Red) (4f79bac)
-- [ ] Task: Implement template-based description and tag generation, plus the per-animation source-motion description table as data (Green)
+- [x] Task: Implement template-based description and tag generation, plus the per-animation source-motion description table as data (Green) (4f4ecf4)
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Pose Recording, Bake and Sidecar v3' (Protocol in workflow.md)
 
 ## Phase 5: Batch Runner, Resume and Headless Host
