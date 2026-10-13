@@ -23,9 +23,12 @@ struct KIMODOIMPACTCAPTURE_API FImpactStrengthDistribution
 	UPROPERTY(EditAnywhere, Category = "Strength")
 	FFloatInterval ParentToWorldRatio = FFloatInterval(1.6f, 2.4f);
 
-	/** Joint tone a ragdoll keeps at the moment of release, as a multiple of joint strength. */
+	/**
+	 * Joint tone a ragdoll keeps at the moment of release, as a multiple of joint strength. Around
+	 * the "Loose" look approved in the Phase 3 review; 0.3-0.5 read as too rigid.
+	 */
 	UPROPERTY(EditAnywhere, Category = "Strength")
-	FFloatInterval ReleasedTone = FFloatInterval(0.3f, 0.5f);
+	FFloatInterval ReleasedTone = FFloatInterval(0.1f, 0.18f);
 
 	/** Tone the ragdoll fades to, as a multiple of its tone at release. */
 	UPROPERTY(EditAnywhere, Category = "Strength")
@@ -86,18 +89,21 @@ struct KIMODOIMPACTCAPTURE_API FImpactStrengthProfile
 	/**
 	 * A ragdoll is not limp: joints keep some tone toward the pose they had at release, fading over
 	 * ReleasedToneFadeFrames. Limp joints under soft limits folded limbs unnaturally in the Phase 3
-	 * foot-shot trip.
+	 * foot-shot trip; the approved look is a light tone (0.4 read as too rigid).
 	 */
-	float ReleasedToneStart = 0.4f;
-	float ReleasedToneEnd = 0.12f;
+	float ReleasedToneStart = 0.14f;
+	float ReleasedToneEnd = 0.042f;
 	int32 ReleasedToneFadeFrames = 45;
 	/**
 	 * Falling people brace the trunk and neck. With the limbs' tone the head flopped at its limits
-	 * through most of the Phase 3 trip.
+	 * through most of the Phase 3 trip; 2x read as too rigid.
 	 */
-	float ReleasedCoreToneScale = 2.0f;
-	/** Overdamped, so a toned limb settles rather than whipping. */
-	float ReleasedJointDamping = 2.0f;
+	float ReleasedCoreToneScale = 1.25f;
+	/**
+	 * Heavily overdamped, so a lightly toned limb settles rather than whipping. Damping scales with
+	 * tone: at the approved light tone, less than 4.5x let the car hit fold an elbow backwards.
+	 */
+	float ReleasedJointDamping = 4.5f;
 
 	static FImpactStrengthProfile Sample(const FImpactStrengthDistribution& Distribution, FImpactRandom& Random);
 

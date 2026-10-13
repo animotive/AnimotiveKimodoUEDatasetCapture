@@ -56,7 +56,8 @@ bool FImpactStrengthSampleTest::RunTest(const FString& Parameters)
 		HighestStart = FMath::Max(HighestStart, Profile.ReleasedToneStart);
 	}
 	TestTrue(TEXT("Sampled ragdoll tone within the distribution"), bToneInRange);
-	TestTrue(TEXT("Ragdoll tone varies between clips"), HighestStart - LowestStart > 0.1f);
+	TestTrue(TEXT("Ragdoll tone spans most of its range across clips"),
+		HighestStart - LowestStart > 0.8f * (Distribution.ReleasedTone.Max - Distribution.ReleasedTone.Min));
 
 	FImpactRandom A(1, 7, EImpactRandomStream::StrengthProfile), B(1, 7, EImpactRandomStream::StrengthProfile);
 	TestEqual(TEXT("Same clip, same profile"), FImpactStrengthProfile::Sample(Distribution, A).WorldStrength, FImpactStrengthProfile::Sample(Distribution, B).WorldStrength);

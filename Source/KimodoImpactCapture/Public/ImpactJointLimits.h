@@ -62,11 +62,12 @@ struct KIMODOIMPACTCAPTURE_API FImpactJointRange
  * Hip ranges a ragdoll is held to, from the standing pose. The physics asset allows a dancer's
  * range (125 degrees of flexion); limp legs went into the splits in the Phase 3 car and trip
  * clips, the front leg flexed 104 degrees. On the UEFN mannequin hip flexion is negative swing1.
+ * Values are the "Loose" look approved in the Phase 3 review (70 / 15 / 20 read as too rigid).
  */
 struct KIMODOIMPACTCAPTURE_API FImpactRagdollRanges
 {
-	FImpactJointRange HipSwing1 = { -70.0f, 15.0f };
+	FImpactJointRange HipSwing1 = { -90.0f, 25.0f };
 	/** Sideways, either way. */
-	float HipSwing2Deg = 20.0f;
-	float HipTwistDeg = 20.0f;
+	float HipSwing2Deg = 30.0f;
+	float HipTwistDeg = 30.0f;
 };
