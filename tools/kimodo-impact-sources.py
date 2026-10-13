@@ -13,10 +13,9 @@ Recipes follow the Kimodo locomotion R&D (sprint ceiling and jump reliability re
     (30 fps), as `smooth_root_2d` only, so the pace is steady and the facing follows the prompt.
   * Speed is capped at 7.0 m/s: above it the planted foot skates. Every seed path stays under
     20 m: past that a single take floats or teleports.
-  * Fast gaits (run, sprint) use a short seed. The plugin's loop pass snaps the loop to whole
-    gait cycles of the seed's length, and one-cycle loops (19-20 frames) were clean in 9 of 10
-    samples at 7 m/s where two-cycle loops failed far more often. Several seeds are generated
-    so the cleanest can be kept.
+  * The run uses a short seed for a one-cycle loop, the cleanest length in the report. The
+    sprint is several cycles long at 6.5 m/s, where multi-cycle loops still pass about half the
+    time; several seeds are generated so the cleanest can be kept.
   * Idle holds the same dense path at the origin, so it does not drift.
   * The jump on the spot is the in-place recipe that landed 18 of 20: one prompt, 3.6 s, root
     held at both ends only, no loop.
@@ -95,15 +94,17 @@ def gait(clip_id, name, prompt, speed, seconds, seed, anchor=20):
 
 # The plugin snaps a loop to whole gait cycles of its seed only when it can measure a gait period
 # in the seed. A 26-frame run seed measured one (12-frame steps) and snapped to a 24-frame,
-# one-cycle loop; 26-frame sprint seeds did not and stayed 26 frames, part of a stride. So the
-# sprint seed is one cycle long itself, 20 frames (the report's clean band at 7 m/s is 19-20),
-# anchored at frame 10 to leave a grounded frame inside it.
+# one-cycle loop.
 RUN_SEED_SECONDS = 26 / KIMODO_FPS
-SPRINT_SEED_SECONDS = 20 / KIMODO_FPS
-SPRINT_ANCHOR_FRAME = 10
-# Seeds kept after review of the generation log (whole-cycle loop, lowest seam velocity).
 RUN_SEED = 4102
-SPRINT_SEEDS = (4203, 4213, 4223)
+# The sprint is several cycles long (user, 2026-10-13: a one-cycle loop read as "very short"),
+# like Epic's 2.27 s sprint loop. Multi-cycle loops skate more at 7 m/s (1-4 of 10 clean in the
+# report against 5 of 10 at 6.5), so the sprint runs at 6.5 m/s and several seeds are generated
+# to keep the cleanest. A 2 s seed covers 13 m and snaps to a 66-frame (2.2 s) loop.
+# Of seeds 4301-4351 (L1-L6), L4 was kept: 0.1% seam velocity, steadiest pace, best by eye.
+SPRINT_SPEED = 6.5
+SPRINT_SEED_SECONDS = 2.0
+SPRINT_KEPT = {4: 4331}
 
 
 def main():
@@ -121,9 +122,9 @@ def main():
     ]
     entries.append(gait("impact_run_f_s1", "M_Kimodo_Run_Loop_F_S1",
                         "A person is running forward at a steady pace.", 6.0, RUN_SEED_SECONDS, RUN_SEED))
-    for index, seed in enumerate(SPRINT_SEEDS, start=1):
-        entries.append(gait(f"impact_sprint_f_c{index}", f"M_Kimodo_Sprint_Loop_F_C{index}",
-                            "A person sprints forward.", 7.0, SPRINT_SEED_SECONDS, seed, SPRINT_ANCHOR_FRAME))
+    for index, seed in SPRINT_KEPT.items():
+        entries.append(gait(f"impact_sprint_f_l{index}", f"M_Kimodo_Sprint_Loop_F_L{index}",
+                            "A person sprints forward.", SPRINT_SPEED, SPRINT_SEED_SECONDS, seed))
     jump_frames = int(round(3.6 * KIMODO_FPS))
     entries.append(entry("impact_jump_in_place", "M_Kimodo_Jump_In_Place",
                          "A person energetically performs a jump and then stands idle.",

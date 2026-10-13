@@ -142,7 +142,7 @@ bool FImpactPhase3Review::RunTest(const FString& Parameters)
 	Regions->FillWithUEFNMannequinEntries();
 
 	const TCHAR* Idle = TEXT("M_Kimodo_Stand_Idle_Loop_KimodoRetargeted_SK_UEFN_Mannequin");
-	const TCHAR* Run = TEXT("M_Kimodo_Run_Loop_F_KimodoRetargeted_SK_UEFN_Mannequin");
+	const TCHAR* Run = TEXT("M_Kimodo_Run_Loop_F_S1_KimodoRetargeted_SK_UEFN_Mannequin");
 	const FVector FromFront(-1, 0, 0);
 	const FVector FromLeft(0, 1, 0);
 	const FScenario Scenarios[] = {
