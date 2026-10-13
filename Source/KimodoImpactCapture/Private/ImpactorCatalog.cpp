@@ -41,6 +41,11 @@ namespace
 	}
 }
 
+int32 FImpactorArchetype::ContactFrames(int32 FrameRate) const
+{
+	return 1;
+}
+
 TArray<FImpactorArchetype> UImpactorCatalog::MakeStarterArchetypes()
 {
 	using enum EImpactorShape;

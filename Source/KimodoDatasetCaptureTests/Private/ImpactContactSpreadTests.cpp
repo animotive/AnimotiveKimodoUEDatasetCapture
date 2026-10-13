@@ -99,6 +99,42 @@ bool FImpactContactSpreadTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactContactSpreadMassTest,
+	"KimodoDatasetCapture.Impact.ContactSpread.ByMass",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactContactSpreadMassTest::RunTest(const FString& Parameters)
+{
+	using namespace ImpactContactSpreadTests;
+	// A pelvis struck from the side, a light hand hanging beside it and a heavy thigh below, both
+	// the same distance from the contact. A wide surface pushes what it touches together, so each
+	// neighbour takes impulse in proportion to its mass: the hand is not flung faster than the body.
+	const TArray<FImpactBodyProxy> Bodies = {
+		{ TEXT("pelvis"), FVector(0, 0, 100), 12.0f, 12.0f },
+		{ TEXT("hand_l"), FVector(-30, 0, 100), 5.0f, 0.6f },
+		{ TEXT("thigh_l"), FVector(-10, 0, 69), 5.0f, 9.0f },
+	};
+	const FVector Contact(-12, 0, 100);
+	const TArray<FImpactBodyShare> Shares = FImpactContactSpread::Distribute(Bodies, 0, Contact, 60.0f, 60000.0f);
+	const FImpactBodyShare* Pelvis = Find(Shares, TEXT("pelvis"));
+	const FImpactBodyShare* Hand = Find(Shares, TEXT("hand_l"));
+	const FImpactBodyShare* Thigh = Find(Shares, TEXT("thigh_l"));
+	if (!TestTrue(TEXT("All three bodies share the impact"), Pelvis && Hand && Thigh))
+	{
+		return false;
+	}
+	TestEqual(TEXT("Shares sum to the impulse"), Sum(Shares), 60000.0f, 1.0f);
+	TestEqual(TEXT("Equidistant neighbours share in proportion to mass"),
+		Thigh->ImpulseKgCmPerSecond / Hand->ImpulseKgCmPerSecond, 9.0f / 0.6f, 0.01f);
+
+	// The velocity each body is given never exceeds the struck body's.
+	const float PelvisDv = Pelvis->ImpulseKgCmPerSecond / 12.0f;
+	TestTrue(TEXT("The hand is not flung faster than the struck body"), Hand->ImpulseKgCmPerSecond / 0.6f <= PelvisDv + 1e-3f);
+	TestTrue(TEXT("The thigh is not flung faster than the struck body"), Thigh->ImpulseKgCmPerSecond / 9.0f <= PelvisDv + 1e-3f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FImpactContactSpreadInvalidTest,
 	"KimodoDatasetCapture.Impact.ContactSpread.InvalidInputs",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

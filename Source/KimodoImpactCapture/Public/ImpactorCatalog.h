@@ -92,6 +92,17 @@ struct KIMODOIMPACTCAPTURE_API FImpactorArchetype
 	UPROPERTY(EditAnywhere, Category = "Impactor", meta = (ClampMin = "0"))
 	float ReactionGain = 1.0f;
 
+	/**
+	 * How long the impactor stays in contact, in seconds; an instant hit is pushed over this long.
+	 * A car's contact lasts about a tenth of a second: delivered in one frame, the joints had to
+	 * drag the body to full speed instantly and buckled. Zero is a single frame.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Impactor", meta = (ClampMin = "0"))
+	float ContactSeconds = 0.0f;
+
+	/** Frames an instant hit is pushed over at FrameRate: ContactSeconds rounded up, at least one. */
+	int32 ContactFrames(int32 FrameRate) const;
+
 	/** Relative sampling weight within a catalog. Zero excludes the archetype. */
 	UPROPERTY(EditAnywhere, Category = "Impactor", meta = (ClampMin = "0"))
 	float Weight = 1.0f;

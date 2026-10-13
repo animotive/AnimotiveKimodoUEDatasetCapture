@@ -78,6 +78,37 @@ bool FImpactorCatalogStarterTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactorCatalogContactTimeTest,
+	"KimodoDatasetCapture.Impact.Catalog.ContactTime",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactorCatalogContactTimeTest::RunTest(const FString& Parameters)
+{
+	FImpactorArchetype Archetype;
+	TestEqual(TEXT("No contact time is a single frame"), Archetype.ContactFrames(60), 1);
+	Archetype.ContactSeconds = 0.1f;
+	TestEqual(TEXT("A tenth of a second at 60 fps is six frames"), Archetype.ContactFrames(60), 6);
+	TestEqual(TEXT("At 30 fps, three frames"), Archetype.ContactFrames(30), 3);
+	Archetype.ContactSeconds = 0.11f;
+	TestEqual(TEXT("A partial frame rounds up"), Archetype.ContactFrames(60), 7);
+	TestEqual(TEXT("A bad frame rate still gives one frame"), Archetype.ContactFrames(0), 1);
+
+	// Heavy, wide impactors stay in contact; small fast ones are a single frame.
+	const TArray<FImpactorArchetype> Starter = UImpactorCatalog::MakeStarterArchetypes();
+	auto Frames = [&Starter](const TCHAR* Id)
+	{
+		const FImpactorArchetype* Found = Starter.FindByPredicate([Id](const FImpactorArchetype& A) { return A.Id == FName(Id); });
+		return Found ? Found->ContactFrames(60) : -1;
+	};
+	TestTrue(TEXT("A car pushes for at least a tenth of a second"), Frames(TEXT("CarBumper")) >= 6);
+	TestTrue(TEXT("A wrecking ball stays in contact over several frames"), Frames(TEXT("WreckingBall")) >= 4);
+	TestTrue(TEXT("A tackle stays in contact over several frames"), Frames(TEXT("SportsTackle")) >= 6);
+	TestEqual(TEXT("A bullet is a single frame"), Frames(TEXT("SmallBullet")), 1);
+	TestEqual(TEXT("A punch is a single frame"), Frames(TEXT("Punch")), 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FImpactorCatalogValidationTest,
 	"KimodoDatasetCapture.Impact.Catalog.Validation",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

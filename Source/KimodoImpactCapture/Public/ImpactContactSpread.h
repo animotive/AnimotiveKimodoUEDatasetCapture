@@ -35,6 +35,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactBodyProxy
 	FName Name;
 	FVector Center = FVector::ZeroVector;
 	float RadiusCm = 0.0f;
+	/** Body mass; 0 when unknown, and then the spread is by distance alone. */
+	float MassKg = 0.0f;
 };
 
 /** One body's part of a spread impact. */
@@ -56,7 +58,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactContactSpread
 	/**
 	 * Empty when StruckIndex is invalid or the impulse is not positive. Otherwise one share per
 	 * body whose surface lies within ContactRadiusCm of ContactPoint, the struck body always
-	 * included, weighted by (1 - surface distance / radius) squared.
+	 * included, weighted by (1 - surface distance / radius) squared and, when masses are known, by
+	 * mass relative to the struck body: no neighbour is given more velocity than the struck body.
 	 */
 	static TArray<FImpactBodyShare> Distribute(
 		TConstArrayView<FImpactBodyProxy> Bodies, int32 StruckIndex, const FVector& ContactPoint,

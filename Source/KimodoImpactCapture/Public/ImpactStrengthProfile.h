@@ -43,6 +43,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactBodyStrengthQuery
 	bool bMovingSource = false;
 	/** The character is a ragdoll: no world hold, joints keep only a fading tone. */
 	bool bReleased = false;
+	/** Spine, neck or head: braced harder than the limbs while falling. */
+	bool bCore = false;
 	/** Frames since the character became a ragdoll; 0 on the release frame. */
 	int32 FramesSinceRelease = 0;
 };
@@ -89,6 +91,11 @@ struct KIMODOIMPACTCAPTURE_API FImpactStrengthProfile
 	float ReleasedToneStart = 0.4f;
 	float ReleasedToneEnd = 0.12f;
 	int32 ReleasedToneFadeFrames = 45;
+	/**
+	 * Falling people brace the trunk and neck. With the limbs' tone the head flopped at its limits
+	 * through most of the Phase 3 trip.
+	 */
+	float ReleasedCoreToneScale = 2.0f;
 	/** Overdamped, so a toned limb settles rather than whipping. */
 	float ReleasedJointDamping = 2.0f;
 

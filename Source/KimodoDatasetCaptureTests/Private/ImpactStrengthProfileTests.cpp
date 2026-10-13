@@ -139,6 +139,28 @@ bool FImpactStrengthShapeTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Tone fades smoothly and never rises"), bFades);
 	}
 
+	// The trunk and neck brace harder than the limbs, never past full strength.
+	{
+		FImpactBodyStrengthQuery Limb = Upper(1);
+		Limb.bReleased = true;
+		FImpactBodyStrengthQuery Core = Limb;
+		Core.bCore = true;
+		for (const int32 Since : { 0, 20, 200 })
+		{
+			Limb.FramesSinceRelease = Core.FramesSinceRelease = Since;
+			const float LimbTone = Profile.Evaluate(Limb, 30 + Since).Joint;
+			TestEqual(*FString::Printf(TEXT("Core tone is the limb tone scaled, %d frames after release"), Since),
+				Profile.Evaluate(Core, 30 + Since).Joint, FMath::Min(1.0f, LimbTone * Profile.ReleasedCoreToneScale), 1e-4f);
+		}
+		FImpactStrengthProfile Strong = Profile;
+		Strong.ReleasedToneStart = 0.9f;
+		Core.FramesSinceRelease = 0;
+		TestEqual(TEXT("Core tone never exceeds full strength"), Strong.Evaluate(Core, 30).Joint, 1.0f, 1e-4f);
+		FImpactBodyStrengthQuery HeldCore = Upper(1);
+		HeldCore.bCore = true;
+		TestEqual(TEXT("Bracing changes nothing before release"), Profile.Evaluate(HeldCore, 40).Joint, Profile.Evaluate(Upper(1), 40).Joint, 1e-4f);
+	}
+
 	// A body still held keeps its normal damping.
 	TestEqual(TEXT("Held body damping is unchanged"), Profile.Evaluate(Upper(0), 5).JointDamping, 1.0f, 1e-4f);
 	return true;
