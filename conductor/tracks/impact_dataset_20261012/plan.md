@@ -102,7 +102,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement per-clip limit opening on the reaction character from a scan of the source (Green) (7d5b436)
 - [x] Task: Implement `FImpactBatchRunner` — clip loop driving character, recorder, bake, sidecar, manifest; periodic GC; fixed timestep (Green, covered by the runner tests above plus an integration test on a tiny batch) (8a93384)
 - [x] Task: Implement the headless host chosen in Phase 1 (`-Batch= -Start= -Count=`), exit codes for success / partial / failure **(exempt)** (75a78ac)
-- [ ] Task: Write tests for human-readable clip names — added at Phase 5 verification (user: "I need the file names human readable"): IMP_<6-digit index>_<Source>_<Impactor>_<Region>_<Outcome>, source label cleaned from the asset name (M_Kimodo_Crouch_Idle_Loop -> CrouchIdle, seed suffixes and Loop/F dropped), path-safe; the hash id stays the identity in sidecar and manifest (Red)
+- [x] Task: Write tests for human-readable clip names — added at Phase 5 verification (user: "I need the file names human readable"): IMP_<6-digit index>_<Source>_<Impactor>_<Region>_<Outcome>, source label cleaned from the asset name (M_Kimodo_Crouch_Idle_Loop -> CrouchIdle, seed suffixes and Loop/F dropped), path-safe; the hash id stays the identity in sidecar and manifest (Red) (5dda73b)
 - [ ] Task: Implement readable names in the runner: asset and sidecar named alike, manifest records the name, a resumed clip's leftovers found by its index prefix (Green)
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
 
