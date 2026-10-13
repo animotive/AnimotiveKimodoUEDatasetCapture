@@ -91,7 +91,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement the resumable batch manifest (Green) (04a4e6c)
 - [x] Task: Write tests for sharding — `-Start/-Count` ranges partition indices with no overlap or gap; shards merge into one manifest (Red) (d2d6daf)
 - [x] Task: Implement sharding and manifest merge (Green) (b4f9ff3)
-- [ ] Task: Write tests for the distribution report — counts per region / intensity / mode / outcome / source anim match the manifest (Red)
+- [x] Task: Write tests for the distribution report — counts per region / intensity / mode / outcome / source anim match the manifest (Red) (536dc21)
 - [ ] Task: Implement the distribution report (Green)
 - [ ] Task: Write tests for the disk estimate — warns when estimate exceeds free space (Red → Green)
 - [ ] Task: Implement `FImpactBatchRunner` — clip loop driving character, recorder, bake, sidecar, manifest; periodic GC; fixed timestep (Green, covered by the runner tests above plus an integration test on a tiny batch)
