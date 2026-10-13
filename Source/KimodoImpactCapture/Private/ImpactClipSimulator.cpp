@@ -315,6 +315,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			Input.SourceVelocity = SourceVelocity;
 			Input.bMovingSource = bMoving;
 			Input.StruckLegSide = LegSide(Setup.Params.Region);
+			Input.SourcePelvisHeightCm = PelvisBone != INDEX_NONE ? float(Pose[PelvisBone].GetLocation().Z) : 0.0f;
 			for (int32 Side = 0; Side < 2 && bHaveFeet; ++Side)
 			{
 				Input.FootPosition[Side] = Character->BodyTransform(FootBody[Side]).GetLocation();

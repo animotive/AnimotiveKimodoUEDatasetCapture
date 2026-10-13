@@ -53,7 +53,12 @@ FImpactBalanceOutput FImpactBalancePlanner::Step(const FImpactBalanceInput& Inpu
 		// An arm or the struck chest spikes for a frame or two; balance follows the whole body.
 		SmoothedExcess = FMath::Lerp(SmoothedExcess, Excess, double(Config.ExcessSmoothing));
 
-		if (Input.Com.Z < Config.FallComHeightCm)
+		// Going down is judged against the source's own height: a crouch carries its centre of
+		// mass where a standing body would already be falling.
+		const float FallHeight = Input.SourcePelvisHeightCm > 0.0f
+			? Config.FallComPelvisFraction * Input.SourcePelvisHeightCm
+			: Config.FallComHeightCm;
+		if (Input.Com.Z < FallHeight)
 		{
 			bFell = true;
 			Out.bJustFell = true;
