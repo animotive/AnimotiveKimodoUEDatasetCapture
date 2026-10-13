@@ -6,7 +6,7 @@
 
 /**
  * A joint's rotation split the way the physics constraint limits it: twist about the constraint's
- * X axis, then swing1 about Z and swing2 about Y. Degrees.
+ * X axis, then a swing whose angle is split along Z (swing1) and Y (swing2). Degrees.
  */
 struct KIMODOIMPACTCAPTURE_API FImpactJointAngles
 {
@@ -20,7 +20,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactJointAngles
 
 /**
  * A joint's symmetric angular limits, degrees either side of the constraint frame. A free axis is
- * 180; a locked axis is 0.
+ * 180; a locked axis is 0. With both swings limited the swing limit is an elliptical cone, as in
+ * Chaos; otherwise each axis is limited on its own.
  */
 struct KIMODOIMPACTCAPTURE_API FImpactJointLimit
 {
@@ -30,4 +31,7 @@ struct KIMODOIMPACTCAPTURE_API FImpactJointLimit
 
 	/** Degrees the worst axis is past its limit; 0 when every axis is within. */
 	float Excess(const FImpactJointAngles& Angles) const;
+
+	/** One swing limited, the other swing and the twist locked: a knee or an elbow. */
+	bool IsHinge() const;
 };

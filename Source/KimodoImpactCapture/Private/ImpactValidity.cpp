@@ -55,6 +55,11 @@ bool FImpactValidity::Check(TConstArrayView<FImpactBodySample> Bodies, float Gro
 		{
 			return Fail(FText::Format(LOCTEXT("Torn", "pulled {0} cm away from its joint; the skeleton tore."), FText::AsNumber(FMath::RoundToInt(Body.JointGapCm))));
 		}
+		if (Body.JointLimitExcessDeg > (Body.bHingeJoint ? Thresholds.MaxHingeLimitExcessDeg : Thresholds.MaxJointLimitExcessDeg))
+		{
+			return Fail(FText::Format(LOCTEXT("PastLimit", "bent {0} degrees past its joint limit; the limb folded the wrong way."),
+				FText::AsNumber(FMath::RoundToInt(Body.JointLimitExcessDeg))));
+		}
 	}
 	return true;
 }

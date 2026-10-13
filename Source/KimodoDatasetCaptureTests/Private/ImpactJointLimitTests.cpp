@@ -83,7 +83,27 @@ bool FImpactJointLimitExcessTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Twist on a locked axis"), Knee.Excess(Angles(7, 0, 0)), 7.0f, 1e-4f);
 	TestEqual(TEXT("The worst axis wins"), Knee.Excess(Angles(5, 75, -20)), 20.0f, 1e-4f);
 
+	// Both swings limited: the limit is an ellipse, so two swings each within their own limit can
+	// still be past it together.
+	FImpactJointLimit Shoulder;
+	Shoulder.Swing1Deg = 70.0f;
+	Shoulder.Swing2Deg = 60.0f;
+	Shoulder.TwistDeg = 30.0f;
+	TestEqual(TEXT("Inside the ellipse"), Shoulder.Excess(Angles(0, 40, 30)), 0.0f);
+	TestEqual(TEXT("On the ellipse's swing1 axis"), Shoulder.Excess(Angles(0, -70, 0)), 0.0f, 1e-3f);
+	TestEqual(TEXT("Past the ellipse together"), Shoulder.Excess(Angles(0, 60, 50)), 12.75f, 0.05f);
+	TestEqual(TEXT("Past the ellipse on one axis"), Shoulder.Excess(Angles(0, 0, -65)), 5.0f, 1e-3f);
+
+	TestTrue(TEXT("The knee is a hinge"), Knee.IsHinge());
+	TestFalse(TEXT("The shoulder is not a hinge"), Shoulder.IsHinge());
+	FImpactJointLimit Clavicle;
+	Clavicle.Swing1Deg = 15.0f;
+	Clavicle.Swing2Deg = 20.0f;
+	Clavicle.TwistDeg = 0.0f;
+	TestFalse(TEXT("Two limited swings with locked twist is not a hinge"), Clavicle.IsHinge());
+
 	const FImpactJointLimit Free;
 	TestEqual(TEXT("A free joint never exceeds"), Free.Excess(Angles(179, -179, 179)), 0.0f);
+	TestFalse(TEXT("A free joint is not a hinge"), Free.IsHinge());
 	return true;
 }

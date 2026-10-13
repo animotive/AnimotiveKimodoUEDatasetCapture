@@ -222,6 +222,9 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	LegScale.Init(1.0f, Bodies.Num());
 	FImpactBalanceOutput Balance;
 	bool bReleased = false;
+	int32 ReleaseFrame = INDEX_NONE;
+	// The pose the ragdoll's joint tone holds: the source pose at release, not the source playing on.
+	TArray<FTransform> ReleasePose;
 	bool bFeetKinematic[2] = { false, false };
 	AActor* Projectile = nullptr;
 	ON_SCOPE_EXIT { if (Projectile) { Projectile->Destroy(); } };
@@ -268,6 +271,8 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			if (Balance.bJustFell && !bReleased)
 			{
 				bReleased = true;
+				ReleaseFrame = Frame;
+				ReleasePose = Pose;
 				Character->Release();
 				bFeetKinematic[0] = bFeetKinematic[1] = false;
 			}
@@ -304,6 +309,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			Query.bPelvis = Bodies[Index].bPelvis;
 			Query.bMovingSource = bMoving;
 			Query.bReleased = bReleased;
+			Query.FramesSinceRelease = bReleased ? Frame - ReleaseFrame : 0;
 			const FImpactBodyStrength Strength = Setup.Strength.Evaluate(Query, SinceHit);
 
 			float WorldScale = Strength.World;
@@ -321,13 +327,10 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 				WorldAngular = bFoot ? 2.5f : LegScale[Index];
 				Damping = bFoot ? 3.0f : 1.5f;
 			}
-			if (!bReleased)
-			{
-				Character->SetStrength(Index, WorldScale, Strength.Joint, WorldAngular, Damping);
-			}
+			Character->SetStrength(Index, WorldScale, Strength.Joint, WorldAngular, Damping, Strength.JointDamping);
 		}
 
-		Character->SetTargets(Pose, Reference, Balance.Offset, Overrides, Dt);
+		Character->SetTargets(bReleased ? ReleasePose : Pose, Reference, Balance.Offset, Overrides, Dt);
 
 		// Delivery.
 		if (SinceHit >= 0)
@@ -392,6 +395,14 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 
 		// Measure and record.
 		Character->CollectSamples(Pose, Samples);
+		for (const FImpactBodySample& Sample : Samples)
+		{
+			if (Sample.JointLimitExcessDeg > Out.MaxJointLimitExcessDeg)
+			{
+				Out.MaxJointLimitExcessDeg = Sample.JointLimitExcessDeg;
+				Out.MaxJointLimitExcessBody = Sample.Name;
+			}
+		}
 		FText Invalid;
 		if (!FImpactValidity::Check(Samples, SimWorld.GetGroundHeight(), Setup.Validity, Invalid))
 		{

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "ImpactJointLimits.h"
 
 #include "ImpactReactionCharacter.generated.h"
 
@@ -12,6 +13,7 @@ class UPhysicsControlComponent;
 class USkeletalMesh;
 class USkeletalMeshComponent;
 struct FBodyInstance;
+struct FConstraintInstance;
 struct FImpactBodySample;
 struct FImpactBodyShare;
 
@@ -24,6 +26,9 @@ struct FImpactBodyShare;
  * Per body: W_<bone> world-space control, P_<bone> parent-space control (to the nearest ancestor
  * with a body), M_<bone> body modifier. Joint projection is on for every constraint so a joint
  * pulled apart snaps back rather than stretching.
+ *
+ * As a ragdoll the joint controls stay on at a fading tone and the physics asset's soft limits
+ * become hard: a limp body under soft limits folds limbs the wrong way.
  */
 UCLASS(NotPlaceable, Transient)
 class KIMODOIMPACTCAPTURE_API AImpactReactionCharacter : public AActor
@@ -43,6 +48,12 @@ public:
 		bool bLeg = false;
 		bool bPelvis = false;
 		FBodyInstance* Instance = nullptr;
+		/** The physics asset constraint joining this body to its parent, if any. */
+		FConstraintInstance* Constraint = nullptr;
+		/** Index into GetBodies() of the constraint's parent body. */
+		int32 ConstraintParentBody = INDEX_NONE;
+		/** The constraint's angular limits, for measuring how far past them the joint sits. */
+		FImpactJointLimit Limit;
 	};
 
 	AImpactReactionCharacter();
@@ -72,11 +83,14 @@ public:
 
 	/**
 	 * Strength multipliers for one body. WorldAngular below zero means "same as World".
-	 * DampingRatio multiplies both world-space damping ratios.
+	 * DampingRatio multiplies both world-space damping ratios; JointDamping the joint control's.
 	 */
-	void SetStrength(int32 Body, float World, float Joint, float WorldAngular = -1.0f, float DampingRatio = 1.0f);
+	void SetStrength(int32 Body, float World, float Joint, float WorldAngular = -1.0f, float DampingRatio = 1.0f, float JointDamping = 1.0f);
 
-	/** Every control off and every body simulated: a ragdoll. */
+	/**
+	 * A ragdoll: world controls off and every body simulated. Joint controls stay on (their tone
+	 * comes from SetStrength) and every joint limit becomes hard at the asset's angles.
+	 */
 	void Release();
 
 	float TotalMass() const;
@@ -86,7 +100,10 @@ public:
 	/** Rough radius of a body: the smallest half-extent of its bounds. */
 	float BodyRadius(int32 Body) const;
 
-	/** Validity samples for every body, with joint gaps measured against the pose's bone offsets. */
+	/**
+	 * Validity samples for every body, with joint gaps measured against the pose's bone offsets
+	 * and joint angles against the physics asset's limits.
+	 */
 	void CollectSamples(const TArray<FTransform>& PoseComponentSpace, TArray<FImpactBodySample>& OutSamples) const;
 
 	/** Applies spread impulse shares along DirectionWorld, each at its own point. */

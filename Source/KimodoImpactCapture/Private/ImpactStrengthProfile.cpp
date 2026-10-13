@@ -11,6 +11,9 @@ FImpactStrengthProfile FImpactStrengthProfile::Sample(const FImpactStrengthDistr
 	FImpactStrengthProfile Profile;
 	Profile.WorldStrength = float(Random.Range(Distribution.WorldStrength.Min, Distribution.WorldStrength.Max));
 	Profile.ParentStrength = Profile.WorldStrength * float(Random.Range(Distribution.ParentToWorldRatio.Min, Distribution.ParentToWorldRatio.Max));
+	// Drawn after the strengths, so clips sampled before the ragdoll tone existed keep their values.
+	Profile.ReleasedToneStart = float(Random.Range(Distribution.ReleasedTone.Min, Distribution.ReleasedTone.Max));
+	Profile.ReleasedToneEnd = Profile.ReleasedToneStart * float(Random.Range(Distribution.ReleasedToneEndRatio.Min, Distribution.ReleasedToneEndRatio.Max));
 	return Profile;
 }
 
@@ -19,8 +22,11 @@ FImpactBodyStrength FImpactStrengthProfile::Evaluate(const FImpactBodyStrengthQu
 	FImpactBodyStrength Strength;
 	if (Body.bReleased)
 	{
+		// No world hold; the joints keep a tone that fades smoothly toward its end value.
+		const float Fade = FMath::SmoothStep(0.0f, 1.0f, float(FMath::Max(0, Body.FramesSinceRelease)) / float(FMath::Max(1, ReleasedToneFadeFrames)));
 		Strength.World = 0.0f;
-		Strength.Joint = 0.0f;
+		Strength.Joint = FMath::Lerp(ReleasedToneStart, ReleasedToneEnd, Fade);
+		Strength.JointDamping = ReleasedJointDamping;
 		return Strength;
 	}
 	if (FramesSinceHit < 0)

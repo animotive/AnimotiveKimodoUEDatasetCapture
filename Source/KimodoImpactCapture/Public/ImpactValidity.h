@@ -22,10 +22,17 @@ struct KIMODOIMPACTCAPTURE_API FImpactValidityThresholds
 	/** Raw joint separation; the worst legitimate clip after the Phase 1 fixes measured 20 cm. */
 	float MaxJointGapCm = 35.0f;
 	/**
-	 * Degrees a joint may sit past its physics asset limit. The source animations themselves pass
-	 * the asset's soft limits by up to 8 degrees; a limb folded the wrong way is far beyond this.
+	 * Degrees a hinge (knee, elbow) may sit past its physics asset limit: beyond this the limb has
+	 * folded the wrong way. Hinges held to 8 degrees in the Phase 3 review once the ragdoll's limits
+	 * were hard and its joints toned; limp under soft limits they reached 27.
 	 */
-	float MaxJointLimitExcessDeg = 20.0f;
+	float MaxHingeLimitExcessDeg = 20.0f;
+	/**
+	 * Degrees any other joint may sit past its limit. Shoulders and wrists legitimately overshoot
+	 * the asset's conservative cones by up to 30 when a car strikes or the body lands on an arm;
+	 * beyond this the joint has broken.
+	 */
+	float MaxJointLimitExcessDeg = 35.0f;
 };
 
 /** One body on one frame, as measured from the physics scene. */
@@ -40,6 +47,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactBodySample
 	float JointGapCm = 0.0f;
 	/** Degrees past this body's joint limit (FImpactJointLimit::Excess); 0 for the root body. */
 	float JointLimitExcessDeg = 0.0f;
+	/** The joint is a hinge (FImpactJointLimit::IsHinge): excess means a wrong-way fold. */
+	bool bHingeJoint = false;
 };
 
 /**

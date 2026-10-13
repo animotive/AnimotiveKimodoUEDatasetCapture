@@ -93,6 +93,9 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipRecording
 	EImpactClipEnd End = EImpactClipEnd::None;
 	FText InvalidReason;
 	FImpactOutcomeResult Outcome;
+	/** Worst joint-limit excess over the clip, and the body it was on: how close the clip came to folding. */
+	float MaxJointLimitExcessDeg = 0.0f;
+	FName MaxJointLimitExcessBody;
 };
 
 /**

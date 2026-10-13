@@ -264,7 +264,7 @@ bool FImpactPhase3Review::RunTest(const FString& Parameters)
 		}
 		TestTrue(*FString::Printf(TEXT("%s baked"), Scenario.Name), Bake(Mesh, Frames, FString::Printf(TEXT("P3_%s"), Scenario.Name)));
 
-		const FString Line = FString::Printf(TEXT("%s: impulse %.0f (%s, %s), outcome %s at +%d, steps %d, trip %d, overwhelmed %d, end %s%s, %d frames"),
+		const FString Line = FString::Printf(TEXT("%s: impulse %.0f (%s, %s), outcome %s at +%d, steps %d, trip %d, overwhelmed %d, end %s%s, %d frames, worst joint %.1f deg past limit (%s)"),
 			Scenario.Name, Params.ReactionImpulseKgCmPerSecond,
 			*StaticEnum<EImpactIntensity>()->GetNameStringByValue(int64(Params.Intensity)),
 			*StaticEnum<EImpactDeliveryMode>()->GetNameStringByValue(int64(Setup.Schedule.Mode)),
@@ -272,7 +272,7 @@ bool FImpactPhase3Review::RunTest(const FString& Parameters)
 			Recording.Outcome.Steps, Recording.Outcome.bTrip ? 1 : 0, Recording.bOverwhelmed ? 1 : 0,
 			*StaticEnum<EImpactClipEnd>()->GetNameStringByValue(int64(Recording.End)),
 			Recording.InvalidReason.IsEmpty() ? TEXT("") : *(TEXT(" (") + Recording.InvalidReason.ToString() + TEXT(")")),
-			Recording.Frames.Num());
+			Recording.Frames.Num(), Recording.MaxJointLimitExcessDeg, *Recording.MaxJointLimitExcessBody.ToString());
 		Summary.Add(Line);
 		AddInfo(Line);
 	}

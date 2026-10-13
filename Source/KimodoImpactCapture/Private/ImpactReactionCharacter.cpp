@@ -20,6 +20,12 @@ namespace
 {
 	const FName ModifierSet(TEXT("Modifiers"));
 	const FName WorldSet(TEXT("World"));
+	const FName ParentSet(TEXT("Parent"));
+
+	float LimitDegrees(EAngularConstraintMotion Motion, float Limit)
+	{
+		return Motion == ACM_Free ? 180.0f : Motion == ACM_Locked ? 0.0f : Limit;
+	}
 
 	bool IsLegBone(FName Bone)
 	{
@@ -108,12 +114,25 @@ bool AImpactReactionCharacter::Setup(USkeletalMesh* Mesh, UPhysicsAsset* Physics
 		Control->CreateNamedControl(WorldControlName(Body.Bone), nullptr, NAME_None, MeshComponent, Body.Bone, WorldData, FPhysicsControlTarget(), WorldSet);
 		if (!Body.ParentBone.IsNone())
 		{
-			Control->CreateNamedControl(ParentControlName(Body.Bone), MeshComponent, Body.ParentBone, MeshComponent, Body.Bone, ParentData, FPhysicsControlTarget(), NAME_None);
+			Control->CreateNamedControl(ParentControlName(Body.Bone), MeshComponent, Body.ParentBone, MeshComponent, Body.Bone, ParentData, FPhysicsControlTarget(), ParentSet);
 		}
 	}
 	for (FBody& Body : Bodies)
 	{
 		Body.ParentBody = Body.ParentBone.IsNone() ? INDEX_NONE : FindBody(Body.ParentBone);
+	}
+	for (FConstraintInstance* Constraint : MeshComponent->Constraints)
+	{
+		const int32 Child = Constraint ? FindBody(Constraint->GetChildBoneName()) : INDEX_NONE;
+		if (Child != INDEX_NONE)
+		{
+			FBody& Body = Bodies[Child];
+			Body.Constraint = Constraint;
+			Body.ConstraintParentBody = FindBody(Constraint->GetParentBoneName());
+			Body.Limit.TwistDeg = LimitDegrees(Constraint->GetAngularTwistMotion(), Constraint->GetAngularTwistLimit());
+			Body.Limit.Swing1Deg = LimitDegrees(Constraint->GetAngularSwing1Motion(), Constraint->GetAngularSwing1Limit());
+			Body.Limit.Swing2Deg = LimitDegrees(Constraint->GetAngularSwing2Motion(), Constraint->GetAngularSwing2Limit());
+		}
 	}
 	return true;
 }
@@ -170,7 +189,7 @@ void AImpactReactionCharacter::SetBodyKinematic(int32 Body, bool bKinematic)
 	}
 }
 
-void AImpactReactionCharacter::SetStrength(int32 Body, float World, float Joint, float WorldAngular, float DampingRatio)
+void AImpactReactionCharacter::SetStrength(int32 Body, float World, float Joint, float WorldAngular, float DampingRatio, float JointDamping)
 {
 	if (!Bodies.IsValidIndex(Body))
 	{
@@ -186,14 +205,26 @@ void AImpactReactionCharacter::SetStrength(int32 Body, float World, float Joint,
 	{
 		FPhysicsControlMultiplier JointMultiplier;
 		JointMultiplier.AngularStrengthMultiplier = Joint;
+		JointMultiplier.AngularDampingRatioMultiplier = JointDamping;
 		Control->SetControlMultiplier(ParentControlName(Bodies[Body].Bone), JointMultiplier, false);
 	}
 }
 
 void AImpactReactionCharacter::Release()
 {
-	Control->SetControlsInSetEnabled(TEXT("All"), false);
+	Control->SetControlsInSetEnabled(WorldSet, false);
 	SetAllSimulated();
+	for (const FBody& Body : Bodies)
+	{
+		if (FConstraintInstance* Constraint = Body.Constraint)
+		{
+			// Same angles, no give: the asset's soft limits (stiffness 50) let a limp limb fold far past them.
+			Constraint->SetSoftSwingLimitParams(false, Constraint->GetSoftSwingLimitStiffness(), Constraint->GetSoftSwingLimitDamping(), 0.0f,
+				Constraint->GetSoftSwingLimitContactDistance());
+			Constraint->SetSoftTwistLimitParams(false, Constraint->GetSoftTwistLimitStiffness(), Constraint->GetSoftTwistLimitDamping(), 0.0f,
+				Constraint->GetSoftTwistLimitContactDistance());
+		}
+	}
 }
 
 float AImpactReactionCharacter::TotalMass() const
@@ -272,6 +303,14 @@ void AImpactReactionCharacter::CollectSamples(const TArray<FTransform>& PoseComp
 				const FVector Offset = PoseComponentSpace[Body.BoneIndex].GetRelativeTransform(PoseComponentSpace[Body.ParentBoneIndex]).GetTranslation();
 				const FVector Expected = Bodies[Body.ParentBody].Instance->GetUnrealWorldTransform().TransformPosition(Offset);
 				Sample.JointGapCm = float(FVector::Dist(Sample.Location, Expected));
+			}
+			if (Body.Constraint && Body.ConstraintParentBody != INDEX_NONE && Bodies[Body.ConstraintParentBody].Instance)
+			{
+				const FQuat ChildFrame = TM.GetRotation() * Body.Constraint->GetRefFrame(EConstraintFrame::Frame1).GetRotation();
+				const FQuat ParentFrame = Bodies[Body.ConstraintParentBody].Instance->GetUnrealWorldTransform().GetRotation()
+					* Body.Constraint->GetRefFrame(EConstraintFrame::Frame2).GetRotation();
+				Sample.JointLimitExcessDeg = Body.Limit.Excess(FImpactJointAngles::FromRelative(ParentFrame.Inverse() * ChildFrame));
+				Sample.bHingeJoint = Body.Limit.IsHinge();
 			}
 		}
 		OutSamples.Add(Sample);
