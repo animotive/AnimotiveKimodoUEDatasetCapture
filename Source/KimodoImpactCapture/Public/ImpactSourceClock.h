@@ -62,6 +62,15 @@ public:
 	/** Root offset after Loops whole loops, each re-based on where the last ended. */
 	static FTransform LoopOffset(const FTransform& LoopDelta, int32 Loops);
 
+	/**
+	 * Where in the source a clip starts, from its phase (0-1). A looping source starts anywhere in
+	 * its loop. A play-once source starts so the first hit, LeadInSeconds later, lands between
+	 * its start and MinTailSeconds before its end: drawn over the whole length, a jump's clip
+	 * could start after the landing and play only the standing tail. May be negative: the
+	 * source then holds its first frame through part of the lead-in.
+	 */
+	static double StartSeconds(double Phase, double Length, bool bPlayOnce, double LeadInSeconds, double MinTailSeconds = 0.5);
+
 private:
 	FImpactSourceClockConfig Config;
 	double LoopLength = 1.0;

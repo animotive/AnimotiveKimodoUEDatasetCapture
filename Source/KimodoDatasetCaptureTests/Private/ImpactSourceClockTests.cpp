@@ -167,3 +167,32 @@ bool FImpactPoseSamplerTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Two loops travel twice as far"), float(FVector::Dist2D(Start[Pelvis].GetLocation(), TwoLoops[Pelvis].GetLocation())), 2500.0f, 10.0f);
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactSourceStartWindowTest,
+	"KimodoDatasetCapture.Impact.SourceClock.PlayOnceStartWindow",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactSourceStartWindowTest::RunTest(const FString& Parameters)
+{
+	const double Length = 3.6;   // the Kimodo jump on the spot
+	const double LeadIn = 31.0 / 60.0;
+
+	// A looping source starts anywhere in its loop, as before.
+	TestEqual(TEXT("Looping: phase 0 starts at 0"), FImpactSourceClock::StartSeconds(0.0, Length, false, LeadIn), 0.0, 1e-9);
+	TestEqual(TEXT("Looping: phase 0.5 starts mid-loop"), FImpactSourceClock::StartSeconds(0.5, Length, false, LeadIn), 1.8, 1e-9);
+
+	// A play-once source: the hit lands between its start and half a second before its end.
+	for (const double Phase : { 0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0 })
+	{
+		const double Hit = FImpactSourceClock::StartSeconds(Phase, Length, true, LeadIn) + LeadIn;
+		TestTrue(*FString::Printf(TEXT("Play-once, phase %.2f: the hit lands at %.2f s, inside the action"), Phase, Hit),
+			Hit >= -1e-9 && Hit <= Length - 0.5 + 1e-9);
+	}
+	TestEqual(TEXT("Phase 0 hits at the very start"), FImpactSourceClock::StartSeconds(0.0, Length, true, LeadIn) + LeadIn, 0.0, 1e-9);
+	TestEqual(TEXT("Phase 1 hits half a second before the end"), FImpactSourceClock::StartSeconds(1.0, Length, true, LeadIn) + LeadIn, Length - 0.5, 1e-9);
+	TestTrue(TEXT("Hits spread with the phase"), FImpactSourceClock::StartSeconds(0.75, Length, true, LeadIn) > FImpactSourceClock::StartSeconds(0.25, Length, true, LeadIn));
+	TestEqual(TEXT("A source shorter than the tail hits at its start"), FImpactSourceClock::StartSeconds(0.8, 0.3, true, LeadIn) + LeadIn, 0.0, 1e-9);
+	return true;
+}
+

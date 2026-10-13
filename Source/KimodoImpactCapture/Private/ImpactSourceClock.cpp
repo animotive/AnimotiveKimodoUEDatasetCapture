@@ -76,6 +76,11 @@ double FImpactSourceClock::LoopLocalTime(double InTime, double InLoopLength)
 	return FMath::Max(0.0, InTime - LoopIndex(InTime, InLoopLength) * InLoopLength);
 }
 
+double FImpactSourceClock::StartSeconds(double Phase, double Length, bool bPlayOnce, double LeadInSeconds, double MinTailSeconds)
+{
+	return Phase * Length;
+}
+
 FTransform FImpactSourceClock::LoopOffset(const FTransform& InLoopDelta, int32 Loops)
 {
 	FTransform Offset = FTransform::Identity;
