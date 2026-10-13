@@ -347,10 +347,10 @@ bool FImpactBatchRunner::Step(FText& OutReason)
 		Entry.bValid = Recording.End != EImpactClipEnd::Invalidated;
 		Entry.InvalidReason = Entry.bValid ? FString() : Recording.InvalidReason.ToString();
 
-		// Readable files, IMP_<index>_<Source>_<Impactor>_<Region>_<Outcome>; the hash id stays the
+		// Readable files, IMP_<index>_<Source>_<Impactor>_<Region>_<From>_<Intensity>_<Outcome>; the hash id stays the
 		// clip's identity in its sidecar and the manifest.
 		const FString FileName = FImpactClipName::Make(ClipIndex, FImpactClipName::SourceLabel(Setup.Source->GetName()),
-			Entry.ImpactorId, Entry.Region, FString(), FString(), Entry.Outcome);
+			Entry.ImpactorId, Entry.Region, FImpactClipName::DirectionLabel(Setup.Params.DirectionLocal), Entry.Intensity, Entry.Outcome);
 		Entry.FileName = FileName;
 		DeleteLeftovers(BatchFolder, ClipIndex);
 

@@ -112,7 +112,24 @@ namespace
 
 FString FImpactClipName::DirectionLabel(const FVector& DirectionLocal)
 {
-	return FString();
+	// The hit arrives from the opposite of the way it travels.
+	const FVector Arrival = -DirectionLocal.GetSafeNormal();
+	const float Elevation = FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(float(Arrival.Z), -1.0f, 1.0f)));
+	if (Elevation > 60.0f)
+	{
+		return TEXT("FromAbove");
+	}
+	if (Elevation < -60.0f)
+	{
+		return TEXT("FromBelow");
+	}
+	// Eight 45-degree sectors around the body, Front centred on +X, Right on +Y.
+	static const TCHAR* Sectors[] = { TEXT("Front"), TEXT("FrontRight"), TEXT("Right"), TEXT("BackRight"),
+		TEXT("Back"), TEXT("BackLeft"), TEXT("Left"), TEXT("FrontLeft") };
+	const float Azimuth = FMath::RadiansToDegrees(FMath::Atan2(float(Arrival.Y), float(Arrival.X)));
+	const int32 Sector = (FMath::RoundToInt32(Azimuth / 45.0f) % 8 + 8) % 8;
+	const TCHAR* Height = Elevation > 30.0f ? TEXT("High") : Elevation < -30.0f ? TEXT("Low") : TEXT("");
+	return FString(TEXT("From")) + Sectors[Sector] + Height;
 }
 
 FString FImpactClipName::Make(int32 Index, const FString& SourceLabel, const FString& Impactor, const FString& Region,
@@ -120,7 +137,7 @@ FString FImpactClipName::Make(int32 Index, const FString& SourceLabel, const FSt
 {
 	FString Name = IndexPrefix(Index);
 	Name.LeftChopInline(1);
-	for (const FString* Part : { &SourceLabel, &Impactor, &Region, &Outcome })
+	for (const FString* Part : { &SourceLabel, &Impactor, &Region, &From, &Intensity, &Outcome })
 	{
 		const FString Safe = PathSafe(*Part);
 		if (!Safe.IsEmpty())
