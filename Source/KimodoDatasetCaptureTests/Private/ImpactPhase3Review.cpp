@@ -43,8 +43,11 @@ namespace ImpactPhase3Review
 		float Phase;
 	};
 
-	TArray<FTransform> ToLocal(const FReferenceSkeleton& Ref, const FImpactClipRecording& Recording, const FImpactRecordedFrame& Frame, bool bMoving)
+	TArray<FTransform> ToLocal(const FReferenceSkeleton& Ref, const FImpactClipRecording& Recording, int32 FrameIndex, bool bMoving)
 	{
+		const FImpactRecordedFrame& Frame = Recording.Frames[FrameIndex];
+		const TArrayView<const FTransform> Bodies = Recording.BodyPoses.GetFrame(FrameIndex);
+		const TArrayView<const FTransform> Source = Recording.SourcePoses.GetFrame(FrameIndex);
 		const int32 Bones = Ref.GetNum();
 		TArray<int32> BodyOf;
 		BodyOf.Init(INDEX_NONE, Bones);
@@ -63,10 +66,10 @@ namespace ImpactPhase3Review
 				Component[Bone] = Frame.Root;
 				continue;
 			}
-			const FTransform SourceLocal = Frame.Source[Bone].GetRelativeTransform(Frame.Source[Parent]);
+			const FTransform SourceLocal = Source[Bone].GetRelativeTransform(Source[Parent]);
 			if (BodyOf[Bone] != INDEX_NONE)
 			{
-				const FTransform Physical = Frame.Bodies[BodyOf[Bone]].GetRelativeTransform(Recording.Reference);
+				const FTransform Physical = Bodies[BodyOf[Bone]].GetRelativeTransform(Recording.Reference);
 				const bool bParentBody = BodyOf[Parent] != INDEX_NONE;
 				// Rotation from physics; position from the bone's length below its parent, except the
 				// first body under the root, which keeps its simulated position.
@@ -97,10 +100,10 @@ namespace ImpactPhase3Review
 			{
 				Effector = Recording.Reference.InverseTransformPosition(Frame.FootTarget[Side]);
 			}
-			else if (bMoving && Frame.Source[Foot].GetLocation().Z < 12.0)
+			else if (bMoving && Source[Foot].GetLocation().Z < 12.0)
 			{
 				const FVector Current = Component[Foot].GetLocation();
-				Effector = FVector(Current.X, Current.Y, Frame.Source[Foot].GetLocation().Z);
+				Effector = FVector(Current.X, Current.Y, Source[Foot].GetLocation().Z);
 			}
 			else
 			{
@@ -121,7 +124,7 @@ namespace ImpactPhase3Review
 				const int32 ChildParent = Ref.GetParentIndex(Child);
 				if (ChildParent == Foot || (ChildParent > Foot && Ref.BoneIsChildOf(ChildParent, Foot)))
 				{
-					Component[Child] = Frame.Source[Child].GetRelativeTransform(Frame.Source[ChildParent]) * Component[ChildParent];
+					Component[Child] = Source[Child].GetRelativeTransform(Source[ChildParent]) * Component[ChildParent];
 				}
 			}
 		}
@@ -261,9 +264,9 @@ bool FImpactPhase3Review::RunTest(const FString& Parameters)
 		}
 
 		TArray<TArray<FTransform>> Frames;
-		for (const FImpactRecordedFrame& Frame : Recording.Frames)
+		for (int32 FrameIndex = 0; FrameIndex < Recording.Frames.Num(); ++FrameIndex)
 		{
-			Frames.Add(ToLocal(Mesh->GetRefSkeleton(), Recording, Frame, Recording.bMovingSource));
+			Frames.Add(ToLocal(Mesh->GetRefSkeleton(), Recording, FrameIndex, Recording.bMovingSource));
 		}
 		TestTrue(*FString::Printf(TEXT("%s baked"), Scenario.Name), Bake(Mesh, Frames, FString::Printf(TEXT("P3_%s"), Scenario.Name)));
 

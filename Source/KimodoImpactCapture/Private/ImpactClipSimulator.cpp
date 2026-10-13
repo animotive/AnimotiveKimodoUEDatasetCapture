@@ -213,6 +213,11 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		Out.BodyBones.Add(Body.Bone);
 		Out.BodyBoneIndices.Add(Body.BoneIndex);
 	}
+	// Everything a clip records is reserved here, for its longest possible length.
+	const int32 MaxFrames = WindowConfig.PreRollFrames + WindowConfig.MaxReactionFrames + 1;
+	Out.Frames.Reserve(MaxFrames);
+	Out.BodyPoses.Reserve(MaxFrames, Bodies.Num());
+	Out.SourcePoses.Reserve(MaxFrames, Ref.GetNum());
 
 	// --- Run -----------------------------------------------------------------------------------
 	TArray<FTransform> Pose, NextPose;
@@ -220,6 +225,9 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	Character->TeleportToPose(Pose, Reference);
 
 	TArray<FImpactFrameState> OutcomeFrames;
+	OutcomeFrames.Reserve(WindowConfig.MaxReactionFrames + 1);
+	TMap<int32, FVector> Overrides;
+	Overrides.Reserve(2);
 	TArray<FImpactBodySample> Samples;
 	TArray<float> LegScale;
 	LegScale.Init(1.0f, Bodies.Num());
@@ -248,7 +256,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		}
 
 		// Balance, from the state the last step left.
-		TMap<int32, FVector> Overrides;
+		Overrides.Reset();
 		if (SinceHit >= 0)
 		{
 			if (SinceHit == 0 && Setup.FallRules.IsOverwhelming(Setup.Params.ReactionImpulseKgCmPerSecond, Character->TotalMass(),
@@ -416,13 +424,20 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			Window.Invalidate(Invalid);
 		}
 
-		FImpactRecordedFrame Recorded;
-		Recorded.Bodies.Reserve(Bodies.Num());
+		const TArrayView<FTransform> BodyPose = Out.BodyPoses.AddFrame();
+		const TArrayView<FTransform> SourcePose = Out.SourcePoses.AddFrame();
+		if (BodyPose.IsEmpty() || SourcePose.IsEmpty())
+		{
+			Window.Invalidate(Out.BodyPoses.HasOverflowed() ? Out.BodyPoses.GetOverflowReason() : Out.SourcePoses.GetOverflowReason());
+			break;
+		}
 		for (int32 Index = 0; Index < Bodies.Num(); ++Index)
 		{
-			Recorded.Bodies.Add(Character->BodyTransform(Index));
+			BodyPose[Index] = Character->BodyTransform(Index);
 		}
-		Recorded.Source = Pose;
+		FMemory::Memcpy(SourcePose.GetData(), Pose.GetData(), sizeof(FTransform) * FMath::Min(Pose.Num(), SourcePose.Num()));
+
+		FImpactRecordedFrame Recorded;
 		Recorded.Offset = Balance.Offset;
 		Recorded.bReleased = bReleased;
 		FTransform SourceRoot = Pose[0];
@@ -435,7 +450,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			Recorded.bFootPlaced[Side] = Overrides.Contains(bHaveFeet ? FootBody[Side] : INDEX_NONE);
 			Recorded.FootTarget[Side] = Recorded.bFootPlaced[Side] ? Overrides[FootBody[Side]] : FVector::ZeroVector;
 		}
-		Out.Frames.Add(MoveTemp(Recorded));
+		Out.Frames.Add(Recorded);
 
 		const FVector ComVelocity = Character->CenterOfMassVelocity();
 		const float Speed = bReleased ? float(ComVelocity.Size()) : float((ComVelocity - SourceVelocity).Size());

@@ -7,6 +7,7 @@
 #include "ImpactClipWindow.h"
 #include "ImpactJointLimits.h"
 #include "ImpactOutcome.h"
+#include "ImpactPoseBuffer.h"
 #include "ImpactParams.h"
 #include "ImpactRootTracker.h"
 #include "ImpactSchedule.h"
@@ -63,13 +64,12 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipSetup
 	FImpactRagdollRanges Ragdoll;
 };
 
-/** One simulated frame, raw: Phase 4 turns these into bones. */
+/**
+ * One simulated frame's small state. Its poses live in the recording's pose buffers at the same
+ * frame index, so recording a frame never allocates.
+ */
 struct KIMODOIMPACTCAPTURE_API FImpactRecordedFrame
 {
-	/** Every body's world transform, in AImpactReactionCharacter::GetBodies() order. */
-	TArray<FTransform> Bodies;
-	/** Source pose in component space (root motion included, planner offset not). */
-	TArray<FTransform> Source;
 	/** Planner's horizontal displacement of the target frame. */
 	FVector Offset = FVector::ZeroVector;
 	/** Root bone for the baked clip, component space. */
@@ -87,6 +87,10 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipRecording
 	TArray<FName> BodyBones;
 	TArray<int32> BodyBoneIndices;
 	TArray<FImpactRecordedFrame> Frames;
+	/** Every body's world transform per frame, in AImpactReactionCharacter::GetBodies() order. */
+	FImpactPoseBuffer BodyPoses;
+	/** Source pose per frame in component space (root motion included, planner offset not). */
+	FImpactPoseBuffer SourcePoses;
 
 	/** First frame of the reaction (the first hit). */
 	int32 ImpactFrame = 0;
