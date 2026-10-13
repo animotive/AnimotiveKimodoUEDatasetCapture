@@ -97,7 +97,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Write tests for folds judged against the source pose — added when source motion moved to Kimodo-generated clips (user, 2026-10-13: "replace Epic"); Kimodo's authored arms sit up to 34 degrees outside `PA_UEFN_Mannequin`'s cones, so every run clip invalidated on frame 1. A joint's limit is widened to include the source pose's own angle (per axis; an elliptical cone scaled to reach it), and only the physics' excess beyond that counts (Red) (575d3b3)
 - [x] Task: Implement source-relative fold detection in the reaction character's samples (Green) (f457ddf)
 - [x] Task: Write tests for folds judged against recent targets — the one-cycle Kimodo run invalidated light-hit clips on a 20-26 degree elbow "fold": held joints trail their targets, so they sit at a target from a few frames ago (and after release at the release pose, not the playing source). Excess is the least over the targets of the last 0.1 s (Red) (3a80389)
-- [ ] Task: Implement target-window fold detection in the simulator and reaction character (Green)
+- [x] Task: Implement target-window fold detection in the simulator and reaction character (Green) (3e0cefd)
 - [ ] Task: Implement `FImpactBatchRunner` — clip loop driving character, recorder, bake, sidecar, manifest; periodic GC; fixed timestep (Green, covered by the runner tests above plus an integration test on a tiny batch)
 - [ ] Task: Implement the headless host chosen in Phase 1 (`-Batch= -Start= -Count=`), exit codes for success / partial / failure **(exempt)**
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
