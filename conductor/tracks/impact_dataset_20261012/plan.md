@@ -73,7 +73,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement the fixed-step pose recorder (component-space transforms) (Green) (241de31)
 - [x] Task: Write tests for the pose rebuild — body rotations kept, positions rebuilt from source bone lengths (no joint separation for any input), non-body bones from the source, root carries displacement (Red) (3db151f)
 - [x] Task: Implement the pose rebuild (Green) (9842442)
-- [ ] Task: Write tests for leg IK in the recorder — planted foot lands exactly on target; source-contact detection for moving sources; knee follows the pole; bones below the foot keep their locals; unreachable targets do not stretch (Red)
+- [x] Task: Write tests for leg IK in the recorder — planted foot lands exactly on target; source-contact detection for moving sources; knee follows the pole; bones below the foot keep their locals; unreachable targets do not stretch (Red) (b3ca9a9)
 - [ ] Task: Implement recorder leg IK (Green)
 - [ ] Task: Write tests for the bake — recorded buffer → `UAnimSequence` with matching frame count, frame rate, bone tracks, and sampled transforms equal at first/middle/last frame (Red)
 - [ ] Task: Implement the bake via `IAnimationDataController` and save under `<OutputRoot>/<Batch>/<ClipId>` (Green)
