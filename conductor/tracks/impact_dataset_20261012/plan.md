@@ -109,7 +109,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Write tests for the play-once start window — IMP_000005 played only the jump's landing tail: a play-once source starts so its first hit lands between the source's start and 0.5 s before its end (Red) (fde91d6)
 - [x] Task: Implement the play-once start window in the simulator and sidecar (Green) (9f1ac4b)
 - [x] Task: Write tests for mid-air hits — IMP_000008 was hit, followed the jump's own landing, then fell (user chose "release if hit in the air"): the source is airborne when both feet are over 12 cm above their reference height; a Heavy-or-stronger hit while airborne releases the body (Red) (4afc28a)
-- [ ] Task: Implement mid-air release in the simulator (Green)
+- [x] Task: Implement mid-air release in the simulator (Green) (6152b07)
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
 
 ## Phase 6: Panel, Preview and End-to-End Run
