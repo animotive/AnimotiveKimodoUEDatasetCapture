@@ -118,7 +118,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Write tests for full-grid batches — user, 2026-10-13: "do a full grid generation of every force in every direction on every animation" (spec FR1 "full grid" mode): every source x every impactor x every region it can strike x azimuth steps x elevation steps (within the impactor's range) x strength levels (impactor mass/speed lowest to highest) x phases; clip index decodes to its cell; the rest (delivery, strength profile, contact aim) still from (seed, index) (Red) (081f4f0)
 - [x] Task: Implement full-grid layout, grid params, factory and runner count (Green) (48d836d)
 - [x] Task: Write tests for direction and intensity in clip names — a full grid's neighbouring clips differ only by direction and strength, so names collided except for the index: IMP_<index>_<Source>_<Impactor>_<Region>_From<Direction>_<Intensity>_<Outcome>, direction as one of 8 sectors the hit arrives from, High/Low past 30 degrees of elevation (Red) (82459d7)
-- [ ] Task: Implement direction and intensity in the runner's clip names (Green)
+- [x] Task: Implement direction and intensity in the runner's clip names (Green) (9d1fbfc)
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
 
 ## Phase 6: Panel, Preview and End-to-End Run
