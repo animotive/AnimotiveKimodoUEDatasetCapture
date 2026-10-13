@@ -7,6 +7,7 @@
 #include "DatasetSkeletonFingerprint.h"
 #include "Engine/SkeletalMesh.h"
 #include "ImpactClipSimulator.h"
+#include "ImpactSourceClock.h"
 #include "ImpactorCatalog.h"
 
 namespace
@@ -91,7 +92,9 @@ FDatasetSidecar FImpactSidecarBuilder::Build(const FImpactClipSetup& Setup, cons
 	if (Setup.Source)
 	{
 		Impact.SourceAnimation = Setup.Source->GetPathName();
-		Impact.SourceStartSeconds = float(double(Setup.Params.SourcePhase) * Setup.Source->GetPlayLength());
+		// As the simulator starts it: a play-once source starts so the hit lands inside its action.
+		Impact.SourceStartSeconds = float(FImpactSourceClock::StartSeconds(Setup.Params.SourcePhase, Setup.Source->GetPlayLength(),
+			Setup.bSourcePlaysOnce, double(Setup.PreRollFrames + 1) / double(FrameRate)));
 	}
 	Impact.SourceMotion = Context.Motion.Participle;
 	Impact.Intensity = EnumName(Setup.Params.Intensity);

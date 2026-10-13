@@ -78,7 +78,12 @@ double FImpactSourceClock::LoopLocalTime(double InTime, double InLoopLength)
 
 double FImpactSourceClock::StartSeconds(double Phase, double Length, bool bPlayOnce, double LeadInSeconds, double MinTailSeconds)
 {
-	return Phase * Length;
+	if (!bPlayOnce)
+	{
+		return Phase * Length;
+	}
+	// The first hit lands at Phase through the action, never in the held tail after it.
+	return Phase * FMath::Max(0.0, Length - MinTailSeconds) - LeadInSeconds;
 }
 
 FTransform FImpactSourceClock::LoopOffset(const FTransform& InLoopDelta, int32 Loops)

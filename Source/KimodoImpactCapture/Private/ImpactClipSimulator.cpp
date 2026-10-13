@@ -143,7 +143,8 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	const FImpactPoseSampler Sampler(*Setup.Mesh, *Setup.Source, Setup.bSourcePlaysOnce);
 	Character->OpenLimitsToHold(Sampler, 1.0 / 30.0, Setup.SourceLimitMarginDeg);
 	FImpactSourceClock Clock(Sampler.GetLength(), Sampler.GetLoopDelta().GetLocation(), Setup.Clock);
-	const double StartTime = double(Setup.Params.SourcePhase) * Sampler.GetLength();
+	const double StartTime = FImpactSourceClock::StartSeconds(Setup.Params.SourcePhase, Sampler.GetLength(), Setup.bSourcePlaysOnce,
+		double(Setup.PreRollFrames + 1) / double(FMath::Max(1, Setup.FrameRate)));
 	const bool bMoving = Clock.IsMoving();
 	const int32 PelvisBone = Ref.FindBoneIndex(TEXT("pelvis"));
 
