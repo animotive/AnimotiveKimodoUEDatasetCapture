@@ -64,6 +64,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement whole-body impact transfer — mass-weighted spread, contact-time delivery and a braced core in the ragdoll (Green) (f20aa53)
 - [x] Task: Write tests for natural ragdoll hip ranges (verification feedback: legs went into the splits in the car and trip clips) — a range relative to the standing pose fits inside the asset's symmetric limit as a centre and half-width; turning the parent frame to the centre measures swing1 from there (Red) (031cc8c)
 - [x] Task: Implement natural ragdoll hip ranges — on release the hips are held to 70 degrees of flexion, 15 of extension and 20 sideways and twisting (Green) (860e5cd)
+- [x] Task: Tune the ragdoll to the approved "Loose" look (verification feedback: slightly too rigid) — lighter tone (0.1-0.18, fading to 20-40%), core bracing 1.25x, joint damping 4.5x, hips 90 forward / 25 back / 30 sideways and twist; tests adjusted to the new ranges (c2e427f)
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Reaction Character, Impact Delivery and Outcome Detection' (Protocol in workflow.md)
 
 ## Phase 4: Pose Recording, Bake and Sidecar v3
