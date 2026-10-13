@@ -89,7 +89,7 @@ float FImpactJointLimit::ExcessBeyond(const FImpactJointAngles& Angles, const FI
 {
 	const float Twist = AxisExcess(Angles.TwistDeg, TwistDeg, Allowed.TwistDeg);
 	float Swing = 0.0f;
-	if (IsCone(Swing1Deg, Swing2Deg))
+	if (IsCone(Swing1Deg, Swing2Deg) && !bMeasurePerAxis)
 	{
 		// A cone has no sides to open one at a time: it is scaled until Allowed is on it.
 		const float Reach = FMath::Sqrt(FMath::Square(Allowed.Swing1Deg / Swing1Deg) + FMath::Square(Allowed.Swing2Deg / Swing2Deg));
@@ -118,7 +118,43 @@ float FImpactJointLimit::ExcessBeyondAny(const FImpactJointAngles& Angles, TCons
 	return Least;
 }
 
-FImpactJointLimit FImpactJointLimit::OpenedToHold(TConstArrayView<FImpactJointAngles> Source, float MarginDeg) const
+FImpactJointLimit FImpactJointLimit::OpenedToHold(TConstArrayView<FImpactJointAngles> Source, float MarginDeg, float MinLockedOpenDeg) const
 {
-	return *this;
+	FImpactJointLimit Opened = *this;
+	// A hinge stays a hinge to measure, whatever its opened sides make of it physically.
+	Opened.bMeasurePerAxis = bMeasurePerAxis || IsHinge();
+	float MaxTwist = 0.0f, MaxSwing1 = 0.0f, MaxSwing2 = 0.0f;
+	for (const FImpactJointAngles& Angles : Source)
+	{
+		MaxTwist = FMath::Max(MaxTwist, FMath::Abs(Angles.TwistDeg));
+		MaxSwing1 = FMath::Max(MaxSwing1, FMath::Abs(Angles.Swing1Deg));
+		MaxSwing2 = FMath::Max(MaxSwing2, FMath::Abs(Angles.Swing2Deg));
+	}
+	auto Open = [MarginDeg, MinLockedOpenDeg](float& LimitDeg, float SourceDeg)
+	{
+		// Free axes stay free; limited axes open where the source goes past them, locked ones only
+		// where it goes well past.
+		const float Past = LimitDeg == 0.0f ? MinLockedOpenDeg : 0.0f;
+		if (LimitDeg < 180.0f && SourceDeg > LimitDeg + Past)
+		{
+			LimitDeg = FMath::Min(SourceDeg + MarginDeg, 179.0f);
+		}
+	};
+	Open(Opened.TwistDeg, MaxTwist);
+	Open(Opened.Swing1Deg, MaxSwing1);
+	Open(Opened.Swing2Deg, MaxSwing2);
+
+	if (IsCone(Opened.Swing1Deg, Opened.Swing2Deg))
+	{
+		// Both swings limited is an elliptical cone, and an angle within each axis can still be
+		// outside it: scale the cone until the farthest source angle is on it.
+		float Reach = 1.0f;
+		for (const FImpactJointAngles& Angles : Source)
+		{
+			Reach = FMath::Max(Reach, FMath::Sqrt(FMath::Square(Angles.Swing1Deg / Opened.Swing1Deg) + FMath::Square(Angles.Swing2Deg / Opened.Swing2Deg)));
+		}
+		Opened.Swing1Deg = FMath::Min(Opened.Swing1Deg * Reach, 179.0f);
+		Opened.Swing2Deg = FMath::Min(Opened.Swing2Deg * Reach, 179.0f);
+	}
+	return Opened;
 }

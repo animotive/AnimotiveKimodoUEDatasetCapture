@@ -5,7 +5,9 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "ImpactContactSpread.h"
+#include "ImpactSourceClock.h"
 #include "ImpactValidity.h"
+#include "KimodoImpactCaptureLog.h"
 #include "PhysicsControlComponent.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "PhysicsEngine/ConstraintInstance.h"
@@ -139,6 +141,7 @@ bool AImpactReactionCharacter::Setup(USkeletalMesh* Mesh, UPhysicsAsset* Physics
 			Body.Limit.TwistDeg = LimitDegrees(Constraint->GetAngularTwistMotion(), Constraint->GetAngularTwistLimit());
 			Body.Limit.Swing1Deg = LimitDegrees(Constraint->GetAngularSwing1Motion(), Constraint->GetAngularSwing1Limit());
 			Body.Limit.Swing2Deg = LimitDegrees(Constraint->GetAngularSwing2Motion(), Constraint->GetAngularSwing2Limit());
+			Body.bHinge = Body.Limit.IsHinge();
 			const int32 ParentBone = Ref.FindBoneIndex(Constraint->GetParentBoneName());
 			if (ParentBone != INDEX_NONE)
 			{
@@ -258,6 +261,61 @@ void AImpactReactionCharacter::Release(const FImpactRagdollRanges& Ranges)
 	}
 }
 
+void AImpactReactionCharacter::OpenLimitsToHold(const FImpactPoseSampler& Sampler, double StepSeconds, float MarginDeg)
+{
+	const int32 Samples = FMath::Max(1, FMath::CeilToInt32(Sampler.GetLength() / FMath::Max(StepSeconds, UE_KINDA_SMALL_NUMBER))) + 1;
+	TArray<TArray<FImpactJointAngles>> Angles;
+	Angles.SetNum(Bodies.Num());
+	TArray<FTransform> Pose;
+	for (int32 Sample = 0; Sample < Samples; ++Sample)
+	{
+		Sampler.SampleLoop(FMath::Min(Sample * StepSeconds, Sampler.GetLength()), Pose);
+		for (int32 Index = 0; Index < Bodies.Num(); ++Index)
+		{
+			const FBody& Body = Bodies[Index];
+			if (Body.Constraint && Body.ConstraintParentBody != INDEX_NONE)
+			{
+				const FQuat Child = Pose[Body.BoneIndex].GetRotation() * Body.Constraint->GetRefFrame(EConstraintFrame::Frame1).GetRotation();
+				const FQuat Parent = Pose[Bodies[Body.ConstraintParentBody].BoneIndex].GetRotation()
+					* Body.Constraint->GetRefFrame(EConstraintFrame::Frame2).GetRotation();
+				Angles[Index].Add(FImpactJointAngles::FromRelative(Parent.Inverse() * Child));
+			}
+		}
+	}
+
+	for (int32 Index = 0; Index < Bodies.Num(); ++Index)
+	{
+		FBody& Body = Bodies[Index];
+		if (!Body.Constraint || Angles[Index].IsEmpty())
+		{
+			continue;
+		}
+		const FImpactJointLimit Opened = Body.Limit.OpenedToHold(Angles[Index], MarginDeg);
+		FConstraintInstance& Constraint = *Body.Constraint;
+		// An opened axis keeps a lock's rigidity: a limited axis takes the asset's soft limit
+		// (stiffness 50), and a once-locked wrist or knee went limp under it.
+		if (Opened.TwistDeg != Body.Limit.TwistDeg)
+		{
+			Constraint.SetAngularTwistLimit(ACM_Limited, Opened.TwistDeg);
+			Constraint.SetSoftTwistLimitParams(false, Constraint.GetSoftTwistLimitStiffness(), Constraint.GetSoftTwistLimitDamping(), 0.0f,
+				Constraint.GetSoftTwistLimitContactDistance());
+		}
+		if (Opened.Swing1Deg != Body.Limit.Swing1Deg || Opened.Swing2Deg != Body.Limit.Swing2Deg)
+		{
+			Constraint.SetAngularSwing1Limit(ACM_Limited, Opened.Swing1Deg);
+			Constraint.SetAngularSwing2Limit(ACM_Limited, Opened.Swing2Deg);
+			Constraint.SetSoftSwingLimitParams(false, Constraint.GetSoftSwingLimitStiffness(), Constraint.GetSoftSwingLimitDamping(), 0.0f,
+				Constraint.GetSoftSwingLimitContactDistance());
+		}
+		if (Opened.TwistDeg != Body.Limit.TwistDeg || Opened.Swing1Deg != Body.Limit.Swing1Deg || Opened.Swing2Deg != Body.Limit.Swing2Deg)
+		{
+			UE_LOG(LogKimodoImpactCapture, Verbose, TEXT("%s: limits opened to hold the source, twist %.0f -> %.0f, swing1 %.0f -> %.0f, swing2 %.0f -> %.0f"),
+				*Body.Bone.ToString(), Body.Limit.TwistDeg, Opened.TwistDeg, Body.Limit.Swing1Deg, Opened.Swing1Deg, Body.Limit.Swing2Deg, Opened.Swing2Deg);
+		}
+		Body.Limit = Opened;
+	}
+}
+
 float AImpactReactionCharacter::TotalMass() const
 {
 	float Mass = 0.0f;
@@ -355,7 +413,7 @@ void AImpactReactionCharacter::CollectSamples(const TArray<FTransform>& PoseComp
 					Allowed.Add(FImpactJointAngles::FromRelative(TargetParent.Inverse() * TargetChild));
 				}
 				Sample.JointLimitExcessDeg = Body.Limit.ExcessBeyondAny(FImpactJointAngles::FromRelative(ParentFrame.Inverse() * ChildFrame), Allowed);
-				Sample.bHingeJoint = Body.Limit.IsHinge();
+				Sample.bHingeJoint = Body.bHinge;
 			}
 		}
 		OutSamples.Add(Sample);

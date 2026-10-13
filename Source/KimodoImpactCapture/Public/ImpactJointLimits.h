@@ -28,6 +28,12 @@ struct KIMODOIMPACTCAPTURE_API FImpactJointLimit
 	float TwistDeg = 180.0f;
 	float Swing1Deg = 180.0f;
 	float Swing2Deg = 180.0f;
+	/**
+	 * Measure each axis on its own even when both swings are limited. Set on a hinge whose locked
+	 * side was opened: the physics enforces the elliptical cone, which is stricter, but measured as
+	 * a thin cone a near-full bend with a few degrees sideways reads as a fold.
+	 */
+	bool bMeasurePerAxis = false;
 
 	/** Degrees the worst axis is past its limit; 0 when every axis is within. */
 	float Excess(const FImpactJointAngles& Angles) const;
@@ -51,8 +57,13 @@ struct KIMODOIMPACTCAPTURE_API FImpactJointLimit
 	 * limited axis a source angle exceeds is opened to the largest such angle plus the margin, and
 	 * a cone is then scaled until every source angle is inside it. Axes the source keeps within,
 	 * and free axes, are unchanged. Limits stay symmetric, as physics limits are.
+	 *
+	 * A locked axis opens only when the source goes more than MinLockedOpenDeg past it. Opening a
+	 * hinge's locked side makes its swing an elliptical cone, and a thin one (a knee's 70 by 8)
+	 * cuts the hinge's own range whenever the joint bends at all sideways; a few degrees of
+	 * off-axis source motion is better left to the drive.
 	 */
-	FImpactJointLimit OpenedToHold(TConstArrayView<FImpactJointAngles> Source, float MarginDeg) const;
+	FImpactJointLimit OpenedToHold(TConstArrayView<FImpactJointAngles> Source, float MarginDeg, float MinLockedOpenDeg = 10.0f) const;
 
 	/** One swing limited, the other swing and the twist locked: a knee or an elbow. */
 	bool IsHinge() const;

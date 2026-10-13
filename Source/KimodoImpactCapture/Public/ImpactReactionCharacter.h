@@ -12,6 +12,7 @@ class UPhysicsAsset;
 class UPhysicsControlComponent;
 class USkeletalMesh;
 class USkeletalMeshComponent;
+class FImpactPoseSampler;
 struct FBodyInstance;
 struct FConstraintInstance;
 struct FImpactBodySample;
@@ -52,6 +53,8 @@ public:
 		FConstraintInstance* Constraint = nullptr;
 		/** Index into GetBodies() of the constraint's parent body. */
 		int32 ConstraintParentBody = INDEX_NONE;
+		/** The asset's joint is a hinge (knee, elbow), kept even after its limits are opened. */
+		bool bHinge = false;
 		/** The constraint's angular limits, for measuring how far past them the joint sits. */
 		FImpactJointLimit Limit;
 		/** The joint's angles in the mesh's reference pose. */
@@ -95,6 +98,14 @@ public:
 	 * are held to Ranges.
 	 */
 	void Release(const FImpactRagdollRanges& Ranges);
+
+	/**
+	 * Opens each joint's limits just enough to hold the source's own range (plus MarginDeg),
+	 * sampled every StepSeconds over one loop. Kimodo's forearms roll and bend on axes the physics
+	 * asset locks; a hard lock against such a target snaps the joint the other way. Joints the
+	 * source keeps within their limits are untouched.
+	 */
+	void OpenLimitsToHold(const FImpactPoseSampler& Sampler, double StepSeconds, float MarginDeg);
 
 	float TotalMass() const;
 	FVector CenterOfMass() const;

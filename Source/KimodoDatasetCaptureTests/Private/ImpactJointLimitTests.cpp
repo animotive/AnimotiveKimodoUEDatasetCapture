@@ -275,6 +275,11 @@ bool FImpactJointLimitOpenedTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Every source angle is inside the opened limit"), Opened.Excess(Source), 0.0f, 1e-3f);
 	}
 	TestTrue(TEXT("A real fold past the opened limit still shows"), Opened.Excess(Angles(0, -95, 0)) > 5.0f);
+	// An opened hinge is still measured as a hinge: a full bend with a little sideways is not a
+	// fold beyond what the bend itself is past.
+	TestTrue(TEXT("An opened hinge measures each axis on its own"), Opened.bMeasurePerAxis);
+	TestEqual(TEXT("Bend past the hinge, a little sideways: only the bend counts"),
+		Opened.Excess(Angles(0, -(Opened.Swing1Deg + 5.0f), 3)), 5.0f, 1e-3f);
 
 	// A source that stays inside changes nothing (Epic's elbows).
 	const TArray<FImpactJointAngles> Epic = { Angles(0, -40, 0), Angles(0, 10, 0) };
@@ -283,6 +288,15 @@ bool FImpactJointLimitOpenedTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Inside: swing1 unchanged"), Same.Swing1Deg, 70.0f);
 	TestEqual(TEXT("Inside: swing2 unchanged"), Same.Swing2Deg, 0.0f);
 	TestEqual(TEXT("No source: unchanged"), Elbow.OpenedToHold(TConstArrayView<FImpactJointAngles>(), 5.0f).TwistDeg, 0.0f);
+
+	// A knee whose source bends 8 degrees sideways and rolls 7 stays a hinge: a 70-by-8 cone would
+	// cut its own bend. Past 10 degrees the lock opens.
+	FImpactJointLimit Knee = Elbow;
+	const TArray<FImpactJointAngles> KneeSource = { Angles(7, -60, 8), Angles(-6, -20, -7) };
+	const FImpactJointLimit StillHinge = Knee.OpenedToHold(KneeSource, 5.0f, 10.0f);
+	TestEqual(TEXT("Small off-axis motion: twist stays locked"), StillHinge.TwistDeg, 0.0f);
+	TestEqual(TEXT("Small off-axis motion: sideways stays locked"), StillHinge.Swing2Deg, 0.0f);
+	TestTrue(TEXT("and the joint is still a hinge"), StillHinge.IsHinge());
 
 	// A free axis stays free.
 	FImpactJointLimit Free;

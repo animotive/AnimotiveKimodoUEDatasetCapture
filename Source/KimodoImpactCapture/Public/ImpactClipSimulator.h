@@ -52,6 +52,13 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipSetup
 	 */
 	float ReactionSpreadRadiusCm = 40.0f;
 
+	/**
+	 * Degrees past the source's own range a joint's opened limit allows. Joints the source takes
+	 * past the physics asset's limits are opened to hold it (Kimodo's forearm roll and sideways
+	 * bend), so the physics can follow the motion it is given.
+	 */
+	float SourceLimitMarginDeg = 5.0f;
+
 	/** Direction the mesh faces in component space (+Y for the UEFN mannequin). */
 	FVector MeshForward = FVector(0.0, 1.0, 0.0);
 
