@@ -42,6 +42,22 @@ bool FImpactStrengthSampleTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("Sampled strengths within the distribution"), bInRange);
 
+	// Ragdoll tone varies per clip, within the distribution.
+	bool bToneInRange = true;
+	float LowestStart = TNumericLimits<float>::Max(), HighestStart = 0.0f;
+	for (int32 Clip = 0; Clip < 500; ++Clip)
+	{
+		FImpactRandom Random(1, Clip, EImpactRandomStream::StrengthProfile);
+		const FImpactStrengthProfile Profile = FImpactStrengthProfile::Sample(Distribution, Random);
+		bToneInRange &= Profile.ReleasedToneStart >= Distribution.ReleasedTone.Min && Profile.ReleasedToneStart <= Distribution.ReleasedTone.Max;
+		const float EndRatio = Profile.ReleasedToneEnd / Profile.ReleasedToneStart;
+		bToneInRange &= EndRatio >= Distribution.ReleasedToneEndRatio.Min - 1e-4f && EndRatio <= Distribution.ReleasedToneEndRatio.Max + 1e-4f;
+		LowestStart = FMath::Min(LowestStart, Profile.ReleasedToneStart);
+		HighestStart = FMath::Max(HighestStart, Profile.ReleasedToneStart);
+	}
+	TestTrue(TEXT("Sampled ragdoll tone within the distribution"), bToneInRange);
+	TestTrue(TEXT("Ragdoll tone varies between clips"), HighestStart - LowestStart > 0.1f);
+
 	FImpactRandom A(1, 7, EImpactRandomStream::StrengthProfile), B(1, 7, EImpactRandomStream::StrengthProfile);
 	TestEqual(TEXT("Same clip, same profile"), FImpactStrengthProfile::Sample(Distribution, A).WorldStrength, FImpactStrengthProfile::Sample(Distribution, B).WorldStrength);
 	return true;
@@ -93,14 +109,38 @@ bool FImpactStrengthShapeTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Recovered joint strength is full"), Late.Joint, 1.0f, 1e-4f);
 	}
 
-	// Ragdoll: nothing holds.
-	FImpactBodyStrengthQuery Released = Upper(0);
-	Released.bReleased = true;
-	for (const int32 Frame : { -3, 0, 15, 500 })
+	// Ragdoll: no world hold; joints keep a tone that fades from start to end.
+	for (FImpactBodyStrengthQuery Released : { Upper(0), Upper(4), Leg(1), Leg(3, true), Upper(2, true, true) })
 	{
-		const FImpactBodyStrength Limp = Profile.Evaluate(Released, Frame);
-		TestTrue(*FString::Printf(TEXT("Released body has no strength at frame %d"), Frame), Limp.World == 0.0f && Limp.Joint == 0.0f);
+		Released.bReleased = true;
+		for (const int32 Since : { 0, 10, 500 })
+		{
+			Released.FramesSinceRelease = Since;
+			const FImpactBodyStrength Ragdoll = Profile.Evaluate(Released, 30 + Since);
+			TestEqual(*FString::Printf(TEXT("Ragdoll has no world hold %d frames after release"), Since), Ragdoll.World, 0.0f);
+			TestEqual(TEXT("Ragdoll joints are overdamped"), Ragdoll.JointDamping, Profile.ReleasedJointDamping, 1e-4f);
+		}
+		Released.FramesSinceRelease = 0;
+		TestEqual(TEXT("Tone at release"), Profile.Evaluate(Released, 30).Joint, Profile.ReleasedToneStart, 1e-4f);
+		Released.FramesSinceRelease = Profile.ReleasedToneFadeFrames;
+		TestEqual(TEXT("Tone at the end of the fade"), Profile.Evaluate(Released, 90).Joint, Profile.ReleasedToneEnd, 1e-4f);
+		Released.FramesSinceRelease = 1000;
+		TestEqual(TEXT("Tone stays at its end value"), Profile.Evaluate(Released, 1030).Joint, Profile.ReleasedToneEnd, 1e-4f);
+
+		float Previous = Profile.ReleasedToneStart;
+		bool bFades = true;
+		for (int32 Since = 1; Since <= Profile.ReleasedToneFadeFrames + 5; ++Since)
+		{
+			Released.FramesSinceRelease = Since;
+			const float Tone = Profile.Evaluate(Released, 30 + Since).Joint;
+			bFades &= Tone <= Previous + 1e-5f && Previous - Tone <= 0.1f;
+			Previous = Tone;
+		}
+		TestTrue(TEXT("Tone fades smoothly and never rises"), bFades);
 	}
+
+	// A body still held keeps its normal damping.
+	TestEqual(TEXT("Held body damping is unchanged"), Profile.Evaluate(Upper(0), 5).JointDamping, 1.0f, 1e-4f);
 	return true;
 }
 

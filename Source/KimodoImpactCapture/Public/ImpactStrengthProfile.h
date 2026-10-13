@@ -22,6 +22,14 @@ struct KIMODOIMPACTCAPTURE_API FImpactStrengthDistribution
 	/** Parent-space (joint) strength as a multiple of world strength. The approved spike ran at 2. */
 	UPROPERTY(EditAnywhere, Category = "Strength")
 	FFloatInterval ParentToWorldRatio = FFloatInterval(1.6f, 2.4f);
+
+	/** Joint tone a ragdoll keeps at the moment of release, as a multiple of joint strength. */
+	UPROPERTY(EditAnywhere, Category = "Strength")
+	FFloatInterval ReleasedTone = FFloatInterval(0.3f, 0.5f);
+
+	/** Tone the ragdoll fades to, as a multiple of its tone at release. */
+	UPROPERTY(EditAnywhere, Category = "Strength")
+	FFloatInterval ReleasedToneEndRatio = FFloatInterval(0.2f, 0.4f);
 };
 
 /** What the profile needs to know about one body. */
@@ -33,8 +41,10 @@ struct KIMODOIMPACTCAPTURE_API FImpactBodyStrengthQuery
 	bool bPelvis = false;
 	/** The source animation travels (a run), as classified once per clip. */
 	bool bMovingSource = false;
-	/** Every control released: the character is a ragdoll. */
+	/** The character is a ragdoll: no world hold, joints keep only a fading tone. */
 	bool bReleased = false;
+	/** Frames since the character became a ragdoll; 0 on the release frame. */
+	int32 FramesSinceRelease = 0;
 };
 
 /** Multipliers on a body's base world-space and joint (parent-space) strengths. */
@@ -42,6 +52,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactBodyStrength
 {
 	float World = 1.0f;
 	float Joint = 1.0f;
+	/** Multiplier on the joint control's damping ratio. */
+	float JointDamping = 1.0f;
 };
 
 /**
@@ -68,6 +80,17 @@ struct KIMODOIMPACTCAPTURE_API FImpactStrengthProfile
 	float ImpactMovingPelvisWorld = 0.3f;
 	/** On a moving source the legs go with the hips through the impact phase. */
 	float ImpactMovingLegWorld = 0.2f;
+
+	/**
+	 * A ragdoll is not limp: joints keep some tone toward the pose they had at release, fading over
+	 * ReleasedToneFadeFrames. Limp joints under soft limits folded limbs unnaturally in the Phase 3
+	 * foot-shot trip.
+	 */
+	float ReleasedToneStart = 0.4f;
+	float ReleasedToneEnd = 0.12f;
+	int32 ReleasedToneFadeFrames = 45;
+	/** Overdamped, so a toned limb settles rather than whipping. */
+	float ReleasedJointDamping = 2.0f;
 
 	static FImpactStrengthProfile Sample(const FImpactStrengthDistribution& Distribution, FImpactRandom& Random);
 

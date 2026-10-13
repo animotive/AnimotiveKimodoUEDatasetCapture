@@ -21,6 +21,11 @@ struct KIMODOIMPACTCAPTURE_API FImpactValidityThresholds
 	float MaxGroundPenetrationCm = 15.0f;
 	/** Raw joint separation; the worst legitimate clip after the Phase 1 fixes measured 20 cm. */
 	float MaxJointGapCm = 35.0f;
+	/**
+	 * Degrees a joint may sit past its physics asset limit. The source animations themselves pass
+	 * the asset's soft limits by up to 8 degrees; a limb folded the wrong way is far beyond this.
+	 */
+	float MaxJointLimitExcessDeg = 20.0f;
 };
 
 /** One body on one frame, as measured from the physics scene. */
@@ -33,6 +38,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactBodySample
 	FVector AngularVelocityDegPerSecond = FVector::ZeroVector;
 	/** Distance between this body and where its parent joint says it should be; 0 for the root body. */
 	float JointGapCm = 0.0f;
+	/** Degrees past this body's joint limit (FImpactJointLimit::Excess); 0 for the root body. */
+	float JointLimitExcessDeg = 0.0f;
 };
 
 /**

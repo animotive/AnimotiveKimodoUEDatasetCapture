@@ -48,6 +48,7 @@ bool FImpactValidityTest::RunTest(const FString& Parameters)
 	{ auto B = Healthy(); B[1].AngularVelocityDegPerSecond = FVector(0, Thresholds.MaxAngularSpeedDegPerSecond + 1.0f, 0); Rejects(TEXT("Exploding spin"), B, TEXT("spine_03")); }
 	{ auto B = Healthy(); B[2].Location.Z = -(Thresholds.MaxGroundPenetrationCm + 1.0f); Rejects(TEXT("Sunk through the floor"), B, TEXT("foot_l")); }
 	{ auto B = Healthy(); B[0].JointGapCm = Thresholds.MaxJointGapCm + 1.0f; Rejects(TEXT("Torn joint"), B, TEXT("pelvis")); }
+	{ auto B = Healthy(); B[1].JointLimitExcessDeg = Thresholds.MaxJointLimitExcessDeg + 1.0f; Rejects(TEXT("Joint bent past its limit"), B, TEXT("spine_03")); }
 
 	// Limits are inclusive: exactly on a limit is still valid.
 	{
@@ -56,6 +57,7 @@ bool FImpactValidityTest::RunTest(const FString& Parameters)
 		B[1].AngularVelocityDegPerSecond = FVector(Thresholds.MaxAngularSpeedDegPerSecond, 0, 0);
 		B[2].Location.Z = -Thresholds.MaxGroundPenetrationCm;
 		B[2].JointGapCm = Thresholds.MaxJointGapCm;
+		B[1].JointLimitExcessDeg = Thresholds.MaxJointLimitExcessDeg;
 		TestTrue(TEXT("Values exactly on every limit are valid"), FImpactValidity::Check(B, 0.0f, Thresholds, Reason));
 	}
 
