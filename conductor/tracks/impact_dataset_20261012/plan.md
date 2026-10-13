@@ -87,7 +87,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 
 ## Phase 5: Batch Runner, Resume and Headless Host
 
-- [ ] Task: Write tests for the batch manifest — completed IDs persisted after each clip; reload skips completed; partially written clip (no manifest entry) is regenerated; atomic write survives truncation (Red)
+- [x] Task: Write tests for the batch manifest — completed IDs persisted after each clip; reload skips completed; partially written clip (no manifest entry) is regenerated; atomic write survives truncation (Red) (f8334d8)
 - [ ] Task: Implement the resumable batch manifest (Green)
 - [ ] Task: Write tests for sharding — `-Start/-Count` ranges partition indices with no overlap or gap; shards merge into one manifest (Red)
 - [ ] Task: Implement sharding and manifest merge (Green)
