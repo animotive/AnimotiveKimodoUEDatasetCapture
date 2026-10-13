@@ -32,6 +32,14 @@ struct KIMODOIMPACTCAPTURE_API FImpactJointLimit
 	/** Degrees the worst axis is past its limit; 0 when every axis is within. */
 	float Excess(const FImpactJointAngles& Angles) const;
 
+	/**
+	 * Excess past this limit widened just enough to hold Allowed: each axis opened to Allowed's
+	 * angle, an elliptical cone scaled until Allowed is on it. A source pose that already sits
+	 * outside the asset's limits is the motion asked for, not a fold; only what the physics adds
+	 * beyond it counts.
+	 */
+	float ExcessBeyond(const FImpactJointAngles& Angles, const FImpactJointAngles& Allowed) const;
+
 	/** One swing limited, the other swing and the twist locked: a knee or an elbow. */
 	bool IsHinge() const;
 };

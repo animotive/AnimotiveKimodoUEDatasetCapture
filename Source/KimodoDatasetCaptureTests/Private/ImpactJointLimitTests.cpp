@@ -151,3 +151,58 @@ bool FImpactJointLimitExcessTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("A free joint is not a hinge"), Free.IsHinge());
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactJointLimitExcessBeyondTest,
+	"KimodoDatasetCapture.Impact.JointLimits.ExcessBeyondSource",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactJointLimitExcessBeyondTest::RunTest(const FString& Parameters)
+{
+	auto Angles = [](float Twist, float Swing1, float Swing2)
+	{
+		FImpactJointAngles A;
+		A.TwistDeg = Twist;
+		A.Swing1Deg = Swing1;
+		A.Swing2Deg = Swing2;
+		return A;
+	};
+
+	// A source inside the limit changes nothing.
+	FImpactJointLimit Knee;
+	Knee.TwistDeg = 0.0f;
+	Knee.Swing1Deg = 70.0f;
+	Knee.Swing2Deg = 0.0f;
+	const FImpactJointAngles Inside = Angles(0, 40, 0);
+	for (const FImpactJointAngles& Sim : { Angles(0, 60, 0), Angles(0, 80, 0), Angles(0, 0, -12), Angles(5, 75, -20) })
+	{
+		TestEqual(TEXT("A source within the limit: the plain excess"), Knee.ExcessBeyond(Sim, Inside), Knee.Excess(Sim), 1e-4f);
+	}
+
+	// A Kimodo elbow authored 29 degrees past the hinge: holding it is not a fold.
+	const FImpactJointAngles Authored = Angles(0, 99, 0);
+	TestEqual(TEXT("At the source's own angle: no excess"), Knee.ExcessBeyond(Angles(0, 99, 0), Authored), 0.0f, 1e-4f);
+	TestEqual(TEXT("Short of the source's angle: no excess"), Knee.ExcessBeyond(Angles(0, 85, 0), Authored), 0.0f, 1e-4f);
+	TestEqual(TEXT("Past the source's angle: only the physics' part"), Knee.ExcessBeyond(Angles(0, 109, 0), Authored), 10.0f, 1e-4f);
+	TestEqual(TEXT("The other side keeps the asset limit"), Knee.ExcessBeyond(Angles(0, -80, 0), Authored), 10.0f, 1e-4f);
+	TestEqual(TEXT("A sideways fold on a locked axis is still caught"), Knee.ExcessBeyond(Angles(0, 99, 25), Authored), 25.0f, 1e-4f);
+	TestEqual(TEXT("A twist on a locked axis is still caught"), Knee.ExcessBeyond(Angles(9, 99, 0), Authored), 9.0f, 1e-4f);
+
+	// An elliptical cone: an upper arm authored outside it widens the whole cone to reach it.
+	FImpactJointLimit Shoulder;
+	Shoulder.TwistDeg = 30.0f;
+	Shoulder.Swing1Deg = 40.0f;
+	Shoulder.Swing2Deg = 30.0f;
+	const FImpactJointAngles Hanging = Angles(0, 0, 45);   // 15 past a 30 swing2: the cone scales by 1.5
+	TestEqual(TEXT("Cone at the source: no excess"), Shoulder.ExcessBeyond(Angles(0, 0, 45), Hanging), 0.0f, 1e-3f);
+	TestEqual(TEXT("Cone past the source"), Shoulder.ExcessBeyond(Angles(0, 0, 55), Hanging), 10.0f, 1e-3f);
+	TestEqual(TEXT("Cone scaled on the other swing too"), Shoulder.ExcessBeyond(Angles(0, 60, 0), Hanging), 0.0f, 1e-3f);
+	TestEqual(TEXT("and past it"), Shoulder.ExcessBeyond(Angles(0, 70, 0), Hanging), 10.0f, 1e-3f);
+	TestEqual(TEXT("The plain cone would call the source a fold"), Shoulder.Excess(Hanging), 15.0f, 1e-3f);
+
+	// Twist past its limit in the source.
+	const FImpactJointAngles Twisted = Angles(50, 0, 0);
+	TestEqual(TEXT("Twist at the source's"), Shoulder.ExcessBeyond(Angles(-50, 0, 0), Twisted), 0.0f, 1e-4f);
+	TestEqual(TEXT("Twist past the source's"), Shoulder.ExcessBeyond(Angles(60, 0, 0), Twisted), 10.0f, 1e-4f);
+	return true;
+}
