@@ -114,13 +114,20 @@ bool FImpactMidAirReleaseTest::RunTest(const FString& Parameters)
 		const FImpactorArchetype* Archetype = Catalog->Archetypes.FindByPredicate([ImpactorId](const FImpactorArchetype& A) { return A.Id == FName(ImpactorId); });
 		FImpactParams& Params = Setup.Params;
 		Params.Impactor.Archetype = Archetype;
-		Params.Impactor.MassKg = Archetype->MassKg.Max;
-		Params.Impactor.SpeedMetresPerSecond = Archetype->SpeedMetresPerSecond.Max;
+		// A Heavy hit, not an overwhelming one: an Extreme car releases the body at the hit
+		// wherever it lands, which would hide whether the flight did.
+		const bool bCar = Archetype->Id == TEXT("CarBumper");
+		Params.Impactor.MassKg = bCar ? 900.0f : Archetype->MassKg.Max;
+		Params.Impactor.SpeedMetresPerSecond = bCar ? 4.0f : Archetype->SpeedMetresPerSecond.Max;
 		Params.Impactor.ContactRadiusCm = Archetype->ContactRadiusCm.Min;
 		Params.TransferredImpulseKgCmPerSecond = FImpactParamsSampler::TransferredImpulse(Params.Impactor.MassKg, Params.Impactor.SpeedMetresPerSecond, 75.0f, 0.2f);
 		Params.ReactionGain = Archetype->ReactionGain;
 		Params.ReactionImpulseKgCmPerSecond = Params.TransferredImpulseKgCmPerSecond * Params.ReactionGain;
 		Params.Intensity = FImpactIntensityThresholds().Classify(Params.ReactionImpulseKgCmPerSecond);
+		if (bCar)
+		{
+			TestEqual(TEXT("The test car is a Heavy hit"), Params.Intensity, EImpactIntensity::Heavy);
+		}
 		Params.Region = EImpactBodyRegion::Pelvis;
 		Params.DirectionLocal = FVector(0.0, 1.0, 0.0);
 		Params.SourcePhase = Phase;

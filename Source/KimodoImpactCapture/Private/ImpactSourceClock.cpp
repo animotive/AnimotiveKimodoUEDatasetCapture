@@ -151,11 +151,45 @@ void FImpactPoseSampler::Sample(double InTime, TArray<FTransform>& OutComponentS
 
 bool FImpactSourceFlight::IsInFlight(TConstArrayView<float> LeftClearanceCm, TConstArrayView<float> RightClearanceCm, float ThresholdCm)
 {
-	return false;
+	if (LeftClearanceCm.IsEmpty() || RightClearanceCm.IsEmpty())
+	{
+		return false;
+	}
+	auto Clear = [ThresholdCm](TConstArrayView<float> Clearances)
+	{
+		return !Clearances.ContainsByPredicate([ThresholdCm](float Clearance) { return Clearance <= ThresholdCm; });
+	};
+	return Clear(LeftClearanceCm) && Clear(RightClearanceCm);
 }
 
 bool FImpactSourceFlight::IsInFlight(const FImpactPoseSampler& Sampler, const FReferenceSkeleton& Ref, int32 LeftFoot, int32 RightFoot, double Time,
 	double WindowSeconds, float ThresholdCm)
 {
-	return false;
+	if (!Ref.IsValidIndex(LeftFoot) || !Ref.IsValidIndex(RightFoot))
+	{
+		return false;
+	}
+	// Each foot's height in the reference pose is where it stands on the ground.
+	auto RestHeight = [&Ref](int32 Bone)
+	{
+		FTransform Component = Ref.GetRefBonePose()[Bone];
+		for (int32 Parent = Ref.GetParentIndex(Bone); Parent != INDEX_NONE; Parent = Ref.GetParentIndex(Parent))
+		{
+			Component = Component * Ref.GetRefBonePose()[Parent];
+		}
+		return float(Component.GetLocation().Z);
+	};
+	const float LeftRest = RestHeight(LeftFoot);
+	const float RightRest = RestHeight(RightFoot);
+
+	TArray<float, TInlineAllocator<16>> Left, Right;
+	TArray<FTransform> Pose;
+	const int32 Samples = FMath::Max(1, FMath::RoundToInt32(WindowSeconds * 60.0)) + 1;
+	for (int32 Sample = 0; Sample < Samples; ++Sample)
+	{
+		Sampler.Sample(Time + Sample / 60.0, Pose);
+		Left.Add(float(Pose[LeftFoot].GetLocation().Z) - LeftRest);
+		Right.Add(float(Pose[RightFoot].GetLocation().Z) - RightRest);
+	}
+	return IsInFlight(Left, Right, ThresholdCm);
 }

@@ -198,6 +198,12 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	}
 	FImpactClipWindow Window(WindowConfig);
 
+	// A hard hit while the source is in the air cannot be resisted: the body lets go at the hit
+	// rather than following the source's own landing.
+	const bool bReleaseInFlight = uint8(Setup.Params.Intensity) >= uint8(Setup.MidAirReleaseIntensity)
+		&& FImpactSourceFlight::IsInFlight(Sampler, Ref, Ref.FindBoneIndex(TEXT("foot_l")), Ref.FindBoneIndex(TEXT("foot_r")),
+			StartTime + double(ImpactFrame) * double(Dt));
+
 	FImpactBalancePlanner Planner(Setup.Balance);
 	const int32 FootBody[2] = { Character->FindBody(TEXT("foot_l")), Character->FindBody(TEXT("foot_r")) };
 	const bool bHaveFeet = FootBody[0] != INDEX_NONE && FootBody[1] != INDEX_NONE;
@@ -268,6 +274,14 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		{
 			// The reaction begins: bodies leave the exact source motion.
 			Character->SetAllSimulated();
+		}
+		if (Frame == ImpactFrame && bReleaseInFlight && !bReleased)
+		{
+			bReleased = true;
+			ReleaseFrame = Frame;
+			ReleasePose = Pose;
+			Character->Release(Setup.Ragdoll, ReleasePose, Setup.SourceLimitMarginDeg);
+			bFeetKinematic[0] = bFeetKinematic[1] = false;
 		}
 
 		// Balance, from the state the last step left.
