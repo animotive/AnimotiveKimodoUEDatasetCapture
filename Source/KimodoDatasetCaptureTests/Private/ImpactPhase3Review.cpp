@@ -254,30 +254,55 @@ bool FImpactPhase3Review::RunTest(const FString& Parameters)
 		FText Reason;
 		TestTrue(*FString::Printf(TEXT("%s schedule"), Scenario.Name), FImpactScheduleSampler::Sample(Params, FImpactDeliveryDistributions(), 3, Setup.ClipIndex, Setup.Schedule, Reason));
 
-		FImpactClipRecording Recording;
-		if (!TestTrue(*FString::Printf(TEXT("%s simulates: %s"), Scenario.Name, *Reason.ToString()), FImpactClipSimulator::Run(World, Setup, Recording, Reason)))
+		// Ragdoll stiffness variants, for choosing by eye: the current values, then softer ones.
+		// Only the ragdoll clips differ between them.
+		struct FVariant { const TCHAR* Suffix; float Tone; float CoreScale; float Damping; float HipFlex; float HipExtend; float HipSide; };
+		const FVariant Variants[] = {
+			{ TEXT(""), 1.0f, 2.0f, 2.0f, 70.0f, 15.0f, 20.0f },
+			{ TEXT("_Mid"), 0.6f, 1.5f, 4.5f, 80.0f, 20.0f, 25.0f },
+			{ TEXT("_Loose"), 0.35f, 1.25f, 4.5f, 90.0f, 25.0f, 30.0f },
+		};
+		const FString ScenarioName = Scenario.Name;
+		const int32 VariantCount = (ScenarioName.Contains(TEXT("Car")) || ScenarioName.Contains(TEXT("FootLeft"))) ? UE_ARRAY_COUNT(Variants) : 1;
+		const FImpactStrengthProfile BaseStrength = Setup.Strength;
+		for (int32 VariantIndex = 0; VariantIndex < VariantCount; ++VariantIndex)
 		{
-			continue;
-		}
+			const FVariant& Variant = Variants[VariantIndex];
+			const FString ClipName = ScenarioName + Variant.Suffix;
+			Setup.Strength = BaseStrength;
+			Setup.Strength.ReleasedToneStart *= Variant.Tone;
+			Setup.Strength.ReleasedToneEnd *= Variant.Tone;
+			Setup.Strength.ReleasedCoreToneScale = Variant.CoreScale;
+			Setup.Strength.ReleasedJointDamping = Variant.Damping;
+			Setup.Ragdoll.HipSwing1 = { -Variant.HipFlex, Variant.HipExtend };
+			Setup.Ragdoll.HipSwing2Deg = Variant.HipSide;
+			Setup.Ragdoll.HipTwistDeg = Variant.HipSide;
 
-		TArray<TArray<FTransform>> Frames;
-		for (const FImpactRecordedFrame& Frame : Recording.Frames)
-		{
-			Frames.Add(ToLocal(Mesh->GetRefSkeleton(), Recording, Frame, Recording.bMovingSource));
-		}
-		TestTrue(*FString::Printf(TEXT("%s baked"), Scenario.Name), Bake(Mesh, Frames, FString::Printf(TEXT("P3_%s"), Scenario.Name)));
+			FImpactClipRecording Recording;
+			if (!TestTrue(*FString::Printf(TEXT("%s simulates: %s"), *ClipName, *Reason.ToString()), FImpactClipSimulator::Run(World, Setup, Recording, Reason)))
+			{
+				continue;
+			}
 
-		const FString Line = FString::Printf(TEXT("%s: impulse %.0f (%s, %s), outcome %s at +%d, steps %d, trip %d, overwhelmed %d, end %s%s, %d frames, worst joint %.1f deg past limit (%s)"),
-			Scenario.Name, Params.ReactionImpulseKgCmPerSecond,
-			*StaticEnum<EImpactIntensity>()->GetNameStringByValue(int64(Params.Intensity)),
-			*StaticEnum<EImpactDeliveryMode>()->GetNameStringByValue(int64(Setup.Schedule.Mode)),
-			*StaticEnum<EImpactOutcome>()->GetNameStringByValue(int64(Recording.Outcome.Outcome)), Recording.Outcome.OutcomeFrame,
-			Recording.Outcome.Steps, Recording.Outcome.bTrip ? 1 : 0, Recording.bOverwhelmed ? 1 : 0,
-			*StaticEnum<EImpactClipEnd>()->GetNameStringByValue(int64(Recording.End)),
-			Recording.InvalidReason.IsEmpty() ? TEXT("") : *(TEXT(" (") + Recording.InvalidReason.ToString() + TEXT(")")),
-			Recording.Frames.Num(), Recording.MaxJointLimitExcessDeg, *Recording.MaxJointLimitExcessBody.ToString());
-		Summary.Add(Line);
-		AddInfo(Line);
+			TArray<TArray<FTransform>> Frames;
+			for (const FImpactRecordedFrame& Frame : Recording.Frames)
+			{
+				Frames.Add(ToLocal(Mesh->GetRefSkeleton(), Recording, Frame, Recording.bMovingSource));
+			}
+			TestTrue(*FString::Printf(TEXT("%s baked"), *ClipName), Bake(Mesh, Frames, FString::Printf(TEXT("P3_%s"), *ClipName)));
+
+			const FString Line = FString::Printf(TEXT("%s: impulse %.0f (%s, %s), outcome %s at +%d, steps %d, trip %d, overwhelmed %d, end %s%s, %d frames, worst joint %.1f deg past limit (%s)"),
+				*ClipName, Params.ReactionImpulseKgCmPerSecond,
+				*StaticEnum<EImpactIntensity>()->GetNameStringByValue(int64(Params.Intensity)),
+				*StaticEnum<EImpactDeliveryMode>()->GetNameStringByValue(int64(Setup.Schedule.Mode)),
+				*StaticEnum<EImpactOutcome>()->GetNameStringByValue(int64(Recording.Outcome.Outcome)), Recording.Outcome.OutcomeFrame,
+				Recording.Outcome.Steps, Recording.Outcome.bTrip ? 1 : 0, Recording.bOverwhelmed ? 1 : 0,
+				*StaticEnum<EImpactClipEnd>()->GetNameStringByValue(int64(Recording.End)),
+				Recording.InvalidReason.IsEmpty() ? TEXT("") : *(TEXT(" (") + Recording.InvalidReason.ToString() + TEXT(")")),
+				Recording.Frames.Num(), Recording.MaxJointLimitExcessDeg, *Recording.MaxJointLimitExcessBody.ToString());
+			Summary.Add(Line);
+			AddInfo(Line);
+		}
 	}
 	FFileHelper::SaveStringToFile(FString::Join(Summary, TEXT("\n")), *(FPaths::ProjectSavedDir() / Folder / TEXT("Summary.txt")));
 	CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
