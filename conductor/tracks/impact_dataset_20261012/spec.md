@@ -185,12 +185,10 @@ sidecar (FR6) stays; the export is a separate, resumable pass over a finished ba
     with the subject, e.g. "A person jogs forward." / "A person is shot in the left thigh by a
     small bullet and stumbles." / "The person recovers and keeps jogging."
   - Plus `id`, `fps`, `frames`, `duration_seconds`, `max_root_step_m`,
-    `max_root_acceleration_mps2`, and the FBX path. An `npz` path is written once NPZ export
-    exists (below).
-- **Training NPZ (open):** the trainer reads `local_rot_mats` (T, 30, 3, 3) against Kimodo's
-  standard T-pose and `root_positions` (T, 3, metres, Y-up) on the 30-joint SOMA rig at native
-  30 fps, 2-10 s per clip. Our clips are UEFN mannequin at 60 fps, so an NPZ export needs a
-  UEFN-to-SOMA conversion and 30 fps output; scoped once the user decides on it.
+    `max_root_acceleration_mps2`, and the FBX path.
+- **Training NPZ: not in this track** (user, 2026-10-14: "just fbx for now"). The trainer's NPZ
+  (30-joint SOMA, native 30 fps) would need a UEFN-to-SOMA conversion; the catalog points at
+  the FBX, and conversion is left to the training pipeline.
 - Hosts: `-run=ImpactExport -Batch=<path> [-Start= -Count=]`, resumable like the batch runner
   (existing FBX files and rows are kept); shard outputs merge into one CSV and one JSONL each.
 
