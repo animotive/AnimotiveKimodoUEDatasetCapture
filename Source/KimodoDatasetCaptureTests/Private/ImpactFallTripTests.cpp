@@ -30,7 +30,7 @@ namespace ImpactFallTripTests
 		Input.FootPosition[0] = LeftFoot;
 		Input.FootPosition[1] = RightFoot;
 		Input.StruckLegSide = StruckLeg;
-		Input.StruckDeltaVCmPerSecond = 2.0f * Speed;
+		Input.StruckLegDeltaVCmPerSecond = 2.0f * Speed;
 		return Input;
 	}
 }

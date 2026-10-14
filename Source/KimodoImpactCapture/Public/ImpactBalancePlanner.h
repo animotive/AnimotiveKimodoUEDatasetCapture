@@ -45,9 +45,9 @@ struct KIMODOIMPACTCAPTURE_API FImpactBalanceConfig
 	/** Frames a tripped foot stays caught where the hit stopped it. */
 	int32 TripHoldFrames = 12;
 	/**
-	 * A leg hit trips a moving character only when the speed change it gives the leg reaches this
-	 * share of the stride's speed (bounds count). Any leg hit tripped before, and a thrown stone's
-	 * tap on a shin felled a jogger.
+	 * A leg hit trips a moving character only when the speed change it gives the whole leg reaches
+	 * this share of the stride's speed (bounds count). Any leg hit tripped before, and a thrown
+	 * stone's tap on a shin felled a jogger.
 	 */
 	float TripMinStrideFraction = 0.5f;
 	/** A moving character falls when its excess momentum carries the capture point beyond this. */
@@ -86,13 +86,11 @@ struct KIMODOIMPACTCAPTURE_API FImpactBalanceInput
 	bool bMovingSource = false;
 	/** Leg the hit struck (0 left, 1 right), or INDEX_NONE when it struck no leg. */
 	int32 StruckLegSide = INDEX_NONE;
-	/** Speed change the hit gave the part it landed on (FImpactContactSpread::ContactDeltaV), cm/s. */
-	float StruckDeltaVCmPerSecond = 0.0f;
 	/**
-	 * Where the source holds its pelvis over the middle of its feet this frame, horizontal. A crouch
-	 * sits back and an idle shifts its weight; support is judged against this, not the feet's middle.
+	 * Speed change the hit's transferred (physical) impulse gives the whole struck leg, cm/s. Not the
+	 * struck part alone: a foot is a kilogram, and a stone's tap on it read as stopping the stride.
 	 */
-	FVector SourceSupportOffset = FVector::ZeroVector;
+	float StruckLegDeltaVCmPerSecond = 0.0f;
 	/** The source's pelvis height above the ground this frame; 0 when unknown. */
 	float SourcePelvisHeightCm = 0.0f;
 };
@@ -121,7 +119,7 @@ struct KIMODOIMPACTCAPTURE_API FImpactBalanceOutput
 	bool bSettling = false;
 	/** A leg hit broke a moving character's stride. */
 	bool bTrip = false;
-	/** Standing source: how far the capture point is from where the source holds its body over the feet. */
+	/** Standing source: how far the capture point is from the middle of the planted feet. */
 	float SupportErrorCm = 0.0f;
 };
 
@@ -161,8 +159,6 @@ private:
 	FVector Offset = FVector::ZeroVector;
 	FVector SmoothedExcess = FVector::ZeroVector;
 	FVector FootingAtHit = FVector::ZeroVector;
-	/** How far the body sat from where the source holds it over its feet at the hit; kept as it was. */
-	FVector SupportBias = FVector::ZeroVector;
 	FVector LastCapturePoint = FVector::ZeroVector;
 	int32 Frame = 0;
 	int32 Steps = 0;

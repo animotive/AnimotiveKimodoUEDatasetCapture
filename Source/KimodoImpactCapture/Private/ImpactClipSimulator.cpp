@@ -14,6 +14,7 @@
 #include "ImpactReactionCharacter.h"
 #include "ImpactRegionTable.h"
 #include "ImpactSimWorld.h"
+#include "KimodoImpactCaptureLog.h"
 #include "PhysicsEngine/BodyInstance.h"
 
 #define LOCTEXT_NAMESPACE "ImpactClipSimulator"
@@ -266,7 +267,20 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	TArray<float> LegScale;
 	LegScale.Init(1.0f, Bodies.Num());
 	FImpactBalanceOutput Balance;
-	float HitDeltaV = 0.0f;
+	// The hit's physical impulse over the whole struck leg: whether it can stop a stride.
+	float StruckLegDeltaV = 0.0f;
+	if (const int32 LegSideStruck = LegSide(Setup.Params.Region); LegSideStruck != INDEX_NONE)
+	{
+		float LegMass = 0.0f;
+		for (const AImpactReactionCharacter::FBody& Body : Bodies)
+		{
+			if (Body.bLeg && Body.Bone.ToString().EndsWith(LegSideStruck == 0 ? TEXT("_l") : TEXT("_r")) && Body.Instance)
+			{
+				LegMass += Body.Instance->GetBodyMass();
+			}
+		}
+		StruckLegDeltaV = LegMass > 0.0f ? Setup.Params.TransferredImpulseKgCmPerSecond / LegMass : 0.0f;
+	}
 	bool bReleased = false;
 	int32 ReleaseFrame = INDEX_NONE;
 	// The pose the ragdoll's joint tone holds: the source pose at release, not the source playing on.
@@ -302,14 +316,11 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		Overrides.Reset();
 		if (SinceHit >= 0)
 		{
-			if (SinceHit == 0)
+			if (SinceHit == 0 && Setup.FallRules.IsOverwhelming(Setup.Params.ReactionImpulseKgCmPerSecond, Character->TotalMass(),
+				StruckDeltaV(Setup.Params.ReactionImpulseKgCmPerSecond, FMath::Max(Setup.Params.Impactor.ContactRadiusCm, Setup.ReactionSpreadRadiusCm))))
 			{
-				HitDeltaV = StruckDeltaV(Setup.Params.ReactionImpulseKgCmPerSecond, FMath::Max(Setup.Params.Impactor.ContactRadiusCm, Setup.ReactionSpreadRadiusCm));
-				if (Setup.FallRules.IsOverwhelming(Setup.Params.ReactionImpulseKgCmPerSecond, Character->TotalMass(), HitDeltaV))
-				{
-					Out.bOverwhelmed = true;
-					Planner.ReleaseImmediately();
-				}
+				Out.bOverwhelmed = true;
+				Planner.ReleaseImmediately();
 			}
 
 			FImpactBalanceInput Input;
@@ -319,21 +330,17 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			Input.SourceVelocity = SourceVelocity;
 			Input.bMovingSource = bMoving;
 			Input.StruckLegSide = LegSide(Setup.Params.Region);
-			Input.StruckDeltaVCmPerSecond = HitDeltaV;
-			if (bHaveFeet && PelvisBone != INDEX_NONE)
-			{
-				// Where the source holds its pelvis over the middle of its feet this frame.
-				const FVector SourceFeet = ((Pose[Bodies[FootBody[0]].BoneIndex] * Reference).GetLocation()
-					+ (Pose[Bodies[FootBody[1]].BoneIndex] * Reference).GetLocation()) * 0.5;
-				Input.SourceSupportOffset = (Pose[PelvisBone] * Reference).GetLocation() - SourceFeet;
-				Input.SourceSupportOffset.Z = 0.0;
-			}
+			Input.StruckLegDeltaVCmPerSecond = StruckLegDeltaV;
 			Input.SourcePelvisHeightCm = PelvisBone != INDEX_NONE ? float(Pose[PelvisBone].GetLocation().Z) : 0.0f;
 			for (int32 Side = 0; Side < 2 && bHaveFeet; ++Side)
 			{
 				Input.FootPosition[Side] = Character->BodyTransform(FootBody[Side]).GetLocation();
 			}
 			Balance = Planner.Step(Input);
+			UE_LOG(LogKimodoImpactCapture, Verbose, TEXT("Balance +%d: com %s vel %s source vel %s, capture %s, support error %.1f, steps %d, trip %d, fell %d"),
+				SinceHit, *Input.Com.ToCompactString(), *Input.ComVelocity.ToCompactString(), *Input.SourceVelocity.ToCompactString(),
+				*Balance.CapturePoint.ToCompactString(), Balance.SupportErrorCm, Balance.Steps,
+				Balance.bTrip ? 1 : 0, Balance.bFell ? 1 : 0);
 
 			if (Balance.bJustFell && !bReleased)
 			{
@@ -522,7 +529,8 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			FImpactFrameState State;
 			State.PelvisHeightCm = PelvisBody != INDEX_NONE ? float(Character->BodyTransform(PelvisBody).GetLocation().Z - SimWorld.GetGroundHeight()) : 0.0f;
 			State.StandingPelvisHeightCm = float(Pose[PelvisBone].GetLocation().Z);
-			State.bOutsideSupport = !bMoving && Balance.SupportErrorCm > Setup.Balance.StepTriggerCm;
+			const FVector FeetMid = bHaveFeet ? (Character->BodyTransform(FootBody[0]).GetLocation() + Character->BodyTransform(FootBody[1]).GetLocation()) * 0.5 : Character->CenterOfMass();
+			State.bOutsideSupport = !bMoving && FVector::Dist2D(Balance.CapturePoint, FeetMid) > Setup.Balance.StepTriggerCm;
 			State.Steps = Balance.Steps;
 			State.bControlsReleased = bReleased;
 			State.bTrip = Balance.bTrip;
