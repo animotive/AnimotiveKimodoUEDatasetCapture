@@ -3,6 +3,7 @@
 #include "ImpactClipSimulator.h"
 
 #include "Animation/AnimSequence.h"
+#include "AnimationRuntime.h"
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -174,6 +175,19 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	auto HitFrames = [ContactFrames](const FImpactHit& Hit) { return Hit.DurationFrames > 0 ? Hit.DurationFrames : ContactFrames; };
 	// Bodies switch to simulated on the last pre-roll frame; the first hit lands on the next.
 	const int32 ImpactFrame = Setup.PreRollFrames + 1;
+
+	// A low stance (a crouch) at the hit: its body is held over its feet rather than balanced.
+	bool bLowStance = false;
+	if (PelvisBone != INDEX_NONE)
+	{
+		const float RefPelvisHeight = float(FAnimationRuntime::GetComponentSpaceTransformRefPose(Ref, PelvisBone).GetLocation().Z);
+		TArray<FTransform> HitPose;
+		Sampler.Sample(StartTime + double(ImpactFrame) * double(Dt), HitPose);
+		bLowStance = RefPelvisHeight > 0.0f && HitPose.IsValidIndex(PelvisBone)
+			&& float(HitPose[PelvisBone].GetLocation().Z) < Setup.LowStancePelvisFraction * RefPelvisHeight;
+	}
+	// The body goes to physics before the hit; a low stance earlier, so the switch settles first.
+	const int32 SimulateFrame = FMath::Max(0, ImpactFrame - (bLowStance ? FMath::Max(1, Setup.LowStanceSettleFrames) : 1));
 	int32 LastHitOffset = 0;
 	for (const FImpactHit& Hit : Setup.Schedule.Hits)
 	{
@@ -298,7 +312,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		const FVector SourceVelocity = Reference.TransformVectorNoScale(NextPose[PelvisBone].GetLocation() - Pose[PelvisBone].GetLocation()) / Dt;
 		const int32 SinceHit = Frame - ImpactFrame;
 
-		if (Frame == ImpactFrame - 1)
+		if (Frame == SimulateFrame)
 		{
 			// The reaction begins: bodies leave the exact source motion.
 			Character->SetAllSimulated();
@@ -332,6 +346,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			Input.StruckLegSide = LegSide(Setup.Params.Region);
 			Input.StruckLegDeltaVCmPerSecond = StruckLegDeltaV;
 			Input.SourcePelvisHeightCm = PelvisBone != INDEX_NONE ? float(Pose[PelvisBone].GetLocation().Z) : 0.0f;
+			Input.bLowStance = bLowStance;
 			for (int32 Side = 0; Side < 2 && bHaveFeet; ++Side)
 			{
 				Input.FootPosition[Side] = Character->BodyTransform(FootBody[Side]).GetLocation();

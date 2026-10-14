@@ -73,7 +73,7 @@ FImpactBalanceOutput FImpactBalancePlanner::Step(const FImpactBalanceInput& Inpu
 		}
 		else
 		{
-			Offset += SmoothedExcess * (Input.DeltaSeconds * Config.StandingOffsetFollow);
+			Offset += SmoothedExcess * (Input.DeltaSeconds * (Input.bLowStance ? Config.LowStanceOffsetFollow : Config.StandingOffsetFollow));
 			if (Steps > 0)
 			{
 				// Once the character has stepped, its new home is over its new footing.
