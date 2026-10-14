@@ -135,3 +135,20 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [ ] Task: Author a sample `UImpactBatchDefinition` over ≥5 Kimodo-generated source anims (idle and run exist; generate the rest with `tools/kimodo-impact-sources.py`) and the arena fixture level **(exempt)**
 - [ ] Task: End-to-end — headless run ≥1,000 clips unattended; kill mid-batch and resume with no duplicates; confirm all four outcomes and all four delivery modes in the report; spot-check baked clips and sidecars; record measured throughput in `tech-stack.md`
 - [ ] Task: Conductor - User Manual Verification 'Phase 6: Panel, Preview and End-to-End Run' (Protocol in workflow.md)
+
+## Phase 7: FBX Export with BONES-SEED-Format Metadata
+
+- [ ] Task: Write tests for the SEED metadata row — the 51 SEED v004 columns in SEED's order then the `impact_` columns, every mapped value from a manifest entry and its sidecar (names, frames, package/category, paths, take fields, movement and body-position vocabulary, move flags) (Red)
+- [ ] Task: Implement the SEED row builder in the capture module, no editor dependency (Green)
+- [ ] Task: Write tests for actor measurements from the reference pose — heights, spans and the S/M/T height band, against the UEFN mannequin and a synthetic skeleton (Red)
+- [ ] Task: Implement actor measurements (Green)
+- [ ] Task: Write tests for the descriptions — four distinct natural descriptions per clip, the technical and short descriptions, deterministic per clip (Red)
+- [ ] Task: Implement the descriptions on the FR6 caption templates (Green)
+- [ ] Task: Write tests for temporal label events — source motion, hit and reaction, aftermath; times in seconds within the clip; SEED-Timeline JSONL line (Red)
+- [ ] Task: Implement temporal labels (Green)
+- [ ] Task: Write tests for the CSV and JSONL writers — RFC 4180 quoting, header once, append and resume, merging shard files without duplicates (Red)
+- [ ] Task: Implement the writers (Green)
+- [ ] Task: Write tests for the export pass — FBX path layout, invalid clips skipped, existing files kept on resume, frame count in the row matches the exported clip (Red)
+- [ ] Task: Implement the FBX export pass and the `ImpactExport` commandlet in the editor module (Green)
+- [ ] Task: Export the 10k grid; check the CSV against the SEED v004 header, re-import sample FBX files and compare frames and bone transforms with the uassets, spot-check temporal labels; record export throughput in `tech-stack.md`
+- [ ] Task: Conductor - User Manual Verification 'Phase 7: FBX Export with BONES-SEED-Format Metadata' (Protocol in workflow.md)

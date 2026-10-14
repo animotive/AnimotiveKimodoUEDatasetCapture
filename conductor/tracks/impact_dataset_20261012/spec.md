@@ -132,6 +132,51 @@ Each clip then samples:
 - Per batch: counts per region / intensity / mode / outcome / source anim, written to the
   manifest, so imbalance is visible before training.
 
+### FR9 — FBX export with BONES-SEED-format metadata (added 2026-10-14)
+The dataset ships as FBX files with metadata laid out like the BONES-SEED dataset
+(`seed_metadata_v004.csv`, 51 columns), so it can sit beside SEED-trained data. The uasset
+sidecar (FR6) stays; the export is a separate, resumable pass over a finished batch.
+- **Motion files**: one FBX per valid clip (UEFN mannequin skeleton, the clip's own frame
+  rate), at `uefn/fbx/<YYMMDD>/<filename>.fbx`, `<YYMMDD>` the batch's export date. Invalid
+  clips are not exported.
+- **Metadata CSV** `metadata/impact_metadata_v001.csv`: the 51 SEED v004 columns in SEED's
+  order, then impact columns prefixed `impact_` (clip id, batch, seed, clip index, source
+  animation, impactor id, region, body, direction label and vector, intensity, reaction
+  impulse, mass, speed, delivery mode, outcome, outcome frame, steps, trip, overwhelmed, fps).
+  Column mapping:
+  - `move_name`, `filename`: the readable clip name (`IMP_000123_…`), no extension.
+  - `move_duration_frames`: frames in the FBX.
+  - `package` `Interactions`, `category` `Impact Reactions` (new SEED-style value).
+  - `is_neutral` `1.0`, `is_mirror` `False`.
+  - `move_soma_*` and `move_g1_path` empty (no SOMA/G1 version); the FBX path goes in an added
+    `move_uefn_mannequin_fbx_path` column, named like SEED's `move_<skeleton>_path` columns.
+  - `take_name` the batch name, `take_actor` `SIM`, `take_org_name` the source animation,
+    `take_date` YYMMDD, `take_day_part` `_1`.
+  - `content_name` `<source>_<impactor>_<region>`; `content_natural_desc_1..4` four different
+    caption phrasings (FR6 templates, distinct random choices); `content_technical_description`
+    impactor, mass, speed, impulse, region, direction, outcome in plain words;
+    `content_short_description` e.g. `shot in the foot while running, stumbles`;
+    `content_short_description_2` `impact reaction`.
+  - `content_all_rigplay_styles`, `content_uniform_style` `neutral`.
+  - `content_type_of_movement` the source motion in SEED's vocabulary (`standing idle`,
+    `walking`, `jogging`, `running`, `jumping`, crouch walk `walking`) plus `, falling` when the
+    outcome is a knockdown or ragdoll.
+  - `content_body_position` `standing` or `crouching`, plus `, lying` when the character ends
+    on the ground.
+  - `content_horizontal_move` 1 when the source travels or the character steps; `content_vertical_move`
+    1 for a jump source or a fall; `content_props`, `content_complex_action`, `content_repeated_action` 0.
+  - `actor_*` the mannequin's measurements from its reference pose (height, foot, collarbone,
+    hips, knee, ankle heights; collarbone, elbow, wrist, shoulder, hip spans), `actor_uid`
+    `UEFN_Mannequin`, `actor_weight_kg` the batch's character mass, `actor_height` S/M/T by
+    SEED's bands, `actor_profession` `synthetic`, age and gender empty.
+- **Temporal labels** `metadata/impact_temporal_labels_v001.jsonl`, SEED-Timeline format, one
+  line per clip: `filename`, `overview_description` (the caption), `events` (`start_time`,
+  `end_time` in seconds within the FBX, `description`): the source motion up to the hit, the
+  hit and its reaction up to the outcome frame, and what follows (recovers / lies on the
+  ground); `propagated_from_filename` null.
+- Hosts: `-run=ImpactExport -Batch=<path> [-Start= -Count=]`, resumable like the batch runner
+  (existing FBX files and rows are kept); shard outputs merge into one CSV and one JSONL.
+
 ## Non-Functional Requirements
 - **Throughput:** headless run substantially faster than real time; target ≥10k clips/night
   per machine (to be measured in Phase 1 spike and recorded).
@@ -161,8 +206,8 @@ Each clip then samples:
 - Get-up / stand-up animations after knockdown (ragdoll settles; no authored recovery).
 - Character-vs-character collisions or weapons models; impacts are abstract forces or simple
   projectile shapes.
-- FBX/BVH export (covered by `export_bundle` / `kimodo_native_export` tracks; this track
-  feeds them via the same sidecar).
+- BVH export and SOMA/G1 versions of the clips (FBX on the UEFN mannequin only; FR9).
+- Mirrored (`_M`) variants.
 - Facial, cloth, hair simulation in the baked output (body skeleton only).
 - Multiple characters per clip.
 - Distributed farm orchestration beyond `-Start/-Count` sharding.
