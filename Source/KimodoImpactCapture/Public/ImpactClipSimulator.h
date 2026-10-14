@@ -67,6 +67,18 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipSetup
 	 */
 	EImpactIntensity MidAirReleaseIntensity = EImpactIntensity::Heavy;
 
+	/**
+	 * The source is in a low stance when its pelvis at the hit is below this share of the reference
+	 * (standing) pose's pelvis height: a crouch sits near 0.6, a walk near 0.95.
+	 */
+	float LowStancePelvisFraction = 0.8f;
+
+	/**
+	 * In a low stance the body goes to physics this many frames before the hit, at full strength.
+	 * Switched on the frame before, a crouch popped backwards at ~50 cm/s as the hit landed.
+	 */
+	int32 LowStanceSettleFrames = 10;
+
 	/** Direction the mesh faces in component space (+Y for the UEFN mannequin). */
 	FVector MeshForward = FVector(0.0, 1.0, 0.0);
 

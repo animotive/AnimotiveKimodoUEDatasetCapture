@@ -39,6 +39,11 @@ struct KIMODOIMPACTCAPTURE_API FImpactBalanceConfig
 	float ExcessSmoothing = 0.3f;
 	/** Share of excess momentum the target frame carries on a standing source. */
 	float StandingOffsetFollow = 0.8f;
+	/**
+	 * The same in a low stance (a crouch). Its body is held over its feet rather than balanced, so a
+	 * following target frame dragged it after its own momentum: a tap drifted into steps.
+	 */
+	float LowStanceOffsetFollow = 0.0f;
 	/** Per-frame pull of the target frame toward the new footing once the character has stepped. */
 	float FootingPull = 0.08f;
 	float GravityCmPerSecondSquared = 980.0f;
@@ -93,6 +98,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactBalanceInput
 	float StruckLegDeltaVCmPerSecond = 0.0f;
 	/** The source's pelvis height above the ground this frame; 0 when unknown. */
 	float SourcePelvisHeightCm = 0.0f;
+	/** The source was in a low stance (a crouch) at the hit, as classified once per clip. */
+	bool bLowStance = false;
 };
 
 struct KIMODOIMPACTCAPTURE_API FImpactFootTarget

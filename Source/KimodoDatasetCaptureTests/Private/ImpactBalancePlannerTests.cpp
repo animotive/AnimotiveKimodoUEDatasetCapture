@@ -336,3 +336,44 @@ bool FImpactBalanceTripGateTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("A hit that struck no leg never trips"), Trips(INDEX_NONE, 1000.0f));
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactBalanceLowStanceTest,
+	"KimodoDatasetCapture.Impact.Balance.LowStanceHoldsItsFrame",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactBalanceLowStanceTest::RunTest(const FString& Parameters)
+{
+	using namespace ImpactBalanceTests;
+	const FImpactBalanceConfig Config = Unsmoothed();
+	auto OffsetAfter = [&Config](bool bLowStance, float Speed)
+	{
+		FImpactBalancePlanner Planner(Config);
+		FImpactBalanceOutput Out;
+		for (int32 Index = 0; Index < 10; ++Index)
+		{
+			FImpactBalanceInput Input = Pushed(Speed); // lean ~9 cm at 30 cm/s: inside the trigger, no step
+			Input.bLowStance = bLowStance;
+			Out = Planner.Step(Input);
+		}
+		return Out;
+	};
+	const FImpactBalanceOutput Upright = OffsetAfter(false, 30.0f);
+	TestEqual(TEXT("Upright, the target frame follows the body's momentum"), float(Upright.Offset.X),
+		-30.0f * Config.StandingOffsetFollow * (1.0f / 60.0f) * 10, 0.01f);
+	const FImpactBalanceOutput Low = OffsetAfter(true, 30.0f);
+	TestEqual(TEXT("In a low stance the target frame holds where it is"), float(Low.Offset.Size()), 0.0f, 1e-4f);
+	TestEqual(TEXT("Without stepping"), Low.Steps, 0);
+
+	// A real push still steps in a low stance.
+	FImpactBalancePlanner Planner(Config);
+	FImpactBalanceOutput Out;
+	for (int32 Index = 0; Index < Config.SwingFrames; ++Index)
+	{
+		FImpactBalanceInput Input = Pushed(100.0f);
+		Input.bLowStance = true;
+		Out = Planner.Step(Input);
+	}
+	TestEqual(TEXT("A real push on a crouch still steps"), Out.Steps, 1);
+	return true;
+}
