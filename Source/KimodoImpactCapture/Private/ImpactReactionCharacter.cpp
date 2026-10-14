@@ -307,21 +307,22 @@ void AImpactReactionCharacter::OpenLimitsToHold(const FImpactPoseSampler& Sample
 		}
 		const FImpactJointLimit Opened = Body.Limit.OpenedToHold(Angles[Index], MarginDeg);
 		FConstraintInstance& Constraint = *Body.Constraint;
-		// An opened axis keeps a lock's rigidity: a limited axis takes the asset's soft limit
-		// (stiffness 50), and a once-locked wrist or knee went limp under it.
 		if (Opened.TwistDeg != Body.Limit.TwistDeg)
 		{
 			Constraint.SetAngularTwistLimit(ACM_Limited, Opened.TwistDeg);
-			Constraint.SetSoftTwistLimitParams(false, Constraint.GetSoftTwistLimitStiffness(), Constraint.GetSoftTwistLimitDamping(), 0.0f,
-				Constraint.GetSoftTwistLimitContactDistance());
 		}
 		if (Opened.Swing1Deg != Body.Limit.Swing1Deg || Opened.Swing2Deg != Body.Limit.Swing2Deg)
 		{
 			Constraint.SetAngularSwing1Limit(ACM_Limited, Opened.Swing1Deg);
 			Constraint.SetAngularSwing2Limit(ACM_Limited, Opened.Swing2Deg);
-			Constraint.SetSoftSwingLimitParams(false, Constraint.GetSoftSwingLimitStiffness(), Constraint.GetSoftSwingLimitDamping(), 0.0f,
-				Constraint.GetSoftSwingLimitContactDistance());
 		}
+		// Every limit is hard, opened or not, as on release. The asset's soft limits (stiffness 50)
+		// let a struck elbow or knee fold far past them: kept on the axes nothing opened, elbows
+		// within the asset's range folded backwards to -96..-129 degrees under hits.
+		Constraint.SetSoftTwistLimitParams(false, Constraint.GetSoftTwistLimitStiffness(), Constraint.GetSoftTwistLimitDamping(), 0.0f,
+			Constraint.GetSoftTwistLimitContactDistance());
+		Constraint.SetSoftSwingLimitParams(false, Constraint.GetSoftSwingLimitStiffness(), Constraint.GetSoftSwingLimitDamping(), 0.0f,
+			Constraint.GetSoftSwingLimitContactDistance());
 		if (Opened.TwistDeg != Body.Limit.TwistDeg || Opened.Swing1Deg != Body.Limit.Swing1Deg || Opened.Swing2Deg != Body.Limit.Swing2Deg)
 		{
 			UE_LOG(LogKimodoImpactCapture, Verbose, TEXT("%s: limits opened to hold the source, twist %.0f -> %.0f, swing1 %.0f -> %.0f, swing2 %.0f -> %.0f"),
