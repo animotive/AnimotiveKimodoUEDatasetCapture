@@ -123,7 +123,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement gated trips and source-relative stepping in the planner and the simulator (Green) (293a261)
 - [x] Task: Fix the trip gate and revert source-relative support after the 10k re-bake — taps on a light foot still tripped runners (contact speed change on a 1 kg foot is large), so the gate uses the hit's transferred impulse over the whole struck leg's mass; the support bias, set mid-air, left jump landings stepping off-centre until they fell (Stagger to Knockdown on 1,020 cells) and standing clips stepped more, so support is judged against the middle of the feet again (a281427)
 - [x] Task: Write tests for a held low stance — a crouch staggered on nearly every hit (1,100 of 1,103 valid crouch-idle cells), even a thrown stone's tap: switching to physics on the frame before the hit popped it backwards at ~50 cm/s, and the target frame following the body's excess momentum fed a slow drift into steps. In a low stance (source pelvis below 0.8 of the reference pose's at the hit) the target frame does not follow, and the body goes to physics LowStanceSettleFrames before the hit (Red) (788baa7)
-- [ ] Task: Implement the held low stance in the planner and the simulator (Green)
+- [x] Task: Implement the held low stance in the planner and the simulator (Green) (c428c08)
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
 
 ## Phase 6: Panel, Preview and End-to-End Run
