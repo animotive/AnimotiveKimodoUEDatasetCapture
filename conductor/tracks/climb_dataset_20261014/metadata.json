@@ -1,0 +1,8 @@
+{
+  "track_id": "climb_dataset_20261014",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-10-14T00:00:00Z",
+  "updated_at": "2026-10-14T00:00:00Z",
+  "description": "Procedurally generate a labelled rock-climbing animation dataset (Uncharted / BotW style): UEFN mannequin with Physics Control body and limbs pinned to holds sampled on primitive surfaces, planner explores in set directions with realistic weight distribution; traverse, 3-point hang, hold break, ledge hang, shimmy and ledge break; baked to AnimSequence + sidecar v4 with captions, headless and resumable."
+}

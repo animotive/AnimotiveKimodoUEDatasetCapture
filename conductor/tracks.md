@@ -48,3 +48,8 @@ _Link: [./conductor/tracks/legacy_injector_20260909/](./conductor/tracks/legacy_
 
 ## [~] Track: Automated impact reaction dataset generator — GASP source animations on a Physics Control driven character, parameterised impacts (region, intensity, size, direction, timing, bursts, sustained force, projectiles), emergent flinch-to-ragdoll reactions baked to AnimSequence plus sidecar v3, run hands-off headless and resumable
 *Link: [./conductor/tracks/impact_dataset_20261012/](./conductor/tracks/impact_dataset_20261012/)*
+
+---
+
+## [ ] Track: Procedural climbing dataset generator — UEFN mannequin on a Physics Control body with limbs pinned to holds sampled on primitive surfaces, planner explores in set directions with weight shift, hip turn and look-at; traverse, 3-point hang, hold break, ledge hang, shimmy and ledge break baked to AnimSequence plus sidecar v4 with captions, headless and resumable
+*Link: [./conductor/tracks/climb_dataset_20261014/](./conductor/tracks/climb_dataset_20261014/)*
