@@ -41,10 +41,13 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipSetup
 	int32 FrameRate = 60;
 
 	/**
-	 * Physics steps per recorded frame (4: 240 Hz at 60 fps). At 60 Hz the solver could not hold a
-	 * light body struck hard: forearms tore 45-59 degrees through locked axes at 2,000-3,000 deg/s.
+	 * Physics steps per recorded frame. At 60 Hz (1) the solver cannot always hold a light body
+	 * struck hard: forearms tore 45-59 degrees through locked axes at 2,000-3,000 deg/s, and about
+	 * 4% of clips are discarded as invalid. 4 (240 Hz) cut that to 0.3% but made standing
+	 * characters step far more (crouch idle Flinch 386 -> 18 of 10k cells), cause not yet found.
+	 * Kept at 60 Hz for now (user, 2026-10-14); see the plan's follow-ups.
 	 */
-	int32 SimSubsteps = 4;
+	int32 SimSubsteps = 1;
 	int32 PreRollFrames = 30;
 	int32 MaxReactionFrames = 240;
 	int32 SettleFrames = 20;
