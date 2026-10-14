@@ -150,6 +150,8 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [ ] Task: Implement the descriptions on the FR6 caption templates (Green)
 - [ ] Task: Write tests for temporal label events — source motion, hit and reaction, aftermath; times in seconds within the clip; SEED-Timeline JSONL line (Red)
 - [ ] Task: Implement temporal labels (Green)
+- [ ] Task: Write tests for the training catalog line — `descriptions` (four phrasings), `events`, Kimodo multi-prompt `prompts` + `durations` summing to the clip, each segment a full sentence with its subject, root-step audit fields, paths (Red)
+- [ ] Task: Implement the training catalog line (Green)
 - [ ] Task: Write tests for the CSV and JSONL writers — RFC 4180 quoting, header once, append and resume, merging shard files without duplicates (Red)
 - [ ] Task: Implement the writers (Green)
 - [ ] Task: Write tests for the export pass — FBX path layout, invalid clips skipped, existing files kept on resume, frame count in the row matches the exported clip (Red)

@@ -174,8 +174,25 @@ sidecar (FR6) stays; the export is a separate, resumable pass over a finished ba
   `end_time` in seconds within the FBX, `description`): the source motion up to the hit, the
   hit and its reaction up to the outcome frame, and what follows (recovers / lies on the
   ground); `propagated_from_filename` null.
+- **Training catalog** `metadata/impact_training_catalog_v001.jsonl`, in the shape the Kimodo
+  fine-tune trainer reads (`finetune_data_examples`, style catalog + replay meta), one line per
+  clip. Labels come in both forms (user, 2026-10-14):
+  - **Overall**: `descriptions`, the four caption phrasings (the trainer samples one per step).
+  - **Timed breakdown**: `events` (SEED-Timeline `start_time`, `end_time`, `description`) and the
+    same segments as Kimodo multi-prompt `prompts` + `durations` (seconds, summing to the clip).
+    Segments: the source motion up to the hit; the hit and its reaction up to the outcome frame;
+    what follows (recovers and carries on / stays down). Each segment's text is a full sentence
+    with the subject, e.g. "A person jogs forward." / "A person is shot in the left thigh by a
+    small bullet and stumbles." / "The person recovers and keeps jogging."
+  - Plus `id`, `fps`, `frames`, `duration_seconds`, `max_root_step_m`,
+    `max_root_acceleration_mps2`, and the FBX path. An `npz` path is written once NPZ export
+    exists (below).
+- **Training NPZ (open):** the trainer reads `local_rot_mats` (T, 30, 3, 3) against Kimodo's
+  standard T-pose and `root_positions` (T, 3, metres, Y-up) on the 30-joint SOMA rig at native
+  30 fps, 2-10 s per clip. Our clips are UEFN mannequin at 60 fps, so an NPZ export needs a
+  UEFN-to-SOMA conversion and 30 fps output; scoped once the user decides on it.
 - Hosts: `-run=ImpactExport -Batch=<path> [-Start= -Count=]`, resumable like the batch runner
-  (existing FBX files and rows are kept); shard outputs merge into one CSV and one JSONL.
+  (existing FBX files and rows are kept); shard outputs merge into one CSV and one JSONL each.
 
 ## Non-Functional Requirements
 - **Throughput:** headless run substantially faster than real time; target ≥10k clips/night
