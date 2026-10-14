@@ -91,9 +91,20 @@ bool FImpactSampleBatchAssetsGen::RunTest(const FString& Parameters)
 	Grid->Grid = FImpactGridSettings();
 	Grid->bDiscardInvalid = true;
 
+	// A tenth of the full grid that still reaches every source, impactor and region it can strike:
+	// 4 directions, level, the lightest and the heaviest strength (about 11k clips).
+	UImpactBatchDefinition* Grid10k = NewAsset<UImpactBatchDefinition>(TEXT("IB_KimodoGrid10k"));
+	UEngine::CopyPropertiesForUnrelatedObjects(Grid, Grid10k);
+	Grid10k->Grid.AzimuthSteps = 4;
+	Grid10k->Grid.ElevationSteps = 1;
+	Grid10k->Grid.StrengthLevels = 2;
+	Grid10k->Grid.PhasesPerSource = 1;
+
 	FText Reason;
 	TestTrue(*FString::Printf(TEXT("The sample batch is valid: %s"), *Reason.ToString()), Batch->ValidateSettings(Reason));
 	TestTrue(*FString::Printf(TEXT("The grid batch is valid: %s"), *Reason.ToString()), Grid->ValidateSettings(Reason));
+	TestTrue(*FString::Printf(TEXT("The 10k grid batch is valid: %s"), *Reason.ToString()), Grid10k->ValidateSettings(Reason));
+	TestTrue(TEXT("10k grid batch saved"), Save(Grid10k));
 	TestTrue(TEXT("Catalog saved"), Save(Catalog));
 	TestTrue(TEXT("Region table saved"), Save(Regions));
 	TestTrue(TEXT("Batch saved"), Save(Batch));
