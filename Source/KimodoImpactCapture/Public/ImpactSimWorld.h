@@ -27,8 +27,11 @@ public:
 	UWorld* GetWorld() const { return World; }
 	float GetGroundHeight() const { return GroundHeight; }
 
-	/** Simulates one fixed step as its own engine frame. */
-	void Step(float DeltaSeconds);
+	/**
+	 * Simulates one fixed step of DeltaSeconds as Substeps engine frames of DeltaSeconds / Substeps
+	 * each (at least one).
+	 */
+	void Step(float DeltaSeconds, int32 Substeps = 1);
 
 private:
 	UWorld* World = nullptr;

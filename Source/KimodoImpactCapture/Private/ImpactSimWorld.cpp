@@ -47,7 +47,7 @@ FImpactSimWorld::~FImpactSimWorld()
 	CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
 }
 
-void FImpactSimWorld::Step(float DeltaSeconds)
+void FImpactSimWorld::Step(float DeltaSeconds, int32 Substeps)
 {
 	// Each step is its own engine frame: the tick task manager runs a tick function at most once
 	// per GFrameCounter.

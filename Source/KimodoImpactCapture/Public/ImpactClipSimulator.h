@@ -39,6 +39,12 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipSetup
 	int32 ClipIndex = 0;
 
 	int32 FrameRate = 60;
+
+	/**
+	 * Physics steps per recorded frame (4: 240 Hz at 60 fps). At 60 Hz the solver could not hold a
+	 * light body struck hard: forearms tore 45-59 degrees through locked axes at 2,000-3,000 deg/s.
+	 */
+	int32 SimSubsteps = 1;
 	int32 PreRollFrames = 30;
 	int32 MaxReactionFrames = 240;
 	int32 SettleFrames = 20;
