@@ -16,7 +16,10 @@ namespace ImpactFallTripTests
 		return Config;
 	}
 
-	/** Running along +X at Speed; the hit removes nothing unless Excess says so. */
+	/**
+	 * Running along +X at Speed; the hit removes nothing unless Excess says so. A struck leg is hit
+	 * hard enough to stop it (twice the stride's speed), so it trips.
+	 */
 	FImpactBalanceInput Running(float Speed, int32 StruckLeg = INDEX_NONE, const FVector& Excess = FVector::ZeroVector)
 	{
 		FImpactBalanceInput Input;
@@ -27,6 +30,7 @@ namespace ImpactFallTripTests
 		Input.FootPosition[0] = LeftFoot;
 		Input.FootPosition[1] = RightFoot;
 		Input.StruckLegSide = StruckLeg;
+		Input.StruckDeltaVCmPerSecond = 2.0f * Speed;
 		return Input;
 	}
 }

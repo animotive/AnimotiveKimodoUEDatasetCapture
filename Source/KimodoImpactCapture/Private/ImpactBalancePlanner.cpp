@@ -87,9 +87,10 @@ FImpactBalanceOutput FImpactBalancePlanner::Step(const FImpactBalanceInput& Inpu
 
 		if (Input.bMovingSource && !bFell)
 		{
-			if (Now == 0 && (Input.StruckLegSide == 0 || Input.StruckLegSide == 1))
+			const bool bLegHit = Input.StruckLegSide == 0 || Input.StruckLegSide == 1;
+			if (Now == 0 && bLegHit && Input.StruckDeltaVCmPerSecond >= Config.TripMinStrideFraction * float(Input.SourceVelocity.Size2D()))
 			{
-				// A leg hit on a moving character: that foot is caught where the hit stopped it.
+				// A leg hit hard enough to stop the stride: that foot is caught where the hit stopped it.
 				bTrip = true;
 				TripSide = Input.StruckLegSide;
 				TripFoot = Input.FootPosition[TripSide];
@@ -141,13 +142,22 @@ FImpactBalanceOutput FImpactBalancePlanner::Step(const FImpactBalanceInput& Inpu
 				Feet[Side].Current = Feet[Side].Planted;
 			}
 		}
+		const FVector Mid = (Feet[0].Planted + Feet[1].Planted) * 0.5;
 		if (Now == 0)
 		{
-			FootingAtHit = (Feet[0].Planted + Feet[1].Planted) * 0.5;
+			FootingAtHit = Mid;
+			SupportBias = Input.Com - Mid - Input.SourceSupportOffset;
+			SupportBias.Z = 0.0;
 		}
 
-		const FVector Mid = (Feet[0].Planted + Feet[1].Planted) * 0.5;
-		const float Error = float(FVector::Dist2D(LastCapturePoint, Mid));
+		// Support is judged against where the source holds the body over its feet: a crouch sits
+		// back and an idle shifts its weight, and judged against the feet's middle both stepped
+		// on the lightest hit.
+		FVector Hold = Input.SourceSupportOffset + SupportBias;
+		Hold.Z = 0.0;
+		const FVector Expected = Mid + Hold;
+		const float Error = float(FVector::Dist2D(LastCapturePoint, Expected));
+		Out.SupportErrorCm = Error;
 		const bool bAnySwing = Feet[0].bSwing || Feet[1].bSwing;
 		const bool bStanceLongEnough = LastLandFrame == INDEX_NONE || Now - LastLandFrame >= Config.MinStanceFrames;
 
@@ -161,12 +171,13 @@ FImpactBalanceOutput FImpactBalancePlanner::Step(const FImpactBalanceInput& Inpu
 			FFoot& Swing = Feet[SwingSide];
 			const FFoot& Stance = Feet[1 - SwingSide];
 
-			FVector Direction = LastCapturePoint - Mid;
+			FVector Direction = LastCapturePoint - Expected;
 			Direction.Z = 0.0;
 			Direction = Direction.GetSafeNormal();
 			const FVector Lateral(-Direction.Y, Direction.X, 0.0);
 			const float SideSign = FMath::Sign(float(FVector::DotProduct(Swing.Planted - Stance.Planted, Lateral)));
-			FVector Landing = LastCapturePoint + Lateral * (SideSign * Config.StanceHalfWidthCm);
+			// The feet land where the source would hold them under the body's capture point.
+			FVector Landing = LastCapturePoint - Hold + Lateral * (SideSign * Config.StanceHalfWidthCm);
 			Landing.Z = Swing.Planted.Z;
 
 			// Step as far as a leg reaches. A step that falls short buys time for the next.

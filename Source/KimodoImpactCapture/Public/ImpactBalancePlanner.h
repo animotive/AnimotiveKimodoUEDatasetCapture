@@ -161,6 +161,8 @@ private:
 	FVector Offset = FVector::ZeroVector;
 	FVector SmoothedExcess = FVector::ZeroVector;
 	FVector FootingAtHit = FVector::ZeroVector;
+	/** How far the body sat from where the source holds it over its feet at the hit; kept as it was. */
+	FVector SupportBias = FVector::ZeroVector;
 	FVector LastCapturePoint = FVector::ZeroVector;
 	int32 Frame = 0;
 	int32 Steps = 0;

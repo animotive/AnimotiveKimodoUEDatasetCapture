@@ -266,6 +266,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	TArray<float> LegScale;
 	LegScale.Init(1.0f, Bodies.Num());
 	FImpactBalanceOutput Balance;
+	float HitDeltaV = 0.0f;
 	bool bReleased = false;
 	int32 ReleaseFrame = INDEX_NONE;
 	// The pose the ragdoll's joint tone holds: the source pose at release, not the source playing on.
@@ -301,11 +302,14 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		Overrides.Reset();
 		if (SinceHit >= 0)
 		{
-			if (SinceHit == 0 && Setup.FallRules.IsOverwhelming(Setup.Params.ReactionImpulseKgCmPerSecond, Character->TotalMass(),
-				StruckDeltaV(Setup.Params.ReactionImpulseKgCmPerSecond, FMath::Max(Setup.Params.Impactor.ContactRadiusCm, Setup.ReactionSpreadRadiusCm))))
+			if (SinceHit == 0)
 			{
-				Out.bOverwhelmed = true;
-				Planner.ReleaseImmediately();
+				HitDeltaV = StruckDeltaV(Setup.Params.ReactionImpulseKgCmPerSecond, FMath::Max(Setup.Params.Impactor.ContactRadiusCm, Setup.ReactionSpreadRadiusCm));
+				if (Setup.FallRules.IsOverwhelming(Setup.Params.ReactionImpulseKgCmPerSecond, Character->TotalMass(), HitDeltaV))
+				{
+					Out.bOverwhelmed = true;
+					Planner.ReleaseImmediately();
+				}
 			}
 
 			FImpactBalanceInput Input;
@@ -315,6 +319,15 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			Input.SourceVelocity = SourceVelocity;
 			Input.bMovingSource = bMoving;
 			Input.StruckLegSide = LegSide(Setup.Params.Region);
+			Input.StruckDeltaVCmPerSecond = HitDeltaV;
+			if (bHaveFeet && PelvisBone != INDEX_NONE)
+			{
+				// Where the source holds its pelvis over the middle of its feet this frame.
+				const FVector SourceFeet = ((Pose[Bodies[FootBody[0]].BoneIndex] * Reference).GetLocation()
+					+ (Pose[Bodies[FootBody[1]].BoneIndex] * Reference).GetLocation()) * 0.5;
+				Input.SourceSupportOffset = (Pose[PelvisBone] * Reference).GetLocation() - SourceFeet;
+				Input.SourceSupportOffset.Z = 0.0;
+			}
 			Input.SourcePelvisHeightCm = PelvisBone != INDEX_NONE ? float(Pose[PelvisBone].GetLocation().Z) : 0.0f;
 			for (int32 Side = 0; Side < 2 && bHaveFeet; ++Side)
 			{
@@ -509,8 +522,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			FImpactFrameState State;
 			State.PelvisHeightCm = PelvisBody != INDEX_NONE ? float(Character->BodyTransform(PelvisBody).GetLocation().Z - SimWorld.GetGroundHeight()) : 0.0f;
 			State.StandingPelvisHeightCm = float(Pose[PelvisBone].GetLocation().Z);
-			const FVector FeetMid = bHaveFeet ? (Character->BodyTransform(FootBody[0]).GetLocation() + Character->BodyTransform(FootBody[1]).GetLocation()) * 0.5 : Character->CenterOfMass();
-			State.bOutsideSupport = !bMoving && FVector::Dist2D(Balance.CapturePoint, FeetMid) > Setup.Balance.StepTriggerCm;
+			State.bOutsideSupport = !bMoving && Balance.SupportErrorCm > Setup.Balance.StepTriggerCm;
 			State.Steps = Balance.Steps;
 			State.bControlsReleased = bReleased;
 			State.bTrip = Balance.bTrip;
