@@ -121,6 +121,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement direction and intensity in the runner's clip names (Green) (9d1fbfc)
 - [x] Task: Write tests for gated trips and source-relative stepping — the full grid tripped every moving character hit on a leg at any strength (a thrown stone's tap felled a jogger, ~6,300 clips), and standing sources stepped on light hits because support was judged against the middle of the feet (crouch idle staggered on 99% of light hits): a leg hit trips only when its speed change at the leg reaches half the stride's speed; the support error is measured against where the source holds its body over its feet (Red) (93862b1)
 - [x] Task: Implement gated trips and source-relative stepping in the planner and the simulator (Green) (293a261)
+- [x] Task: Fix the trip gate and revert source-relative support after the 10k re-bake — taps on a light foot still tripped runners (contact speed change on a 1 kg foot is large), so the gate uses the hit's transferred impulse over the whole struck leg's mass; the support bias, set mid-air, left jump landings stepping off-centre until they fell (Stagger to Knockdown on 1,020 cells) and standing clips stepped more, so support is judged against the middle of the feet again (a281427)
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
 
 ## Phase 6: Panel, Preview and End-to-End Run
