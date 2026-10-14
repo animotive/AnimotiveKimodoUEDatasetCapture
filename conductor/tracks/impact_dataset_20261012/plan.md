@@ -126,6 +126,8 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement the held low stance in the planner and the simulator (Green) (c428c08)
 - [x] Task: Write tests for hard joint limits through the reaction — after the corrected elbow bake, forearm folds rose from 145 to 266 in the 10k grid: only axes opened to hold the source lost the asset's soft limits (stiffness 50), and with the elbow roll gone most sources no longer opened the elbow, so elbows (and knees, whose sources sit inside the asset's range) stayed soft and folded backwards to -96..-129 deg under hits. Every limited axis is hard from the start of the reaction, as on release, without changing its angles (Red) (64a8a08)
 - [x] Task: Implement hard joint limits for the reaction (Green) (84477ea)
+- [x] Task: Write tests for physics substeps — with hard limits, forearms still tore 45-59 deg through locked axes at 2,000-3,000 deg/s: at 60 Hz the solver cannot hold a light body struck hard. Engine substepping at 240 Hz cut a 600-clip sample from 73 invalid to 2 (forearm folds 26 to 0), more solver iterations only to 31. The sim world steps physics SimSubsteps (4) times per recorded frame, without the project's global physics settings (Red) (a7e2d52)
+- [ ] Task: Implement physics substeps in the sim world and the simulator (Green)
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
 
 ## Phase 6: Panel, Preview and End-to-End Run
