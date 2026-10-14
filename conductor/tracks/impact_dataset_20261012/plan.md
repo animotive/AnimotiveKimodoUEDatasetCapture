@@ -128,6 +128,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement hard joint limits for the reaction (Green) (84477ea)
 - [x] Task: Write tests for physics substeps — with hard limits, forearms still tore 45-59 deg through locked axes at 2,000-3,000 deg/s: at 60 Hz the solver cannot hold a light body struck hard. Engine substepping at 240 Hz cut a 600-clip sample from 73 invalid to 2 (forearm folds 26 to 0), more solver iterations only to 31. The sim world steps physics SimSubsteps (4) times per recorded frame, without the project's global physics settings (Red) (a7e2d52)
 - [x] Task: Implement physics substeps in the sim world and the simulator (Green) (3917c49)
+- [ ] Task: Return physics to 60 Hz for now (SimSubsteps default 1) — 240 Hz cut invalid clips from 4.4% to 0.29% of the 10k grid but made standing sources step far more; the user chose 60 Hz to get a dataset sooner (2026-10-14). The frame-averaged settle test stays
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
 
 ## Phase 6: Panel, Preview and End-to-End Run
@@ -158,3 +159,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [ ] Task: Implement the FBX export pass and the `ImpactExport` commandlet in the editor module (Green)
 - [ ] Task: Export the 10k grid; check the CSV against the SEED v004 header, re-import sample FBX files and compare frames and bone transforms with the uassets, spot-check temporal labels; record export throughput in `tech-stack.md`
 - [ ] Task: Conductor - User Manual Verification 'Phase 7: FBX Export with BONES-SEED-Format Metadata' (Protocol in workflow.md)
+
+## Follow-ups (not scheduled)
+
+- **240 Hz physics without the standing regression.** At 60 Hz the solver lets light bodies struck hard (forearms, hands, feet, ~1 kg at 2,000-3,000 deg/s) tear 45-59 deg through hard, locked joint limits; about 4.4% of 10k-grid clips are discarded for it, mostly forearm folds on ragdolls. `FImpactClipSetup::SimSubsteps = 4` (240 Hz, per-world, no global settings) fixed that (0.29% invalid, forearm folds ~0, ~2x sim time) but standing sources stepped far more: in the 10k grid crouch idle Flinch 386 -> 18, jump 136 -> 0, stand idle 574 -> 305 (Knockdown 3 -> 69); moving sources barely changed. Not the planner's instantaneous centre-of-mass velocity (feeding it a frame-averaged one changed nothing). Likely suspects: values tuned at 60 Hz that are per-tick rather than per-second (Physics Control strengths/damping, the planner's ExcessSmoothing low-pass, foot kinematic targets set once per frame then held over 4 ticks), or the reaction impulse being delivered over one substep instead of one frame. Alternatives if 240 Hz stays costly: cap angular velocity of light bodies, or reduce the reaction gain's share on hands and feet. Data: scratchpad g10k_v6 (60 Hz) vs g10k_v7 (240 Hz) manifests; samples crouch 0-299, jump 4104-4403, stand 8208-8507, run 5472-5771.
