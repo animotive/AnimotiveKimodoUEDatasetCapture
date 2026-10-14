@@ -49,8 +49,14 @@ FImpactSimWorld::~FImpactSimWorld()
 
 void FImpactSimWorld::Step(float DeltaSeconds, int32 Substeps)
 {
-	// Each step is its own engine frame: the tick task manager runs a tick function at most once
-	// per GFrameCounter.
-	++GFrameCounter;
-	World->Tick(LEVELTICK_All, DeltaSeconds);
+	// Substeps here, not through the engine's global substepping, so the editor's own physics
+	// settings are untouched.
+	const int32 Count = FMath::Max(1, Substeps);
+	for (int32 Index = 0; Index < Count; ++Index)
+	{
+		// Each substep is its own engine frame: the tick task manager runs a tick function at most
+		// once per GFrameCounter.
+		++GFrameCounter;
+		World->Tick(LEVELTICK_All, DeltaSeconds / float(Count));
+	}
 }

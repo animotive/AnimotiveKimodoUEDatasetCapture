@@ -281,6 +281,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	TArray<float> LegScale;
 	LegScale.Init(1.0f, Bodies.Num());
 	FImpactBalanceOutput Balance;
+	FVector LastCom = FVector::ZeroVector;
 	// The hit's physical impulse over the whole struck leg: whether it can stop a stride.
 	float StruckLegDeltaV = 0.0f;
 	if (const int32 LegSideStruck = LegSide(Setup.Params.Region); LegSideStruck != INDEX_NONE)
@@ -486,7 +487,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			}
 		}
 
-		SimWorld.Step(Dt);
+		SimWorld.Step(Dt, Setup.SimSubsteps);
 
 		// Measure and record.
 		RecentTargetViews.Reset();
@@ -537,7 +538,11 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		}
 		Out.Frames.Add(Recorded);
 
-		const FVector ComVelocity = Character->CenterOfMassVelocity();
+		// Averaged over the recorded frame, not read at its last physics substep: substeps pick up
+		// contact jitter, and a run measured instantaneously never read as settled.
+		const FVector Com = Character->CenterOfMass();
+		const FVector ComVelocity = Frame > 0 ? (Com - LastCom) / Dt : Character->CenterOfMassVelocity();
+		LastCom = Com;
 		const float Speed = bReleased ? float(ComVelocity.Size()) : float((ComVelocity - SourceVelocity).Size());
 		if (SinceHit >= 0)
 		{
