@@ -120,7 +120,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Write tests for direction and intensity in clip names — a full grid's neighbouring clips differ only by direction and strength, so names collided except for the index: IMP_<index>_<Source>_<Impactor>_<Region>_From<Direction>_<Intensity>_<Outcome>, direction as one of 8 sectors the hit arrives from, High/Low past 30 degrees of elevation (Red) (82459d7)
 - [x] Task: Implement direction and intensity in the runner's clip names (Green) (9d1fbfc)
 - [x] Task: Write tests for gated trips and source-relative stepping — the full grid tripped every moving character hit on a leg at any strength (a thrown stone's tap felled a jogger, ~6,300 clips), and standing sources stepped on light hits because support was judged against the middle of the feet (crouch idle staggered on 99% of light hits): a leg hit trips only when its speed change at the leg reaches half the stride's speed; the support error is measured against where the source holds its body over its feet (Red) (93862b1)
-- [ ] Task: Implement gated trips and source-relative stepping in the planner and the simulator (Green)
+- [x] Task: Implement gated trips and source-relative stepping in the planner and the simulator (Green) (293a261)
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
 
 ## Phase 6: Panel, Preview and End-to-End Run
