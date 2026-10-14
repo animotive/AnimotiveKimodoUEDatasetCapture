@@ -304,3 +304,110 @@ bool FImpactBalanceFallHeightTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactBalanceTripGateTest,
+	"KimodoDatasetCapture.Impact.Balance.TripNeedsAHitThatStopsTheLeg",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactBalanceTripGateTest::RunTest(const FString& Parameters)
+{
+	using namespace ImpactBalanceTests;
+	const FImpactBalanceConfig Config = Unsmoothed();
+	// A jog at 375 cm/s: half the stride's speed is 187.5 cm/s.
+	auto Trips = [&Config](int32 LegSide, float StruckDeltaV)
+	{
+		FImpactBalanceInput Input;
+		Input.bMovingSource = true;
+		Input.Com = StandingCom;
+		Input.SourceVelocity = FVector(375, 0, 0);
+		Input.ComVelocity = Input.SourceVelocity;
+		Input.FootPosition[0] = LeftFoot;
+		Input.FootPosition[1] = RightFoot;
+		Input.StruckLegSide = LegSide;
+		Input.StruckDeltaVCmPerSecond = StruckDeltaV;
+		FImpactBalancePlanner Planner(Config);
+		return Planner.Step(Input).bTrip;
+	};
+	TestFalse(TEXT("A thrown stone's tap on the shin (20 cm/s) does not trip a jogger"), Trips(0, 20.0f));
+	TestFalse(TEXT("Just under half the stride's speed does not trip"), Trips(1, 187.0f));
+	TestTrue(TEXT("Half the stride's speed trips (bounds count)"), Trips(1, 187.5f));
+	TestTrue(TEXT("A kick that stops the leg (400 cm/s) trips"), Trips(0, 400.0f));
+	TestFalse(TEXT("A hit that struck no leg never trips"), Trips(INDEX_NONE, 1000.0f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactBalanceSourceSupportTest,
+	"KimodoDatasetCapture.Impact.Balance.SupportFollowsTheSource",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactBalanceSourceSupportTest::RunTest(const FString& Parameters)
+{
+	using namespace ImpactBalanceTests;
+	const FImpactBalanceConfig Config = Unsmoothed();
+	// A crouch: the source sits 20 cm back from the middle of its feet, and so does the body.
+	const FVector SitBack(-20, 0, 0);
+	const FVector CrouchCom = FVector(0, 0, 60) + SitBack;
+	auto Crouched = [&](float Speed, const FVector& Offset, const FVector& Com)
+	{
+		FImpactBalanceInput Input = Pushed(Speed, Com);
+		Input.SourcePelvisHeightCm = 70.0f;
+		Input.SourceSupportOffset = Offset;
+		return Input;
+	};
+
+	// At rest in its own pose: no step, nothing to correct.
+	{
+		FImpactBalancePlanner Planner(Config);
+		FImpactBalanceOutput Out;
+		for (int32 Index = 0; Index < 30; ++Index)
+		{
+			Out = Planner.Step(Crouched(0.0f, SitBack, CrouchCom));
+		}
+		TestEqual(TEXT("A crouch at rest does not step"), Out.Steps, 0);
+		TestFalse(TEXT("Nor starts one"), Out.Feet[0].bSwing || Out.Feet[1].bSwing);
+		TestEqual(TEXT("Its support error is zero"), Out.SupportErrorCm, 0.0f, 0.01f);
+	}
+
+	// A light push (lean ~6 cm) on a crouch: still no step.
+	{
+		FImpactBalancePlanner Planner(Config);
+		FImpactBalanceOutput Out;
+		for (int32 Index = 0; Index < 30; ++Index)
+		{
+			Out = Planner.Step(Crouched(25.0f, SitBack, CrouchCom));
+		}
+		TestEqual(TEXT("A light push on a crouch does not step"), Out.Steps, 0);
+		TestEqual(TEXT("The support error is the push's lean alone"), Out.SupportErrorCm, Lean(25.0f, 60.0f), 0.05f);
+	}
+
+	// An idle shifting its weight 25 cm across while the body follows: no step.
+	{
+		FImpactBalancePlanner Planner(Config);
+		FImpactBalanceOutput Out;
+		for (int32 Index = 0; Index <= 25; ++Index)
+		{
+			const FVector Shift(0, float(Index), 0);
+			Out = Planner.Step(Crouched(0.0f, Shift, StandingCom + Shift));
+			TestFalse(TEXT("A weight shift the source makes is not a step"), Out.Feet[0].bSwing || Out.Feet[1].bSwing);
+		}
+		TestEqual(TEXT("No step after the shift"), Out.Steps, 0);
+	}
+
+	// A real push on a crouch: steps so the feet land where the crouch holds them under the body.
+	{
+		FImpactBalancePlanner Planner(Config);
+		FImpactBalanceOutput Out;
+		for (int32 Index = 0; Index < Config.SwingFrames; ++Index)
+		{
+			Out = Planner.Step(Crouched(100.0f, SitBack, CrouchCom));
+		}
+		TestEqual(TEXT("A real push steps"), Out.Steps, 1);
+		// Capture point is the CoM (20 cm back) plus the lean; the feet sit 20 cm ahead of it.
+		const FVector Landing(-Lean(100.0f, 60.0f), -Config.StanceHalfWidthCm, LeftFoot.Z);
+		TestTrue(*FString::Printf(TEXT("Lands with the crouch's own sit-back kept (landed at %s)"), *Out.Feet[0].Position.ToString()),
+			Out.Feet[0].Position.Equals(Landing, 0.01));
+	}
+	return true;
+}

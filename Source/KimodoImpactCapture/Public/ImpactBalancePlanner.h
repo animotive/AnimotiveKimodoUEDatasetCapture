@@ -44,6 +44,12 @@ struct KIMODOIMPACTCAPTURE_API FImpactBalanceConfig
 	float GravityCmPerSecondSquared = 980.0f;
 	/** Frames a tripped foot stays caught where the hit stopped it. */
 	int32 TripHoldFrames = 12;
+	/**
+	 * A leg hit trips a moving character only when the speed change it gives the leg reaches this
+	 * share of the stride's speed (bounds count). Any leg hit tripped before, and a thrown stone's
+	 * tap on a shin felled a jogger.
+	 */
+	float TripMinStrideFraction = 0.5f;
 	/** A moving character falls when its excess momentum carries the capture point beyond this. */
 	float MovingFallReachCm = 70.0f;
 };
@@ -80,6 +86,13 @@ struct KIMODOIMPACTCAPTURE_API FImpactBalanceInput
 	bool bMovingSource = false;
 	/** Leg the hit struck (0 left, 1 right), or INDEX_NONE when it struck no leg. */
 	int32 StruckLegSide = INDEX_NONE;
+	/** Speed change the hit gave the part it landed on (FImpactContactSpread::ContactDeltaV), cm/s. */
+	float StruckDeltaVCmPerSecond = 0.0f;
+	/**
+	 * Where the source holds its pelvis over the middle of its feet this frame, horizontal. A crouch
+	 * sits back and an idle shifts its weight; support is judged against this, not the feet's middle.
+	 */
+	FVector SourceSupportOffset = FVector::ZeroVector;
 	/** The source's pelvis height above the ground this frame; 0 when unknown. */
 	float SourcePelvisHeightCm = 0.0f;
 };
@@ -108,6 +121,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactBalanceOutput
 	bool bSettling = false;
 	/** A leg hit broke a moving character's stride. */
 	bool bTrip = false;
+	/** Standing source: how far the capture point is from where the source holds its body over the feet. */
+	float SupportErrorCm = 0.0f;
 };
 
 /**
