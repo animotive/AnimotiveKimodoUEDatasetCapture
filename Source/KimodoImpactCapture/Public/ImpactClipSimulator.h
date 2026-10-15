@@ -88,6 +88,13 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipSetup
 	 */
 	int32 LowStanceSettleFrames = 10;
 
+	/**
+	 * Frames the body is simulated, following the source, before the clip starts recording. The
+	 * world hold settles a few centimetres under gravity once bodies stop being kinematic (a
+	 * crouch ~6 cm over 6 frames); settled unrecorded, the clip never shows the drop.
+	 */
+	int32 WarmUpFrames = 0;
+
 	/** Direction the mesh faces in component space (+Y for the UEFN mannequin). */
 	FVector MeshForward = FVector(0.0, 1.0, 0.0);
 
