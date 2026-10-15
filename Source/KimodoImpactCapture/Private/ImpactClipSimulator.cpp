@@ -173,7 +173,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	// A single-frame hit is pushed over the impactor's contact time.
 	const int32 ContactFrames = Setup.Params.Impactor.Archetype->ContactFrames(Setup.FrameRate);
 	auto HitFrames = [ContactFrames](const FImpactHit& Hit) { return Hit.DurationFrames > 0 ? Hit.DurationFrames : ContactFrames; };
-	// Bodies switch to simulated on the last pre-roll frame; the first hit lands on the next.
+	// The first hit lands on the frame after the pre-roll.
 	const int32 ImpactFrame = Setup.PreRollFrames + 1;
 
 	// A low stance (a crouch) at the hit: its body is held over its feet rather than balanced.
@@ -186,8 +186,6 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		bLowStance = RefPelvisHeight > 0.0f && HitPose.IsValidIndex(PelvisBone)
 			&& float(HitPose[PelvisBone].GetLocation().Z) < Setup.LowStancePelvisFraction * RefPelvisHeight;
 	}
-	// The body goes to physics before the hit; a low stance earlier, so the switch settles first.
-	const int32 SimulateFrame = FMath::Max(0, ImpactFrame - (bLowStance ? FMath::Max(1, Setup.LowStanceSettleFrames) : 1));
 	int32 LastHitOffset = 0;
 	for (const FImpactHit& Hit : Setup.Schedule.Hits)
 	{
@@ -271,7 +269,45 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	}
 	TArray<const TArray<FTransform>*, TInlineAllocator<8>> RecentTargetViews;
 	RecentTargetViews.Reserve(TargetWindow);
-	Character->TeleportToPose(Pose, Reference);
+
+	// Warm-up: simulated from WarmUpFrames before the clip, following the source, unrecorded. Bodies
+	// sag a few centimetres as the world hold takes their weight; that settles here, not in the clip.
+	{
+		const int32 WarmUp = FMath::Max(0, Setup.WarmUpFrames);
+		// Before its start a loop plays its previous cycle, carried back by the loop's root delta, so
+		// a runner is already running; a play-once source holds its first frame.
+		auto SampleBefore = [&Sampler, &Setup](double Time, TArray<FTransform>& OutPose)
+		{
+			int32 Loops = 0;
+			while (!Setup.bSourcePlaysOnce && Time < 0.0 && Sampler.GetLength() > 0.0)
+			{
+				Time += Sampler.GetLength();
+				++Loops;
+			}
+			Sampler.Sample(Time, OutPose);
+			const FTransform Back = FImpactSourceClock::LoopOffset(Sampler.GetLoopDelta(), Loops).Inverse();
+			for (FTransform& Transform : OutPose)
+			{
+				Transform = Transform * Back;
+			}
+		};
+		SampleBefore(StartTime - double(WarmUp) * double(Dt), NextPose);
+		Character->TeleportToPose(NextPose, Reference);
+		Character->SetAllSimulated();
+		for (int32 Index = 0; Index < Bodies.Num(); ++Index)
+		{
+			// Pre-hit strength: full hold, the same every frame until the hit.
+			const FImpactBodyStrength Strength = Setup.Strength.Evaluate(FImpactBodyStrengthQuery(), -1);
+			Character->SetStrength(Index, Strength.World, Strength.Joint, -1.0f, 1.0f, Strength.JointDamping);
+		}
+		const TMap<int32, FVector> NoOverrides;
+		for (int32 Step = 0; Step < WarmUp; ++Step)
+		{
+			SampleBefore(StartTime - double(WarmUp - Step) * double(Dt), NextPose);
+			Character->SetTargets(NextPose, Reference, FVector::ZeroVector, NoOverrides, Dt);
+			SimWorld.Step(Dt, Setup.SimSubsteps);
+		}
+	}
 
 	TArray<FImpactFrameState> OutcomeFrames;
 	OutcomeFrames.Reserve(WindowConfig.MaxReactionFrames + 1);
@@ -281,7 +317,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	TArray<float> LegScale;
 	LegScale.Init(1.0f, Bodies.Num());
 	FImpactBalanceOutput Balance;
-	FVector LastCom = FVector::ZeroVector;
+	FVector LastCom = Character->CenterOfMass();
 	// The hit's physical impulse over the whole struck leg: whether it can stop a stride.
 	float StruckLegDeltaV = 0.0f;
 	if (const int32 LegSideStruck = LegSide(Setup.Params.Region); LegSideStruck != INDEX_NONE)
@@ -313,11 +349,6 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		const FVector SourceVelocity = Reference.TransformVectorNoScale(NextPose[PelvisBone].GetLocation() - Pose[PelvisBone].GetLocation()) / Dt;
 		const int32 SinceHit = Frame - ImpactFrame;
 
-		if (Frame == SimulateFrame)
-		{
-			// The reaction begins: bodies leave the exact source motion.
-			Character->SetAllSimulated();
-		}
 		if (Frame == ImpactFrame && bReleaseInFlight && !bReleased)
 		{
 			bReleased = true;
@@ -541,7 +572,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		// Averaged over the recorded frame, not read at its last physics substep: substeps pick up
 		// contact jitter, and a run measured instantaneously never read as settled.
 		const FVector Com = Character->CenterOfMass();
-		const FVector ComVelocity = Frame > 0 ? (Com - LastCom) / Dt : Character->CenterOfMassVelocity();
+		const FVector ComVelocity = (Com - LastCom) / Dt;
 		LastCom = Com;
 		const float Speed = bReleased ? float(ComVelocity.Size()) : float((ComVelocity - SourceVelocity).Size());
 		if (SinceHit >= 0)

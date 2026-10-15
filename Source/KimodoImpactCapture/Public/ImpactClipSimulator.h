@@ -83,17 +83,11 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipSetup
 	float LowStancePelvisFraction = 0.8f;
 
 	/**
-	 * In a low stance the body goes to physics this many frames before the hit, at full strength.
-	 * Switched on the frame before, a crouch popped backwards at ~50 cm/s as the hit landed.
-	 */
-	int32 LowStanceSettleFrames = 10;
-
-	/**
 	 * Frames the body is simulated, following the source, before the clip starts recording. The
 	 * world hold settles a few centimetres under gravity once bodies stop being kinematic (a
 	 * crouch ~6 cm over 6 frames); settled unrecorded, the clip never shows the drop.
 	 */
-	int32 WarmUpFrames = 0;
+	int32 WarmUpFrames = 20;
 
 	/** Direction the mesh faces in component space (+Y for the UEFN mannequin). */
 	FVector MeshForward = FVector(0.0, 1.0, 0.0);
@@ -152,8 +146,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipRecording
 };
 
 /**
- * Runs one clip end to end in a shared world: kinematic pre-roll on the exact source motion, then
- * the hit, the reaction and its end. Assembles the tested pieces (clip window, source clock,
+ * Runs one clip end to end in a shared world: an unrecorded warm-up and a pre-roll held to the
+ * source motion, then the hit, the reaction and its end. Assembles the tested pieces (clip window, source clock,
  * strength profile, balance planner, fall rules, surface contact and spread, root tracker,
  * validity, outcome classifier) around the reaction character.
  */
