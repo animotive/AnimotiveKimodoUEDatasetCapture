@@ -93,6 +93,7 @@ bool FImpactClipIdSensitivityTest::RunTest(const FString& Parameters)
 	{ FFixture F; F.Params.Region = EImpactBodyRegion::Head; Differs(TEXT("body region"), F); }
 	{ FFixture F; F.Params.DirectionLocal = FVector(-1.0, 0.001, 0.0).GetSafeNormal(); Differs(TEXT("direction"), F); }
 	{ FFixture F; F.Params.SourcePhase = 0.41f; Differs(TEXT("source phase"), F); }
+	{ FFixture F; F.Params.SourceMoment = EImpactSourceMoment::Apex; Differs(TEXT("source moment"), F); }
 	{ FFixture F; F.Schedule.Mode = EImpactDeliveryMode::Instant; Differs(TEXT("delivery mode"), F); }
 	{ FFixture F; F.Schedule.Hits[1].FrameOffset = 5; Differs(TEXT("a hit's frame"), F); }
 	{ FFixture F; F.Schedule.Hits[1].ImpulseKgCmPerSecond = 1141.0f; Differs(TEXT("a hit's impulse"), F); }

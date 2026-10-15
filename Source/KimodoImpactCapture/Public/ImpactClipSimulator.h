@@ -155,4 +155,10 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipSimulator
 {
 	/** False with a reason when the clip could not be set up. A clip that runs but breaks returns true with End = Invalidated. */
 	static bool Run(FImpactSimWorld& World, const FImpactClipSetup& Setup, FImpactClipRecording& OutRecording, FText& OutReason);
+
+	/**
+	 * Where in its source the clip starts: from the source phase, or so the first hit lands on the
+	 * setup's flight moment when the source plays once and leaves the ground.
+	 */
+	static double SourceStartSeconds(const FImpactClipSetup& Setup);
 };

@@ -8,6 +8,17 @@ class UAnimSequence;
 class USkeletalMesh;
 struct FReferenceSkeleton;
 
+/** When in a source a clip's first hit lands. */
+enum class EImpactSourceMoment : uint8
+{
+	/** At the clip's source phase (FImpactSourceClock::StartSeconds). */
+	Phase,
+	/** A play-once source's flight: shortly before take-off, at its apex, shortly after landing. */
+	BeforeTakeOff,
+	Apex,
+	AfterLanding,
+};
+
 struct KIMODOIMPACTCAPTURE_API FImpactSourceClockConfig
 {
 	/** A source whose root travels faster than this is a moving source (a run). */
@@ -125,4 +136,15 @@ struct KIMODOIMPACTCAPTURE_API FImpactSourceFlight
 	 */
 	static bool IsInFlight(const FImpactPoseSampler& Sampler, const FReferenceSkeleton& Ref, int32 LeftFoot, int32 RightFoot, double Time,
 		double WindowSeconds = 0.15, float ThresholdCm = 12.0f);
+
+	/**
+	 * The source's first flight, sampled at 60 Hz: OutTakeOff is the first time both feet are clear
+	 * (by the flight rule above), OutLanding the end of the last clear window after it. False when
+	 * the source never leaves the ground.
+	 */
+	static bool FindFlight(const FImpactPoseSampler& Sampler, const FReferenceSkeleton& Ref, int32 LeftFoot, int32 RightFoot,
+		double& OutTakeOff, double& OutLanding);
+
+	/** Source time of a flight moment: BeforeSeconds before take-off, the flight's middle, AfterSeconds after landing. */
+	static double MomentSeconds(EImpactSourceMoment Moment, double TakeOff, double Landing, double BeforeSeconds = 0.2, double AfterSeconds = 0.15);
 };

@@ -40,6 +40,11 @@ namespace
 	}
 }
 
+bool FImpactGrid::Build(const UImpactBatchDefinition& Batch, const UImpactorCatalog& Catalog, int32 NumSources, TConstArrayView<bool> SourcePlaysOnce, FText& OutReason)
+{
+	return Build(Batch, Catalog, NumSources, OutReason);
+}
+
 bool FImpactGrid::Build(const UImpactBatchDefinition& Batch, const UImpactorCatalog& Catalog, int32 NumSources, FText& OutReason)
 {
 	Triples.Reset();

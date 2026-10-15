@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ImpactSourceClock.h"
 #include "ImpactorCatalog.h"
 #include "Math/Interval.h"
 
@@ -119,6 +120,9 @@ struct KIMODOIMPACTCAPTURE_API FImpactParams
 	FVector DirectionLocal = FVector::BackwardVector;
 
 	float SourcePhase = 0.0f;
+
+	/** When the first hit lands: at SourcePhase, or at a moment of a play-once source's flight. */
+	EImpactSourceMoment SourceMoment = EImpactSourceMoment::Phase;
 
 	EImpactIntensity Intensity = EImpactIntensity::Tap;
 };

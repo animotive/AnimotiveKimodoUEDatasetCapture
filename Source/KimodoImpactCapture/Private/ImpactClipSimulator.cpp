@@ -116,6 +116,12 @@ namespace
 	}
 }
 
+double FImpactClipSimulator::SourceStartSeconds(const FImpactClipSetup& Setup)
+{
+	return FImpactSourceClock::StartSeconds(Setup.Params.SourcePhase, Setup.Source ? Setup.Source->GetPlayLength() : 0.0, Setup.bSourcePlaysOnce,
+		double(Setup.PreRollFrames + 1) / double(FMath::Max(1, Setup.FrameRate)));
+}
+
 bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup& Setup, FImpactClipRecording& Out, FText& OutReason)
 {
 	if (!Setup.Mesh || !Setup.PhysicsAsset || !Setup.Source || !Setup.RegionTable || !Setup.Params.Impactor.Archetype)

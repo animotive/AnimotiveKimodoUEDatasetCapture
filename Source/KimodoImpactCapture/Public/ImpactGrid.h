@@ -31,6 +31,13 @@ struct KIMODOIMPACTCAPTURE_API FImpactGridSettings
 	/** Points in each source the hit lands at, evenly over the batch's source-phase range. */
 	UPROPERTY(EditAnywhere, Category = "Grid", meta = (ClampMin = "1"))
 	int32 PhasesPerSource = 1;
+
+	/**
+	 * A play-once source (a jump) is hit at its three flight moments - before take-off, at the apex,
+	 * after landing - in place of the phase steps.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Grid")
+	bool bFlightMoments = true;
 };
 
 /** One clip's place in a full grid. */
@@ -44,6 +51,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactGridCell
 	int32 Elevation = 0;
 	int32 Strength = 0;
 	int32 Phase = 0;
+	/** Phase for a looping source; a flight moment for a play-once source when the grid uses them. */
+	EImpactSourceMoment Moment = EImpactSourceMoment::Phase;
 
 	bool operator==(const FImpactGridCell& Other) const;
 };
@@ -57,6 +66,9 @@ class KIMODOIMPACTCAPTURE_API FImpactGrid
 public:
 	/** Lays out the grid. False with a reason when it would be empty. */
 	bool Build(const UImpactBatchDefinition& Batch, const UImpactorCatalog& Catalog, int32 NumSources, FText& OutReason);
+
+	/** As above; SourcePlaysOnce (one per source, or empty) marks the sources hit at their flight moments. */
+	bool Build(const UImpactBatchDefinition& Batch, const UImpactorCatalog& Catalog, int32 NumSources, TConstArrayView<bool> SourcePlaysOnce, FText& OutReason);
 
 	int32 Num() const;
 
