@@ -8,6 +8,11 @@
 
 #define LOCTEXT_NAMESPACE "ImpactorCatalog"
 
+bool FImpactorArchetype::Collapses(EImpactBodyRegion Region) const
+{
+	return false;
+}
+
 float FImpactorSample::ImpulseKgCmPerSecond() const
 {
 	// Momentum in kg x m/s, scaled to the engine's centimetres.

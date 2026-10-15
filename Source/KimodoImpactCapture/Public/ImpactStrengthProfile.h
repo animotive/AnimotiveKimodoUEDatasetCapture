@@ -48,6 +48,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactBodyStrengthQuery
 	bool bReleased = false;
 	/** Spine, neck or head: braced harder than the limbs while falling. */
 	bool bCore = false;
+	/** Collapsed (with bReleased): incapacitated rather than thrown. */
+	bool bCollapsed = false;
 	/** Frames since the character became a ragdoll; 0 on the release frame. */
 	int32 FramesSinceRelease = 0;
 };
@@ -104,6 +106,14 @@ struct KIMODOIMPACTCAPTURE_API FImpactStrengthProfile
 	 * tone: at the approved light tone, less than 4.5x let the car hit fold an elbow backwards.
 	 */
 	float ReleasedJointDamping = 4.5f;
+
+	/**
+	 * Collapse tones, as multiples of joint strength: the legs give way, the arms hang, the trunk
+	 * and neck stay braced so the body folds down rather than flopping like a ragdoll.
+	 */
+	float CollapseLegTone = 0.03f;
+	float CollapseArmTone = 0.12f;
+	float CollapseCoreTone = 0.35f;
 
 	static FImpactStrengthProfile Sample(const FImpactStrengthDistribution& Distribution, FImpactRandom& Random);
 

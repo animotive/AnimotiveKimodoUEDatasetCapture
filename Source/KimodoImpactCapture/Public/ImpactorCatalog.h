@@ -147,6 +147,16 @@ struct KIMODOIMPACTCAPTURE_API FImpactorArchetype
 	/** True when the impactor can strike Region. */
 	bool CanStrike(EImpactBodyRegion Region) const;
 
+	/**
+	 * Incapacitates when it strikes the head or neck (a bullet): the character collapses rather
+	 * than reacting and keeping its balance.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Impactor")
+	bool bIncapacitatesHeadAndNeck = false;
+
+	/** True when striking Region makes the character collapse. */
+	bool Collapses(EImpactBodyRegion Region) const;
+
 	/** Relative sampling weight within a catalog. Zero excludes the archetype. */
 	UPROPERTY(EditAnywhere, Category = "Impactor", meta = (ClampMin = "0"))
 	float Weight = 1.0f;

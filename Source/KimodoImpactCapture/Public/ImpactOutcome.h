@@ -21,6 +21,8 @@ enum class EImpactOutcome : uint8
 	Knockdown,
 	/** Overwhelmed at once: went fully limp with no attempt to balance. */
 	Ragdoll,
+	/** Incapacitated (shot in the head or neck): legs gave way and the body folded to the ground. */
+	Collapse,
 };
 
 /** One simulated frame, from the hit onward, as the classifier sees it. */
@@ -37,6 +39,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactFrameState
 	bool bControlsReleased = false;
 	/** A leg hit broke a moving character's stride. */
 	bool bTrip = false;
+	/** The character has collapsed, incapacitated (FImpactorArchetype::Collapses). */
+	bool bCollapsed = false;
 };
 
 USTRUCT()

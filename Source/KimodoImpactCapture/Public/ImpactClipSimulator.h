@@ -95,6 +95,9 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipSetup
 	 */
 	float AirborneFootClearanceCm = 5.0f;
 
+	/** A collapsing hit (FImpactorArchetype::Collapses) lets go this many frames after it lands. */
+	int32 CollapseDelayFrames = 2;
+
 	/** Direction the mesh faces in component space (+Y for the UEFN mannequin). */
 	FVector MeshForward = FVector(0.0, 1.0, 0.0);
 
