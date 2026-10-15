@@ -20,6 +20,14 @@ FImpactStrengthProfile FImpactStrengthProfile::Sample(const FImpactStrengthDistr
 FImpactBodyStrength FImpactStrengthProfile::Evaluate(const FImpactBodyStrengthQuery& Body, int32 FramesSinceHit) const
 {
 	FImpactBodyStrength Strength;
+	if (Body.bReleased && Body.bCollapsed)
+	{
+		// Incapacitated: the legs give way under the trunk, which stays braced, so the body folds.
+		Strength.World = 0.0f;
+		Strength.Joint = Body.bLeg ? CollapseLegTone : Body.bCore ? CollapseCoreTone : CollapseArmTone;
+		Strength.JointDamping = ReleasedJointDamping;
+		return Strength;
+	}
 	if (Body.bReleased)
 	{
 		// No world hold; the joints keep a tone that fades smoothly toward its end value.

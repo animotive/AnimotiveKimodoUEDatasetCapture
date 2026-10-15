@@ -10,7 +10,7 @@
 
 bool FImpactorArchetype::Collapses(EImpactBodyRegion Region) const
 {
-	return false;
+	return bIncapacitatesHeadAndNeck && (Region == EImpactBodyRegion::Head || Region == EImpactBodyRegion::Neck);
 }
 
 float FImpactorSample::ImpulseKgCmPerSecond() const
@@ -150,6 +150,8 @@ TArray<FImpactorArchetype> UImpactorCatalog::MakeStarterArchetypes()
 	{
 		Archetype.ReactionGain = Gains.FindRef(Archetype.Id, 1.0f);
 		Archetype.ContactSeconds = ContactTimes.FindRef(Archetype.Id, 0.0f);
+		// Shot in the head or neck, a person goes down whatever the round's momentum.
+		Archetype.bIncapacitatesHeadAndNeck = Archetype.Id == TEXT("SmallBullet") || Archetype.Id == TEXT("RifleRound") || Archetype.Id == TEXT("ShotgunBlast");
 		if (const FReach* Found = Reach.Find(Archetype.Id))
 		{
 			Archetype.ElevationDegrees = Found->Elevation;

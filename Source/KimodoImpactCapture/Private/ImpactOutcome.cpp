@@ -16,6 +16,7 @@ FImpactOutcomeResult FImpactOutcomeClassifier::Classify(TConstArrayView<FImpactF
 	int32 FirstRelease = INDEX_NONE;
 	int32 FirstDown = INDEX_NONE;
 	int32 FirstDisturbed = INDEX_NONE;
+	int32 FirstCollapse = INDEX_NONE;
 	for (int32 Index = 0; Index < Frames.Num(); ++Index)
 	{
 		const FImpactFrameState& Frame = Frames[Index];
@@ -29,6 +30,10 @@ FImpactOutcomeResult FImpactOutcomeClassifier::Classify(TConstArrayView<FImpactF
 		Result.Steps = FMath::Max(Result.Steps, Frame.Steps);
 		Result.bTrip |= Frame.bTrip;
 
+		if (FirstCollapse == INDEX_NONE && Frame.bCollapsed)
+		{
+			FirstCollapse = Index;
+		}
 		if (FirstRelease == INDEX_NONE && Frame.bControlsReleased)
 		{
 			FirstRelease = Index;
@@ -45,7 +50,13 @@ FImpactOutcomeResult FImpactOutcomeClassifier::Classify(TConstArrayView<FImpactF
 	}
 
 	Result.bValid = true;
-	if (FirstRelease != INDEX_NONE && FirstRelease <= Thresholds.ImmediateReleaseFrames)
+	if (FirstCollapse != INDEX_NONE)
+	{
+		// Incapacitated: neither thrown nor beaten in a fight for balance.
+		Result.Outcome = EImpactOutcome::Collapse;
+		Result.OutcomeFrame = FirstCollapse;
+	}
+	else if (FirstRelease != INDEX_NONE && FirstRelease <= Thresholds.ImmediateReleaseFrames)
 	{
 		// Overwhelmed at once: no balance was attempted.
 		Result.Outcome = EImpactOutcome::Ragdoll;

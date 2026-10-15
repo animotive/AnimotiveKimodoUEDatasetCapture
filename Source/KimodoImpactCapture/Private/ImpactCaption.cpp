@@ -82,9 +82,11 @@ namespace
 				return Pick(Random, { TEXT("trips, falling forwards"), TEXT("trips and falls forwards"), TEXT("trips, going down hard") });
 			}
 			return Pick(Random, { TEXT("falls to the ground"), TEXT("is knocked down"), TEXT("loses their balance and falls") });
+		case EImpactOutcome::Collapse:
+			return Pick(Random, { TEXT("collapses"), TEXT("crumples to the ground"), TEXT("drops where they stand"), TEXT("collapses to the ground") });
 		case EImpactOutcome::Ragdoll:
 		default:
-			return Pick(Random, { TEXT("is thrown to the ground"), TEXT("is knocked off their feet"), TEXT("collapses to the ground") });
+			return Pick(Random, { TEXT("is thrown to the ground"), TEXT("is knocked off their feet"), TEXT("is flung to the ground") });
 		}
 	}
 

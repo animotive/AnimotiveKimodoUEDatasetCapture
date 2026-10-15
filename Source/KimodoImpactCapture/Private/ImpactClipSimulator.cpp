@@ -228,7 +228,9 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 
 	// A hard hit while the source is in the air cannot be resisted: the body lets go at the hit
 	// rather than following the source's own landing.
-	const bool bReleaseInFlight = uint8(Setup.Params.Intensity) >= uint8(Setup.MidAirReleaseIntensity)
+	// Shot in the head or neck: the character collapses shortly after the hit, whatever its strength.
+	const bool bCollapses = Setup.Params.Impactor.Archetype->Collapses(Setup.Params.Region);
+	const bool bReleaseInFlight = !bCollapses && uint8(Setup.Params.Intensity) >= uint8(Setup.MidAirReleaseIntensity)
 		&& FImpactSourceFlight::IsInFlight(Sampler, Ref, Ref.FindBoneIndex(TEXT("foot_l")), Ref.FindBoneIndex(TEXT("foot_r")),
 			StartTime + double(ImpactFrame) * double(Dt));
 
@@ -358,6 +360,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		StruckLegDeltaV = LegMass > 0.0f ? Setup.Params.TransferredImpulseKgCmPerSecond / LegMass : 0.0f;
 	}
 	bool bReleased = false;
+	bool bCollapsed = false;
 	int32 ReleaseFrame = INDEX_NONE;
 	// The pose the ragdoll's joint tone holds: the source pose at release, not the source playing on.
 	TArray<FTransform> ReleasePose;
@@ -393,7 +396,16 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		Overrides.Reset();
 		if (SinceHit >= 0)
 		{
-			if (SinceHit == 0 && Setup.FallRules.IsOverwhelming(Setup.Params.ReactionImpulseKgCmPerSecond, Character->TotalMass(),
+			if (SinceHit == FMath::Max(0, Setup.CollapseDelayFrames) && bCollapses && !bReleased)
+			{
+				// Incapacitated: no balance, no world hold; the collapse tones fold the body down.
+				bReleased = bCollapsed = true;
+				ReleaseFrame = Frame;
+				ReleasePose = Pose;
+				Character->Release(Setup.Ragdoll, ReleasePose, Setup.SourceLimitMarginDeg);
+				bFeetKinematic[0] = bFeetKinematic[1] = false;
+			}
+			if (SinceHit == 0 && !bCollapses && Setup.FallRules.IsOverwhelming(Setup.Params.ReactionImpulseKgCmPerSecond, Character->TotalMass(),
 				StruckDeltaV(Setup.Params.ReactionImpulseKgCmPerSecond, FMath::Max(Setup.Params.Impactor.ContactRadiusCm, Setup.ReactionSpreadRadiusCm))))
 			{
 				Out.bOverwhelmed = true;
@@ -465,6 +477,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			Query.bCore = BoneName.StartsWith(TEXT("spine")) || BoneName.StartsWith(TEXT("neck")) || BoneName == TEXT("head");
 			Query.bMovingSource = bMoving;
 			Query.bReleased = bReleased;
+			Query.bCollapsed = bCollapsed;
 			Query.FramesSinceRelease = bReleased ? Frame - ReleaseFrame : 0;
 			const FImpactBodyStrength Strength = Setup.Strength.Evaluate(Query, SinceHit);
 
@@ -620,6 +633,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			State.Steps = Balance.Steps;
 			State.bControlsReleased = bReleased;
 			State.bTrip = Balance.bTrip;
+			State.bCollapsed = bCollapsed;
 			OutcomeFrames.Add(State);
 		}
 		Window.Advance(SinceHit >= 0 ? Speed : 0.0f);
