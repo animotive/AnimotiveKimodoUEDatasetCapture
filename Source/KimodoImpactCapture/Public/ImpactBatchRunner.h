@@ -131,6 +131,12 @@ public:
 	static FString DescriptionsFilename(const UImpactBatchDefinition& Batch);
 
 private:
+	/** Lists the batch's valid clips in DescriptionsFilename, replacing its earlier entries. */
+	bool WriteDescriptions(const FImpactBatchManifest& All, FText& OutReason) const;
+
+public:
+
+private:
 	TStrongObjectPtr<UImpactBatchDefinition> Batch;
 	FImpactBatchAssets Assets;
 	FImpactBatchRunConfig Config;

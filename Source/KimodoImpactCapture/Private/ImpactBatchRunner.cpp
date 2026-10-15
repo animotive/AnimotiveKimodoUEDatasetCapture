@@ -3,6 +3,7 @@
 #include "ImpactBatchRunner.h"
 
 #include "Animation/AnimSequence.h"
+#include "DatasetDescriptions.h"
 #include "DatasetSidecarSerializer.h"
 #include "Engine/SkeletalMesh.h"
 #include "HAL/FileManager.h"
@@ -257,6 +258,42 @@ FString FImpactBatchRunner::DescriptionsFilename(const UImpactBatchDefinition& I
 		/ TEXT("descriptions.json");
 }
 
+bool FImpactBatchRunner::WriteDescriptions(const FImpactBatchManifest& All, FText& OutReason) const
+{
+	if (!Batch.IsValid())
+	{
+		return true;
+	}
+	// One index for everything under the output root (and any other generator writing there):
+	// this batch's entries are replaced as a whole, everyone else's kept.
+	const FString File = DescriptionsFilename(*Batch);
+	FDatasetDescriptions Index;
+	if (IFileManager::Get().FileExists(*File) && !Index.LoadFromFile(File, OutReason))
+	{
+		return false;
+	}
+	const FString Prefix = Batch->GetName() + TEXT("/");
+	Index.RemoveFilesUnder(Prefix);
+	for (const FImpactManifestEntry& Entry : All.GetEntries())
+	{
+		if (!Entry.bValid || Entry.FileName.IsEmpty() || Entry.Descriptions.IsEmpty())
+		{
+			continue;
+		}
+		FDatasetDescriptionEntry Listed;
+		Listed.Name = Entry.FileName;
+		// The baked clip until FBX export exists.
+		Listed.File = Prefix + Entry.FileName + FPackageName::GetAssetPackageExtension();
+		Listed.Kind = TEXT("impact");
+		Listed.Descriptions = Entry.Descriptions;
+		if (!Index.Add(Listed, OutReason))
+		{
+			return false;
+		}
+	}
+	return Index.SaveToFile(File, OutReason);
+}
+
 FString FImpactBatchRunner::ReportFilename(const FString& InBatchFolder)
 {
 	return InBatchFolder / TEXT("Report.json");
@@ -407,6 +444,10 @@ bool FImpactBatchRunner::Step(FText& OutReason)
 			return false;
 		}
 		Entry.Bytes += FileSize(SidecarFile);
+		if (Entry.bValid)
+		{
+			Entry.Descriptions = FImpactCaption::Descriptions(FImpactSidecarBuilder::CaptionInput(Setup, Recording, Context.Motion), Setup.BatchSeed, ClipIndex);
+		}
 	}
 
 	if (!Manifest.Append(Entry, OutReason))
@@ -440,6 +481,10 @@ bool FImpactBatchRunner::Finish(FText& OutReason)
 	}
 	Report = FImpactDistributionReport::Build(All);
 	UE_LOG(LogKimodoImpactCapture, Display, TEXT("%s"), *Report.ToText());
+	if (!WriteDescriptions(All, OutReason))
+	{
+		return false;
+	}
 	World.Reset();
 	CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
 	return Report.Save(ReportFilename(BatchFolder), OutReason);

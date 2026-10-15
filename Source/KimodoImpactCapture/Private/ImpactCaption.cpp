@@ -230,7 +230,18 @@ FString FImpactCaption::Describe(const FImpactCaptionInput& Input, int32 BatchSe
 
 TArray<FString> FImpactCaption::Descriptions(const FImpactCaptionInput& Input, int32 BatchSeed, int32 ClipIndex, int32 Count)
 {
-	return {};
+	TArray<FString> Out;
+	if (!Input.Impactor)
+	{
+		return Out;
+	}
+	// The caption first, then the same clip described from other caption streams until enough
+	// phrasings differ; a clip whose wording runs out gets fewer.
+	for (int32 Variant = 0; Variant < 64 && Out.Num() < Count; ++Variant)
+	{
+		Out.AddUnique(Describe(Input, BatchSeed + Variant * 7919, ClipIndex));
+	}
+	return Out;
 }
 
 TArray<FString> FImpactCaption::Tags(const FImpactCaptionInput& Input)
