@@ -7,9 +7,10 @@
 class UWorld;
 
 /**
- * The one game world a process simulates impact clips in. Each rule here was learned the hard way
- * in the Phase 1 spike (tech-stack.md):
- *  - one world per process: recreating a world per clip crashed the Water world subsystem;
+ * A game world to simulate impact clips in, one per clip. Each rule here was learned the hard way
+ * (tech-stack.md):
+ *  - one world per clip: clips sharing a world inherited each other's physics state. The Phase 1
+ *    spike's crash on recreating worlds (the Water world subsystem) no longer occurs;
  *  - a bare world has no game mode, so BeginPlay is dispatched by hand or components never tick;
  *  - every simulated step is its own engine frame (GFrameCounter), or tick functions run once and stop;
  *  - teardown is EndPlay, then tear down, then destroy, then collect garbage.

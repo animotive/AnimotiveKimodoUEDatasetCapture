@@ -332,6 +332,11 @@ bool FImpactBatchRunner::Step(FText& OutReason)
 	Entry.Intensity = EnumName(Setup.Params.Intensity);
 	Entry.DeliveryMode = EnumName(Setup.Schedule.Mode);
 
+	// Each clip in a world of its own: in one shared world a clip inherited what earlier clips
+	// left in the physics scene, and came out differently from the same clip run alone.
+	World.Reset();
+	World = MakeUnique<FImpactSimWorld>();
+
 	FImpactClipRecording Recording;
 	FText SimReason;
 	if (!FImpactClipSimulator::Run(*World, Setup, Recording, SimReason))
