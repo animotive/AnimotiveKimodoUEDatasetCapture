@@ -135,6 +135,8 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement flight moments in the grid, the simulator's start time and the clip id (Green) (e6a4705)
 - [x] Task: Write tests for airborne feet — the flight-moment grid made 1,663 of 4,104 jump clips invalid (apex 93%: ankles folded or tore). At the hit the planner pinned both feet where they were: mid-air at the apex, so the legs were held up while the body fell; on the floor before take-off, so the body could not leave the ground and read as a Knockdown. A foot whose source foot is off the ground is not pinned and plans no steps; it is pinned where it lands (Red) (3939e27)
 - [x] Task: Implement airborne feet in the planner and the simulator (Green) (f5e35d5)
+- [x] Task: Write tests for a head-shot collapse — user, 2026-10-15: "if a bullet hits the head, we should have a collapse without a full ragdoll, or something between knockdown and ragdoll"; head and neck only. Impactors marked as incapacitating (small bullet, rifle round, shotgun blast) striking the head or neck collapse CollapseDelayFrames (2) after the hit, whatever the intensity: no world hold and no balance, legs nearly limp (tone 0.03) so the knees buckle, arms light (0.12), trunk and neck braced (0.35) so the body folds down rather than flopping. A new outcome, Collapse, appended to EImpactOutcome, decided at the collapse frame; captioned as a collapse (Red) (43822a8)
+- [ ] Task: Implement the collapse in the catalog, strength profile, outcome classifier, caption and simulator (Green)
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
 
 ## Phase 6: Panel, Preview and End-to-End Run
