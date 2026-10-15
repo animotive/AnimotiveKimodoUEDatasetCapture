@@ -156,6 +156,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	}
 	ON_SCOPE_EXIT { Character->Destroy(); };
 	const TArray<AImpactReactionCharacter::FBody>& Bodies = Character->GetBodies();
+	Character->SetSolverIterations(Setup.SolverPositionIterations, Setup.SolverVelocityIterations);
 
 	// --- Source --------------------------------------------------------------------------------
 	const FImpactPoseSampler Sampler(*Setup.Mesh, *Setup.Source, Setup.bSourcePlaysOnce);

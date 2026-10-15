@@ -196,6 +196,16 @@ void AImpactReactionCharacter::SetTargets(const TArray<FTransform>& PoseComponen
 
 void AImpactReactionCharacter::SetSolverIterations(int32 Position, int32 Velocity)
 {
+	for (const FBody& Body : Bodies)
+	{
+		if (Body.Instance)
+		{
+			// An island solves with the most any of its bodies asks for.
+			Body.Instance->SetOverrideIterationCounts(true);
+			Body.Instance->SetPositionSolverIterationCount(uint8(FMath::Clamp(Position, 1, 255)));
+			Body.Instance->SetVelocitySolverIterationCount(uint8(FMath::Clamp(Velocity, 1, 255)));
+		}
+	}
 }
 
 void AImpactReactionCharacter::SetAllSimulated()

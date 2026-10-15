@@ -52,8 +52,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipSetup
 	 * Solver iterations per body. At the project's 8 position iterations limb chains folded past
 	 * their limits (1,361 of 13,680 grid clips invalid); 32 held them (about 600).
 	 */
-	int32 SolverPositionIterations = 0;
-	int32 SolverVelocityIterations = 0;
+	int32 SolverPositionIterations = 32;
+	int32 SolverVelocityIterations = 4;
 	int32 PreRollFrames = 30;
 	int32 MaxReactionFrames = 240;
 	int32 SettleFrames = 20;
