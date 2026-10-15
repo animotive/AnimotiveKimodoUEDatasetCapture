@@ -50,6 +50,11 @@ FString FImpactClipId::CanonicalString(FName SourceAnimation, const FImpactParam
 		<< TEXT("|int:") << int32(Params.Intensity)
 		<< TEXT("|mode:") << int32(Schedule.Mode)
 		<< TEXT("|hits:") << Schedule.Hits.Num();
+	if (Params.SourceMoment != EImpactSourceMoment::Phase)
+	{
+		// Appended only when set, so clips hit at a phase keep their ids.
+		Out << TEXT("|mo:") << int32(Params.SourceMoment);
+	}
 
 	// Order matters: swapping two hits is a different clip.
 	for (const FImpactHit& Hit : Schedule.Hits)

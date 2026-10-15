@@ -148,6 +148,6 @@ bool FImpactFlightMomentTimesTest::RunTest(const FString& Parameters)
 	Setup.Params.SourceMoment = EImpactSourceMoment::Phase;
 	Setup.Params.SourcePhase = 0.3f;
 	TestEqual(TEXT("A phase clip starts at its phase"), FImpactClipSimulator::SourceStartSeconds(Setup),
-		FImpactSourceClock::StartSeconds(0.3, JumpSequence->GetPlayLength(), true, Lead), 1e-9);
+		FImpactSourceClock::StartSeconds(double(Setup.Params.SourcePhase), JumpSequence->GetPlayLength(), true, Lead), 1e-9);
 	return true;
 }

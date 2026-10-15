@@ -118,8 +118,18 @@ namespace
 
 double FImpactClipSimulator::SourceStartSeconds(const FImpactClipSetup& Setup)
 {
-	return FImpactSourceClock::StartSeconds(Setup.Params.SourcePhase, Setup.Source ? Setup.Source->GetPlayLength() : 0.0, Setup.bSourcePlaysOnce,
-		double(Setup.PreRollFrames + 1) / double(FMath::Max(1, Setup.FrameRate)));
+	const double LeadIn = double(Setup.PreRollFrames + 1) / double(FMath::Max(1, Setup.FrameRate));
+	if (Setup.Params.SourceMoment != EImpactSourceMoment::Phase && Setup.bSourcePlaysOnce && Setup.Mesh && Setup.Source)
+	{
+		const FImpactPoseSampler Sampler(*Setup.Mesh, *Setup.Source, true);
+		const FReferenceSkeleton& Ref = Setup.Mesh->GetRefSkeleton();
+		double TakeOff = 0.0, Landing = 0.0;
+		if (FImpactSourceFlight::FindFlight(Sampler, Ref, Ref.FindBoneIndex(TEXT("foot_l")), Ref.FindBoneIndex(TEXT("foot_r")), TakeOff, Landing))
+		{
+			return FImpactSourceFlight::MomentSeconds(Setup.Params.SourceMoment, TakeOff, Landing) - LeadIn;
+		}
+	}
+	return FImpactSourceClock::StartSeconds(Setup.Params.SourcePhase, Setup.Source ? Setup.Source->GetPlayLength() : 0.0, Setup.bSourcePlaysOnce, LeadIn);
 }
 
 bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup& Setup, FImpactClipRecording& Out, FText& OutReason)
@@ -151,8 +161,7 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	const FImpactPoseSampler Sampler(*Setup.Mesh, *Setup.Source, Setup.bSourcePlaysOnce);
 	Character->OpenLimitsToHold(Sampler, 1.0 / 30.0, Setup.SourceLimitMarginDeg);
 	FImpactSourceClock Clock(Sampler.GetLength(), Sampler.GetLoopDelta().GetLocation(), Setup.Clock);
-	const double StartTime = FImpactSourceClock::StartSeconds(Setup.Params.SourcePhase, Sampler.GetLength(), Setup.bSourcePlaysOnce,
-		double(Setup.PreRollFrames + 1) / double(FMath::Max(1, Setup.FrameRate)));
+	const double StartTime = SourceStartSeconds(Setup);
 	const bool bMoving = Clock.IsMoving();
 	const int32 PelvisBone = Ref.FindBoneIndex(TEXT("pelvis"));
 

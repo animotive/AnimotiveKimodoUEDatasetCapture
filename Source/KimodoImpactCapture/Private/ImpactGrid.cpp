@@ -4,13 +4,14 @@
 
 #include "ImpactBatchDefinition.h"
 #include "ImpactorCatalog.h"
+#include "Algo/BinarySearch.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(ImpactGrid)
 
 bool FImpactGridCell::operator==(const FImpactGridCell& Other) const
 {
 	return Source == Other.Source && Archetype == Other.Archetype && Region == Other.Region && Azimuth == Other.Azimuth
-		&& Elevation == Other.Elevation && Strength == Other.Strength && Phase == Other.Phase;
+		&& Elevation == Other.Elevation && Strength == Other.Strength && Phase == Other.Phase && Moment == Other.Moment;
 }
 
 #define LOCTEXT_NAMESPACE "ImpactGrid"
@@ -36,18 +37,22 @@ namespace
 		Out.ElevationSteps = FMath::Max(1, Settings.ElevationSteps);
 		Out.StrengthLevels = FMath::Max(1, Settings.StrengthLevels);
 		Out.PhasesPerSource = FMath::Max(1, Settings.PhasesPerSource);
+		Out.bFlightMoments = Settings.bFlightMoments;
 		return Out;
 	}
-}
 
-bool FImpactGrid::Build(const UImpactBatchDefinition& Batch, const UImpactorCatalog& Catalog, int32 NumSources, TConstArrayView<bool> SourcePlaysOnce, FText& OutReason)
-{
-	return Build(Batch, Catalog, NumSources, OutReason);
+	const EImpactSourceMoment FlightMoments[] = { EImpactSourceMoment::BeforeTakeOff, EImpactSourceMoment::Apex, EImpactSourceMoment::AfterLanding };
 }
 
 bool FImpactGrid::Build(const UImpactBatchDefinition& Batch, const UImpactorCatalog& Catalog, int32 NumSources, FText& OutReason)
 {
+	return Build(Batch, Catalog, NumSources, {}, OutReason);
+}
+
+bool FImpactGrid::Build(const UImpactBatchDefinition& Batch, const UImpactorCatalog& Catalog, int32 NumSources, TConstArrayView<bool> SourcePlaysOnce, FText& OutReason)
+{
 	Triples.Reset();
+	Starts.Reset();
 	Settings = Clamped(Batch.Grid);
 	if (NumSources < 1)
 	{
@@ -56,6 +61,7 @@ bool FImpactGrid::Build(const UImpactBatchDefinition& Batch, const UImpactorCata
 	}
 	for (int32 Source = 0; Source < NumSources; ++Source)
 	{
+		const bool bMoments = Settings.bFlightMoments && SourcePlaysOnce.IsValidIndex(Source) && SourcePlaysOnce[Source];
 		for (int32 Archetype = 0; Archetype < Catalog.Archetypes.Num(); ++Archetype)
 		{
 			const FImpactorArchetype& Candidate = Catalog.Archetypes[Archetype];
@@ -68,20 +74,29 @@ bool FImpactGrid::Build(const UImpactBatchDefinition& Batch, const UImpactorCata
 			{
 				if (Region.Weight > 0.0f && Candidate.CanStrike(Region.Region))
 				{
-					Triples.Add({ Source, Archetype, Region.Region });
+					Triples.Add({ Source, Archetype, Region.Region, bMoments });
 				}
 			}
 		}
 	}
-	const int64 Cells = int64(Triples.Num()) * Settings.AzimuthSteps * Settings.ElevationSteps * Settings.StrengthLevels * Settings.PhasesPerSource;
+	int64 Cells = 0;
+	for (const FTriple& Triple : Triples)
+	{
+		Starts.Add(Cells);
+		Cells += int64(Settings.AzimuthSteps) * Settings.ElevationSteps * Settings.StrengthLevels * TimingSteps(Triple);
+	}
+	Starts.Add(Cells);
 	if (Cells < 1)
 	{
+		Triples.Reset();
+		Starts.Reset();
 		OutReason = LOCTEXT("Empty", "No impactor in the catalog can strike the batch's regions from its elevations.");
 		return false;
 	}
 	if (Cells > MAX_int32)
 	{
 		Triples.Reset();
+		Starts.Reset();
 		OutReason = FText::Format(LOCTEXT("TooBig", "The full grid has {0} cells, more than one batch can index; use fewer steps."), FText::AsNumber(Cells));
 		return false;
 	}
@@ -90,27 +105,45 @@ bool FImpactGrid::Build(const UImpactBatchDefinition& Batch, const UImpactorCata
 
 int32 FImpactGrid::Num() const
 {
-	return Triples.Num() * Settings.AzimuthSteps * Settings.ElevationSteps * Settings.StrengthLevels * Settings.PhasesPerSource;
+	return Starts.IsEmpty() ? 0 : int32(Starts.Last());
+}
+
+int32 FImpactGrid::TimingSteps(const FTriple& Triple) const
+{
+	return Triple.bMoments ? UE_ARRAY_COUNT(FlightMoments) : Settings.PhasesPerSource;
 }
 
 FImpactGridCell FImpactGrid::Cell(int32 Index) const
 {
-	// Index = ((((Triple * Azimuth) + az) * Elevation + el) * Strength + level) * Phase + phase.
+	// Each triple owns a block: ((az * Elevation + el) * Strength + level) * Timing + timing, where
+	// timing is a phase, or a flight moment for a play-once source. With no moments every block is
+	// the same size and Index = ((((Triple * Azimuth) + az) * Elevation + el) * Strength + level) * Phase + phase.
 	FImpactGridCell Cell;
-	int32 Rest = FMath::Clamp(Index, 0, FMath::Max(0, Num() - 1));
-	Cell.Phase = Rest % Settings.PhasesPerSource;
-	Rest /= Settings.PhasesPerSource;
-	Cell.Strength = Rest % Settings.StrengthLevels;
-	Rest /= Settings.StrengthLevels;
-	Cell.Elevation = Rest % Settings.ElevationSteps;
-	Rest /= Settings.ElevationSteps;
-	Cell.Azimuth = Rest % Settings.AzimuthSteps;
-	Rest /= Settings.AzimuthSteps;
-	if (Triples.IsValidIndex(Rest))
+	if (Triples.IsEmpty())
 	{
-		Cell.Source = Triples[Rest].Source;
-		Cell.Archetype = Triples[Rest].Archetype;
-		Cell.Region = Triples[Rest].Region;
+		return Cell;
+	}
+	const int64 Clamped = FMath::Clamp(int64(Index), int64(0), Starts.Last() - 1);
+	const int32 Triple = FMath::Clamp(Algo::UpperBound(Starts, Clamped) - 1, 0, Triples.Num() - 1);
+	const int32 Timing = TimingSteps(Triples[Triple]);
+	int64 Rest = Clamped - Starts[Triple];
+	const int32 Step = int32(Rest % Timing);
+	Rest /= Timing;
+	Cell.Strength = int32(Rest % Settings.StrengthLevels);
+	Rest /= Settings.StrengthLevels;
+	Cell.Elevation = int32(Rest % Settings.ElevationSteps);
+	Rest /= Settings.ElevationSteps;
+	Cell.Azimuth = int32(Rest % Settings.AzimuthSteps);
+	Cell.Source = Triples[Triple].Source;
+	Cell.Archetype = Triples[Triple].Archetype;
+	Cell.Region = Triples[Triple].Region;
+	if (Triples[Triple].bMoments)
+	{
+		Cell.Moment = FlightMoments[Step];
+	}
+	else
+	{
+		Cell.Phase = Step;
 	}
 	return Cell;
 }
@@ -145,6 +178,7 @@ FImpactParams FImpactGrid::Params(const FImpactGridCell& Cell, const UImpactBatc
 
 	const FFloatInterval& Phases = Batch.Impact.SourcePhase;
 	Params.SourcePhase = FMath::Lerp(Phases.Min, Phases.Max, (float(Cell.Phase) + 0.5f) / float(Steps.PhasesPerSource));
+	Params.SourceMoment = Cell.Moment;
 	return Params;
 }
 

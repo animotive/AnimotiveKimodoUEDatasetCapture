@@ -152,13 +152,42 @@ void FImpactPoseSampler::Sample(double InTime, TArray<FTransform>& OutComponentS
 bool FImpactSourceFlight::FindFlight(const FImpactPoseSampler& Sampler, const FReferenceSkeleton& Ref, int32 LeftFoot, int32 RightFoot,
 	double& OutTakeOff, double& OutLanding)
 {
+	constexpr double Window = 0.15;
 	OutTakeOff = OutLanding = 0.0;
-	return false;
+	bool bFound = false;
+	for (int32 Frame = 0; Frame / 60.0 < Sampler.GetLength(); ++Frame)
+	{
+		const double Time = Frame / 60.0;
+		if (IsInFlight(Sampler, Ref, LeftFoot, RightFoot, Time, Window))
+		{
+			if (!bFound)
+			{
+				OutTakeOff = Time;
+				bFound = true;
+			}
+			OutLanding = Time + Window;
+		}
+		else if (bFound)
+		{
+			break;
+		}
+	}
+	return bFound;
 }
 
 double FImpactSourceFlight::MomentSeconds(EImpactSourceMoment Moment, double TakeOff, double Landing, double BeforeSeconds, double AfterSeconds)
 {
-	return 0.0;
+	switch (Moment)
+	{
+	case EImpactSourceMoment::BeforeTakeOff:
+		return TakeOff - BeforeSeconds;
+	case EImpactSourceMoment::Apex:
+		return 0.5 * (TakeOff + Landing);
+	case EImpactSourceMoment::AfterLanding:
+		return Landing + AfterSeconds;
+	default:
+		return TakeOff;
+	}
 }
 
 bool FImpactSourceFlight::IsInFlight(TConstArrayView<float> LeftClearanceCm, TConstArrayView<float> RightClearanceCm, float ThresholdCm)

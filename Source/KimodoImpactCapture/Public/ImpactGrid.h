@@ -87,7 +87,13 @@ private:
 		int32 Source = 0;
 		int32 Archetype = 0;
 		EImpactBodyRegion Region = EImpactBodyRegion::Chest;
+		/** Hit at the three flight moments rather than at the phase steps. */
+		bool bMoments = false;
 	};
+	int32 TimingSteps(const FTriple& Triple) const;
+
 	TArray<FTriple> Triples;
+	/** First clip index of each triple's block; a final entry holds the total. */
+	TArray<int64> Starts;
 	FImpactGridSettings Settings;
 };

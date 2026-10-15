@@ -110,7 +110,7 @@ bool FImpactBatchAssets::Load(const UImpactBatchDefinition& Batch, FImpactBatchA
 		Out.Sources.Emplace(Sequence);
 		Out.SourcePlaysOnce.Add(PlaysOnce(Batch, Sequence->GetName()));
 	}
-	return !Batch.bFullGrid || Out.Grid.Build(Batch, *Out.Catalog, Out.Sources.Num(), OutReason);
+	return !Batch.bFullGrid || Out.Grid.Build(Batch, *Out.Catalog, Out.Sources.Num(), Out.SourcePlaysOnce, OutReason);
 }
 
 int32 FImpactBatchAssets::ClipCount(const UImpactBatchDefinition& Batch) const
