@@ -42,6 +42,12 @@ bool FImpactStrengthSampleTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("Sampled strengths within the distribution"), bInRange);
 
+	// The approved tone (user, 2026-10-15): 0.25 and 0.35 both read better than 0.10-0.18.
+	TestEqual(TEXT("Ragdoll tone from 0.25"), Distribution.ReleasedTone.Min, 0.25f, 1e-6f);
+	TestEqual(TEXT("to 0.35"), Distribution.ReleasedTone.Max, 0.35f, 1e-6f);
+	TestEqual(TEXT("Fading to 40%"), Distribution.ReleasedToneEndRatio.Min, 0.4f, 1e-6f);
+	TestEqual(TEXT("to 60% of it"), Distribution.ReleasedToneEndRatio.Max, 0.6f, 1e-6f);
+
 	// Ragdoll tone varies per clip, within the distribution.
 	bool bToneInRange = true;
 	float LowestStart = TNumericLimits<float>::Max(), HighestStart = 0.0f;

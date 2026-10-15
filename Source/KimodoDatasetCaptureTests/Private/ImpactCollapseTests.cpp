@@ -86,7 +86,8 @@ bool FImpactCollapseStrengthTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Overdamped like a ragdoll"), Core.JointDamping, Profile.ReleasedJointDamping, 1e-5f);
 	}
 	TestTrue(TEXT("Legs weakest, trunk strongest"), Profile.CollapseLegTone < Profile.CollapseArmTone && Profile.CollapseArmTone < Profile.CollapseCoreTone);
-	TestTrue(TEXT("The trunk is firmer than a ragdoll's"), Profile.CollapseCoreTone > Profile.ReleasedToneStart * Profile.ReleasedCoreToneScale);
+	TestTrue(TEXT("The trunk is firmer than the firmest ragdoll's"),
+		Profile.CollapseCoreTone > FImpactStrengthDistribution().ReleasedTone.Max * Profile.ReleasedCoreToneScale);
 	return true;
 }
 
