@@ -377,3 +377,51 @@ bool FImpactBalanceLowStanceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("A real push on a crouch still steps"), Out.Steps, 1);
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactBalanceAirborneFeetTest,
+	"KimodoDatasetCapture.Impact.Balance.AirborneFeetFollowTheSource",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactBalanceAirborneFeetTest::RunTest(const FString& Parameters)
+{
+	using namespace ImpactBalanceTests;
+	const FImpactBalanceConfig Config = Unsmoothed();
+
+	// A jump struck in the air: both source feet are off the ground. Pinned where they hung, the
+	// feet held the legs up while the body fell, and the ankles folded.
+	FImpactBalancePlanner Planner(Config);
+	FImpactBalanceOutput Out;
+	bool bAnyPinned = false;
+	for (int32 Index = 0; Index < 20; ++Index)
+	{
+		FImpactBalanceInput Input = Pushed(100.0f); // would step on the ground
+		Input.bSourceFootAirborne[0] = Input.bSourceFootAirborne[1] = true;
+		Out = Planner.Step(Input);
+		bAnyPinned |= Out.Feet[0].bPinned || Out.Feet[1].bPinned;
+	}
+	TestFalse(TEXT("No foot is pinned while the source is in the air"), bAnyPinned);
+	TestEqual(TEXT("Nothing steps in the air"), Out.Steps, 0);
+	TestFalse(TEXT("And the body has not fallen"), Out.bFell);
+
+	// Touch-down: each foot is pinned where the body put it.
+	FImpactBalanceInput Landing = Pushed(0.0f);
+	Landing.FootPosition[0] = LeftFoot + FVector(20, 0, 0);
+	Landing.FootPosition[1] = RightFoot + FVector(20, 0, 0);
+	Out = Planner.Step(Landing);
+	TestTrue(TEXT("Both feet pinned on landing"), Out.Feet[0].bPinned && Out.Feet[1].bPinned);
+	TestTrue(TEXT("Where they landed"), Out.Feet[0].Position.Equals(Landing.FootPosition[0], 1e-3) && Out.Feet[1].Position.Equals(Landing.FootPosition[1], 1e-3));
+
+	// Before take-off: the source lifts one foot first; only the other stays pinned.
+	FImpactBalancePlanner OneUp(Config);
+	FImpactBalanceInput Lifting = Pushed(0.0f);
+	Lifting.bSourceFootAirborne[0] = true;
+	Out = OneUp.Step(Lifting);
+	TestFalse(TEXT("The lifted foot is free"), Out.Feet[0].bPinned);
+	TestTrue(TEXT("The standing foot is pinned"), Out.Feet[1].bPinned);
+	Out = OneUp.Step(Lifting); // already pinned on the ground, then the source lifts it
+	Lifting.bSourceFootAirborne[1] = true;
+	Out = OneUp.Step(Lifting);
+	TestFalse(TEXT("A pinned foot is let go when its source foot leaves the ground"), Out.Feet[1].bPinned);
+	return true;
+}

@@ -100,6 +100,11 @@ struct KIMODOIMPACTCAPTURE_API FImpactBalanceInput
 	float SourcePelvisHeightCm = 0.0f;
 	/** The source was in a low stance (a crouch) at the hit, as classified once per clip. */
 	bool bLowStance = false;
+	/**
+	 * The source's foot is off the ground this frame (0 left, 1 right): a jump. Such a foot follows
+	 * the source rather than being pinned, and lands where the body puts it.
+	 */
+	bool bSourceFootAirborne[2] = { false, false };
 };
 
 struct KIMODOIMPACTCAPTURE_API FImpactFootTarget
