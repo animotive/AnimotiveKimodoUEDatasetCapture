@@ -320,3 +320,68 @@ bool FImpactBatchRunnerTest::RunTest(const FString& Parameters)
 	IFileManager::Get().DeleteDirectory(*FPaths::GetPath(Folder), false, false);
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactBatchRunnerIsolationTest,
+	"KimodoDatasetCapture.Impact.Runner.ClipsDoNotDependOnEarlierClips",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactBatchRunnerIsolationTest::RunTest(const FString& Parameters)
+{
+	using namespace ImpactBatchRunnerTests;
+	// Run in one batch, a clip came out differently from the same clip run alone: in the shared
+	// physics world each clip inherited the state the ones before it left (the 10k grid's clip 1695
+	// was a Knockdown in its shard and a Flinch alone).
+	constexpr int32 Clips = 6;
+	FTestBatch Together, Alone;
+	if (!Together.Make(*this, TEXT("ImpactIsolationTogether"), TEXT("/Game/KimodoImpactRunnerTest"), Clips, false)
+		|| !Alone.Make(*this, TEXT("ImpactIsolationAlone"), TEXT("/Game/KimodoImpactRunnerTest"), Clips, false))
+	{
+		return true;
+	}
+	auto RunClips = [this](UImpactBatchDefinition& Batch, int32 Start, int32 Count)
+	{
+		FImpactBatchRunner Runner;
+		FImpactBatchRunConfig Config;
+		Config.Start = Start;
+		Config.Count = Count;
+		FText Reason;
+		if (TestTrue(*FString::Printf(TEXT("Clips %d+%d begin: %s"), Start, Count, *Reason.ToString()), Runner.Begin(Batch, Config, Reason)))
+		{
+			while (Runner.Step(Reason))
+			{
+			}
+			Runner.Finish(Reason);
+		}
+	};
+	const FString TogetherFolder = FPaths::ConvertRelativePathToFull(FPackageName::LongPackageNameToFilename(FImpactBatchRunner::BatchPackagePath(*Together.Batch)));
+	const FString AloneFolder = FPaths::ConvertRelativePathToFull(FPackageName::LongPackageNameToFilename(FImpactBatchRunner::BatchPackagePath(*Alone.Batch)));
+	DeleteBatchOutput(TogetherFolder);
+	DeleteBatchOutput(AloneFolder);
+
+	RunClips(*Together.Batch, 0, Clips);
+	for (int32 Clip = 0; Clip < Clips; ++Clip)
+	{
+		RunClips(*Alone.Batch, Clip, 1);
+	}
+
+	FImpactBatchManifest A, B;
+	FText Reason;
+	FImpactBatchManifest::LoadAll(TogetherFolder, A, Reason);
+	FImpactBatchManifest::LoadAll(AloneFolder, B, Reason);
+	for (int32 Clip = 0; Clip < Clips; ++Clip)
+	{
+		const FImpactManifestEntry* InBatch = A.Find(Clip);
+		const FImpactManifestEntry* OnItsOwn = B.Find(Clip);
+		if (!TestTrue(*FString::Printf(TEXT("Clip %d recorded both ways"), Clip), InBatch && OnItsOwn))
+		{
+			continue;
+		}
+		TestEqual(*FString::Printf(TEXT("Clip %d: same outcome in a batch as alone"), Clip), InBatch->Outcome, OnItsOwn->Outcome);
+		TestEqual(*FString::Printf(TEXT("Clip %d: same length"), Clip), InBatch->Frames, OnItsOwn->Frames);
+		TestEqual(*FString::Printf(TEXT("Clip %d: same validity"), Clip), InBatch->InvalidReason, OnItsOwn->InvalidReason);
+	}
+	DeleteBatchOutput(TogetherFolder);
+	DeleteBatchOutput(AloneFolder);
+	return true;
+}
