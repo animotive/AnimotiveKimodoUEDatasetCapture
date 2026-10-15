@@ -194,6 +194,10 @@ void AImpactReactionCharacter::SetTargets(const TArray<FTransform>& PoseComponen
 	}
 }
 
+void AImpactReactionCharacter::SetSolverIterations(int32 Position, int32 Velocity)
+{
+}
+
 void AImpactReactionCharacter::SetAllSimulated()
 {
 	Control->SetBodyModifiersInSetMovementType(ModifierSet, EPhysicsMovementType::Simulated);

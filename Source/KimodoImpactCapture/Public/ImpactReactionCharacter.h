@@ -85,6 +85,9 @@ public:
 	/** Every body simulated: the reaction begins. */
 	void SetAllSimulated();
 
+	/** Solver iterations for every body, overriding the project's (8 position, 1 velocity). */
+	void SetSolverIterations(int32 Position, int32 Velocity);
+
 	/** One body kinematic (a planted foot) or simulated. */
 	void SetBodyKinematic(int32 Body, bool bKinematic);
 
