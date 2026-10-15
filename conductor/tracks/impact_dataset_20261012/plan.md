@@ -138,7 +138,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Write tests for a head-shot collapse — user, 2026-10-15: "if a bullet hits the head, we should have a collapse without a full ragdoll, or something between knockdown and ragdoll"; head and neck only. Impactors marked as incapacitating (small bullet, rifle round, shotgun blast) striking the head or neck collapse CollapseDelayFrames (2) after the hit, whatever the intensity: no world hold and no balance, legs nearly limp (tone 0.03) so the knees buckle, arms light (0.12), trunk and neck braced (0.35) so the body folds down rather than flopping. A new outcome, Collapse, appended to EImpactOutcome, decided at the collapse frame; captioned as a collapse (Red) (43822a8)
 - [x] Task: Implement the collapse in the catalog, strength profile, outcome classifier, caption and simulator (Green) (1583bfb)
 - [x] Task: Write tests for a firmer ragdoll tone — review: "the ragdolls might be too loose, they read as ragdoll instead of realistic". In the tone comparison (10 grid clips at the current 0.10-0.18, at 0.25 and at 0.35, both fading to half) the user found 0.25 and 0.35 "both improvements but hard to tell which": a clip's released tone is drawn from 0.25-0.35 and fades to 40-60% of it. The collapse's braced trunk (0.35) rises to 0.45, so it stays firmer than the firmest ragdoll trunk (0.35 x 1.25) (Red) (31ab89f)
-- [ ] Task: Implement the firmer ragdoll tone (Green)
+- [x] Task: Implement the firmer ragdoll tone (Green) (c39e172)
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
 
 ## Phase 6: Panel, Preview and End-to-End Run
