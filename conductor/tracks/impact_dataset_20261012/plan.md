@@ -139,6 +139,8 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement the collapse in the catalog, strength profile, outcome classifier, caption and simulator (Green) (1583bfb)
 - [x] Task: Write tests for a firmer ragdoll tone — review: "the ragdolls might be too loose, they read as ragdoll instead of realistic". In the tone comparison (10 grid clips at the current 0.10-0.18, at 0.25 and at 0.35, both fading to half) the user found 0.25 and 0.35 "both improvements but hard to tell which": a clip's released tone is drawn from 0.25-0.35 and fades to 40-60% of it. The collapse's braced trunk (0.35) rises to 0.45, so it stays firmer than the firmest ragdoll trunk (0.35 x 1.25) (Red) (31ab89f)
 - [x] Task: Implement the firmer ragdoll tone (Green) (c39e172)
+- [x] Task: Write tests for clip isolation — a clip run in a batch came out differently from the same clip run alone (grid clip 1695: Knockdown in its shard, Flinch alone; 155 valid in its shard, a folded forearm alone): every clip of a run shared one physics world and inherited what earlier clips left in it. A clip run after others in a batch matches the same clip run on its own; each clip gets a fresh world (user chose option A, 2026-10-15) (Red) (1894c99)
+- [ ] Task: Implement a fresh physics world per clip in the batch runner (Green)
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
 
 ## Phase 6: Panel, Preview and End-to-End Run
