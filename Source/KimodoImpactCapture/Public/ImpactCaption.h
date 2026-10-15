@@ -95,6 +95,12 @@ struct KIMODOIMPACTCAPTURE_API FImpactCaption
 	/** The caption for a clip. Same input and clip, same caption. */
 	static FString Describe(const FImpactCaptionInput& Input, int32 BatchSeed, int32 ClipIndex);
 
+	/**
+	 * Count different phrasings of the clip (fewer only when the wording runs out), the first its
+	 * Describe caption: the descriptions index's "descriptions".
+	 */
+	static TArray<FString> Descriptions(const FImpactCaptionInput& Input, int32 BatchSeed, int32 ClipIndex, int32 Count = 3);
+
 	/** impact, impactor id, region, outcome, intensity and motion type. */
 	static TArray<FString> Tags(const FImpactCaptionInput& Input);
 };

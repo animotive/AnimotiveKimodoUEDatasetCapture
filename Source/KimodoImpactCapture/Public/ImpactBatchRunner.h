@@ -127,6 +127,9 @@ public:
 	/** The distribution report's file in a batch folder. */
 	static FString ReportFilename(const FString& BatchFolder);
 
+	/** The descriptions index every batch under the batch's OutputRoot shares (FDatasetDescriptions). */
+	static FString DescriptionsFilename(const UImpactBatchDefinition& Batch);
+
 private:
 	TStrongObjectPtr<UImpactBatchDefinition> Batch;
 	FImpactBatchAssets Assets;

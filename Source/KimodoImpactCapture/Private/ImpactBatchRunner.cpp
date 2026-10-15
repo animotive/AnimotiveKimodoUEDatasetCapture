@@ -251,6 +251,12 @@ FString FImpactBatchRunner::BatchPackagePath(const UImpactBatchDefinition& InBat
 	return Root / InBatch.GetName();
 }
 
+FString FImpactBatchRunner::DescriptionsFilename(const UImpactBatchDefinition& InBatch)
+{
+	return FPaths::GetPath(FPaths::ConvertRelativePathToFull(FPackageName::LongPackageNameToFilename(BatchPackagePath(InBatch))))
+		/ TEXT("descriptions.json");
+}
+
 FString FImpactBatchRunner::ReportFilename(const FString& InBatchFolder)
 {
 	return InBatchFolder / TEXT("Report.json");

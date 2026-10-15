@@ -1,6 +1,7 @@
 // Copyright Animotive. All Rights Reserved.
 
 #include "Animation/AnimSequence.h"
+#include "DatasetDescriptions.h"
 #include "DatasetSidecar.h"
 #include "DatasetSidecarSerializer.h"
 #include "Engine/SkeletalMesh.h"
@@ -383,5 +384,91 @@ bool FImpactBatchRunnerIsolationTest::RunTest(const FString& Parameters)
 	}
 	DeleteBatchOutput(TogetherFolder);
 	DeleteBatchOutput(AloneFolder);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactBatchRunnerDescriptionsTest,
+	"KimodoDatasetCapture.Impact.Runner.WritesDescriptions",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactBatchRunnerDescriptionsTest::RunTest(const FString& Parameters)
+{
+	using namespace ImpactBatchRunnerTests;
+	FTestBatch Test;
+	if (!Test.Make(*this, TEXT("ImpactDescriptionsBatch"), TEXT("/Game/KimodoImpactRunnerTest"), 3, false))
+	{
+		return true;
+	}
+	UImpactBatchDefinition& Batch = *Test.Batch;
+	const FString Folder = FPaths::ConvertRelativePathToFull(FPackageName::LongPackageNameToFilename(FImpactBatchRunner::BatchPackagePath(Batch)));
+	const FString File = FImpactBatchRunner::DescriptionsFilename(Batch);
+	TestEqual(TEXT("Shared by every batch under the output root"), File, FPaths::GetPath(Folder) / TEXT("descriptions.json"));
+	DeleteBatchOutput(Folder);
+	IFileManager::Get().Delete(*File);
+
+	// Already in the index: a stale clip of this batch, and another generator's animation.
+	FText Reason;
+	{
+		FDatasetDescriptions Existing;
+		FDatasetDescriptionEntry Stale;
+		Stale.Name = TEXT("IMP_999999_Old");
+		Stale.File = TEXT("ImpactDescriptionsBatch/IMP_999999_Old.uasset");
+		Stale.Kind = TEXT("impact");
+		Stale.Descriptions = { TEXT("A person falls.") };
+		FDatasetDescriptionEntry Climb;
+		Climb.Name = TEXT("CLB_000001_Traverse");
+		Climb.File = TEXT("Climb/CLB_000001_Traverse.fbx");
+		Climb.Kind = TEXT("climb");
+		Climb.Descriptions = { TEXT("A person climbs sideways along a wall.") };
+		Existing.Add(Stale, Reason);
+		Existing.Add(Climb, Reason);
+		Existing.SaveToFile(File, Reason);
+	}
+
+	{
+		FImpactBatchRunner Runner;
+		if (!TestTrue(*FString::Printf(TEXT("The batch begins: %s"), *Reason.ToString()), Runner.Begin(Batch, FImpactBatchRunConfig(), Reason)))
+		{
+			return true;
+		}
+		while (Runner.Step(Reason))
+		{
+		}
+		TestTrue(*FString::Printf(TEXT("Finishes: %s"), *Reason.ToString()), Runner.Finish(Reason));
+	}
+
+	FImpactBatchManifest Manifest;
+	FImpactBatchManifest::LoadAll(Folder, Manifest, Reason);
+	FDatasetDescriptions Index;
+	if (!TestTrue(*FString::Printf(TEXT("The index is written: %s"), *Reason.ToString()), Index.LoadFromFile(File, Reason)))
+	{
+		return true;
+	}
+	int32 Valid = 0;
+	for (const FImpactManifestEntry& Entry : Manifest.GetEntries())
+	{
+		const FDatasetDescriptionEntry* Listed = Index.Find(Entry.FileName);
+		if (!Entry.bValid)
+		{
+			TestNull(*FString::Printf(TEXT("Invalid clip %d is not listed"), Entry.ClipIndex), Listed);
+			TestEqual(TEXT("and has no descriptions"), Entry.Descriptions.Num(), 0);
+			continue;
+		}
+		++Valid;
+		TestEqual(*FString::Printf(TEXT("Clip %d carries three phrasings in its manifest entry"), Entry.ClipIndex), Entry.Descriptions.Num(), 3);
+		if (TestNotNull(*FString::Printf(TEXT("Clip %d is listed by name"), Entry.ClipIndex), Listed))
+		{
+			TestEqual(TEXT("as an impact"), Listed->Kind, FString(TEXT("impact")));
+			TestEqual(TEXT("with its file under the batch"), Listed->File, FString(TEXT("ImpactDescriptionsBatch/")) + Entry.FileName + TEXT(".uasset"));
+			TestEqual(TEXT("and its phrasings"), Listed->Descriptions, Entry.Descriptions);
+		}
+	}
+	TestTrue(TEXT("The batch made valid clips"), Valid > 0);
+	TestNull(TEXT("The batch's stale clip is dropped"), Index.Find(TEXT("IMP_999999_Old")));
+	TestNotNull(TEXT("Another generator's animation is kept"), Index.Find(TEXT("CLB_000001_Traverse")));
+	TestEqual(TEXT("Nothing else"), Index.Num(), Valid + 1);
+	DeleteBatchOutput(Folder);
+	IFileManager::Get().Delete(*File);
 	return true;
 }

@@ -56,6 +56,10 @@ struct KIMODOIMPACTCAPTURE_API FImpactManifestEntry
 	/** Bytes the clip took on disk (asset and sidecar), for the disk estimate. */
 	UPROPERTY()
 	int64 Bytes = 0;
+
+	/** Phrasings describing the clip (FImpactCaption::Descriptions); empty for an invalid clip. */
+	UPROPERTY()
+	TArray<FString> Descriptions;
 };
 
 /**

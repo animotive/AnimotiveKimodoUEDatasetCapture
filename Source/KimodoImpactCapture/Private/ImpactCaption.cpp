@@ -228,6 +228,11 @@ FString FImpactCaption::Describe(const FImpactCaptionInput& Input, int32 BatchSe
 	}
 }
 
+TArray<FString> FImpactCaption::Descriptions(const FImpactCaptionInput& Input, int32 BatchSeed, int32 ClipIndex, int32 Count)
+{
+	return {};
+}
+
 TArray<FString> FImpactCaption::Tags(const FImpactCaptionInput& Input)
 {
 	return {

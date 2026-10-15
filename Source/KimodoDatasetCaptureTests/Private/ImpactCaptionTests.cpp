@@ -212,3 +212,39 @@ bool FImpactCaptionTagsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Tags are impact, impactor, region, outcome, intensity, motion"), Tags, Expected);
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FImpactCaptionDescriptionsTest,
+	"KimodoDatasetCapture.Impact.Caption.Descriptions",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FImpactCaptionDescriptionsTest::RunTest(const FString& Parameters)
+{
+	using namespace ImpactCaptionTests;
+	const TArray<FImpactorArchetype> Archetypes = UImpactorCatalog::MakeStarterArchetypes();
+	FImpactCaptionInput Input;
+	Input.Impactor = Find(Archetypes, TEXT("Punch"));
+	Input.Motion = Idle();
+	Input.Region = EImpactBodyRegion::Chest;
+	Input.Outcome = EImpactOutcome::Stagger;
+	Input.Steps = 2;
+	for (int32 Clip = 0; Clip < 20; ++Clip)
+	{
+		const TArray<FString> Descriptions = FImpactCaption::Descriptions(Input, 3, Clip);
+		if (!TestEqual(*FString::Printf(TEXT("Clip %d: three phrasings"), Clip), Descriptions.Num(), 3))
+		{
+			continue;
+		}
+		TestEqual(TEXT("The first is the clip's caption"), Descriptions[0], FImpactCaption::Describe(Input, 3, Clip));
+		TestEqual(TEXT("All different"), TSet<FString>(Descriptions).Num(), 3);
+		for (const FString& Description : Descriptions)
+		{
+			TestTrue(*FString::Printf(TEXT("A full sentence about a person: %s"), *Description),
+				Description.Contains(TEXT("person")) && Description.EndsWith(TEXT(".")) && FChar::IsUpper(Description[0]));
+		}
+		TestEqual(TEXT("Same clip, same phrasings"), FImpactCaption::Descriptions(Input, 3, Clip), Descriptions);
+	}
+	TestEqual(TEXT("As many as asked for"), FImpactCaption::Descriptions(Input, 3, 0, 2).Num(), 2);
+	TestEqual(TEXT("No impactor, nothing to say"), FImpactCaption::Descriptions(FImpactCaptionInput(), 3, 0).Num(), 0);
+	return true;
+}
