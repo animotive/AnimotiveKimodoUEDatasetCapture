@@ -24,15 +24,16 @@ struct KIMODOIMPACTCAPTURE_API FImpactStrengthDistribution
 	FFloatInterval ParentToWorldRatio = FFloatInterval(1.6f, 2.4f);
 
 	/**
-	 * Joint tone a ragdoll keeps at the moment of release, as a multiple of joint strength. Around
-	 * the "Loose" look approved in the Phase 3 review; 0.3-0.5 read as too rigid.
+	 * Joint tone a ragdoll keeps at the moment of release, as a multiple of joint strength. The
+	 * Phase 3 "Loose" look (0.10-0.18) later read as a ragdoll rather than a person; in the tone
+	 * review 0.25 and 0.35 both read better (user, 2026-10-15).
 	 */
 	UPROPERTY(EditAnywhere, Category = "Strength")
-	FFloatInterval ReleasedTone = FFloatInterval(0.1f, 0.18f);
+	FFloatInterval ReleasedTone = FFloatInterval(0.25f, 0.35f);
 
 	/** Tone the ragdoll fades to, as a multiple of its tone at release. */
 	UPROPERTY(EditAnywhere, Category = "Strength")
-	FFloatInterval ReleasedToneEndRatio = FFloatInterval(0.2f, 0.4f);
+	FFloatInterval ReleasedToneEndRatio = FFloatInterval(0.4f, 0.6f);
 };
 
 /** What the profile needs to know about one body. */
@@ -93,8 +94,8 @@ struct KIMODOIMPACTCAPTURE_API FImpactStrengthProfile
 	 * ReleasedToneFadeFrames. Limp joints under soft limits folded limbs unnaturally in the Phase 3
 	 * foot-shot trip; the approved look is a light tone (0.4 read as too rigid).
 	 */
-	float ReleasedToneStart = 0.14f;
-	float ReleasedToneEnd = 0.042f;
+	float ReleasedToneStart = 0.3f;
+	float ReleasedToneEnd = 0.15f;
 	int32 ReleasedToneFadeFrames = 45;
 	/**
 	 * Falling people brace the trunk and neck. With the limbs' tone the head flopped at its limits
@@ -113,7 +114,7 @@ struct KIMODOIMPACTCAPTURE_API FImpactStrengthProfile
 	 */
 	float CollapseLegTone = 0.03f;
 	float CollapseArmTone = 0.12f;
-	float CollapseCoreTone = 0.35f;
+	float CollapseCoreTone = 0.45f;
 
 	static FImpactStrengthProfile Sample(const FImpactStrengthDistribution& Distribution, FImpactRandom& Random);
 
