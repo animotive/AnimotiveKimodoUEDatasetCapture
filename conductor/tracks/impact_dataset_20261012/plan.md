@@ -130,7 +130,7 @@ by user-driven editor verification per workflow.md Test Coverage Policy.
 - [x] Task: Implement physics substeps in the sim world and the simulator (Green) (3917c49)
 - [x] Task: Return physics to 60 Hz for now (SimSubsteps default 1) — 240 Hz cut invalid clips from 4.4% to 0.29% of the 10k grid but made standing sources step far more; the user chose 60 Hz to get a dataset sooner (2026-10-14). The frame-averaged settle test stays (0d4cc81)
 - [x] Task: Write tests for an unrecorded physics warm-up — review: "big leg snap on all the crouch flinches". Not a joint snap: when bodies switch from kinematic to simulated the world hold settles a few cm under gravity, every body dropping ~1.4 cm in the first frame (crouch ~6 cm over 6 frames, stand ~3 cm with feet kicking at 190 deg/s). The low-stance early switch put that sag in the crouch pre-roll; elsewhere it hid in the hit. Physics now starts WarmUpFrames (20) unrecorded frames before the clip, following the source, so the recorded pre-roll follows its source to the hit; replaces LowStanceSettleFrames (user chose option A, 2026-10-15) (Red) (98f0a62)
-- [ ] Task: Implement the warm-up in the simulator (Green)
+- [x] Task: Implement the warm-up in the simulator (Green) (f4e4cfa)
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Batch Runner, Resume and Headless Host' (Protocol in workflow.md)
 
 ## Phase 6: Panel, Preview and End-to-End Run
