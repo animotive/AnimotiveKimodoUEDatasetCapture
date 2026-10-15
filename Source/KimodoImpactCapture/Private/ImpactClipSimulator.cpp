@@ -246,6 +246,16 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 	};
 
 	FImpactBalancePlanner Planner(Setup.Balance);
+	// Each source foot's height in the reference pose: where it stands on the ground.
+	const int32 SourceFootBone[2] = { Ref.FindBoneIndex(TEXT("foot_l")), Ref.FindBoneIndex(TEXT("foot_r")) };
+	float SourceFootRest[2] = { 0.0f, 0.0f };
+	for (int32 Side = 0; Side < 2; ++Side)
+	{
+		if (SourceFootBone[Side] != INDEX_NONE)
+		{
+			SourceFootRest[Side] = float(FAnimationRuntime::GetComponentSpaceTransformRefPose(Ref, SourceFootBone[Side]).GetLocation().Z);
+		}
+	}
 	const int32 FootBody[2] = { Character->FindBody(TEXT("foot_l")), Character->FindBody(TEXT("foot_r")) };
 	const bool bHaveFeet = FootBody[0] != INDEX_NONE && FootBody[1] != INDEX_NONE;
 
@@ -363,6 +373,12 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 		Sampler.Sample(SourceTime + double(Dt) * Clock.RateAt(Frame), NextPose);
 		const FVector SourceVelocity = Reference.TransformVectorNoScale(NextPose[PelvisBone].GetLocation() - Pose[PelvisBone].GetLocation()) / Dt;
 		const int32 SinceHit = Frame - ImpactFrame;
+		bool bSourceAirborne[2] = { false, false };
+		for (int32 Side = 0; Side < 2; ++Side)
+		{
+			bSourceAirborne[Side] = SourceFootBone[Side] != INDEX_NONE
+				&& float(Pose[SourceFootBone[Side]].GetLocation().Z) - SourceFootRest[Side] > Setup.AirborneFootClearanceCm;
+		}
 
 		if (Frame == ImpactFrame && bReleaseInFlight && !bReleased)
 		{
@@ -394,6 +410,8 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			Input.StruckLegDeltaVCmPerSecond = StruckLegDeltaV;
 			Input.SourcePelvisHeightCm = PelvisBone != INDEX_NONE ? float(Pose[PelvisBone].GetLocation().Z) : 0.0f;
 			Input.bLowStance = bLowStance;
+			Input.bSourceFootAirborne[0] = bSourceAirborne[0];
+			Input.bSourceFootAirborne[1] = bSourceAirborne[1];
 			for (int32 Side = 0; Side < 2 && bHaveFeet; ++Side)
 			{
 				Input.FootPosition[Side] = Character->BodyTransform(FootBody[Side]).GetLocation();
@@ -596,7 +614,9 @@ bool FImpactClipSimulator::Run(FImpactSimWorld& SimWorld, const FImpactClipSetup
 			State.PelvisHeightCm = PelvisBody != INDEX_NONE ? float(Character->BodyTransform(PelvisBody).GetLocation().Z - SimWorld.GetGroundHeight()) : 0.0f;
 			State.StandingPelvisHeightCm = float(Pose[PelvisBone].GetLocation().Z);
 			const FVector FeetMid = bHaveFeet ? (Character->BodyTransform(FootBody[0]).GetLocation() + Character->BodyTransform(FootBody[1]).GetLocation()) * 0.5 : Character->CenterOfMass();
-			State.bOutsideSupport = !bMoving && FVector::Dist2D(Balance.CapturePoint, FeetMid) > Setup.Balance.StepTriggerCm;
+			// Only on the ground: in the air there is no support to be outside of.
+			State.bOutsideSupport = !bMoving && !bSourceAirborne[0] && !bSourceAirborne[1]
+				&& FVector::Dist2D(Balance.CapturePoint, FeetMid) > Setup.Balance.StepTriggerCm;
 			State.Steps = Balance.Steps;
 			State.bControlsReleased = bReleased;
 			State.bTrip = Balance.bTrip;

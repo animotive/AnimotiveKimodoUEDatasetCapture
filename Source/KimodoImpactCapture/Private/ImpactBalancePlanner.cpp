@@ -132,14 +132,32 @@ FImpactBalanceOutput FImpactBalancePlanner::Step(const FImpactBalanceInput& Inpu
 
 	if (!bFell && !Input.bMovingSource)
 	{
+		bool bAirborne = false;
 		for (int32 Side = 0; Side < 2; ++Side)
 		{
-			if (!Feet[Side].bPinned)
+			if (Input.bSourceFootAirborne[Side])
 			{
-				// Pinned where it stands at the hit: foot IK from here on.
+				// The source's foot is off the ground (a jump): it follows the source, and is pinned
+				// where it lands. Pinned in the air, it held the legs up while the body fell.
+				bAirborne = true;
+				Feet[Side].bInAir = true;
+				Feet[Side].bPinned = false;
+				Feet[Side].bSwing = false;
+				Feet[Side].Planted = Input.FootPosition[Side];
+				Feet[Side].Current = Feet[Side].Planted;
+			}
+			else if (!Feet[Side].bPinned)
+			{
+				// Pinned where it stands at the hit, or where it lands: foot IK from here on.
 				Feet[Side].bPinned = true;
 				Feet[Side].Planted = Input.FootPosition[Side];
 				Feet[Side].Current = Feet[Side].Planted;
+				if (Feet[Side].bInAir)
+				{
+					// A touch-down is a landing: the stance it starts lasts before any step.
+					Feet[Side].bInAir = false;
+					LastLandFrame = Now;
+				}
 			}
 		}
 		const FVector Mid = (Feet[0].Planted + Feet[1].Planted) * 0.5;
@@ -155,7 +173,12 @@ FImpactBalanceOutput FImpactBalancePlanner::Step(const FImpactBalanceInput& Inpu
 		const bool bAnySwing = Feet[0].bSwing || Feet[1].bSwing;
 		const bool bStanceLongEnough = LastLandFrame == INDEX_NONE || Now - LastLandFrame >= Config.MinStanceFrames;
 
-		if (!bAnySwing && SettleStart == INDEX_NONE && Error > Config.StepTriggerCm && bStanceLongEnough)
+		if (bAirborne)
+		{
+			// No stepping, and no settling, until both feet are back on the ground.
+			CalmFrames = 0;
+		}
+		else if (!bAnySwing && SettleStart == INDEX_NONE && Error > Config.StepTriggerCm && bStanceLongEnough)
 		{
 			CalmFrames = 0;
 			// Feet alternate; the first step is taken by the foot farther from the capture point.

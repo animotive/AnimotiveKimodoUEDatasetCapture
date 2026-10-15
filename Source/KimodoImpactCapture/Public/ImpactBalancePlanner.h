@@ -164,6 +164,8 @@ private:
 		FVector SwingTo = FVector::ZeroVector;
 		int32 SwingStart = 0;
 		FVector Current = FVector::ZeroVector;
+		/** Off the ground with its source foot (a jump). */
+		bool bInAir = false;
 	};
 
 	FImpactBalanceConfig Config;

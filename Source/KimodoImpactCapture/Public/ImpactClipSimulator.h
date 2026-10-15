@@ -89,6 +89,12 @@ struct KIMODOIMPACTCAPTURE_API FImpactClipSetup
 	 */
 	int32 WarmUpFrames = 20;
 
+	/**
+	 * A source foot this far above its reference-pose height is off the ground (a jump): the
+	 * planner lets it follow the source and pins it where it lands.
+	 */
+	float AirborneFootClearanceCm = 5.0f;
+
 	/** Direction the mesh faces in component space (+Y for the UEFN mannequin). */
 	FVector MeshForward = FVector(0.0, 1.0, 0.0);
 
